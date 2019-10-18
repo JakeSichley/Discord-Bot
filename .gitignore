@@ -103,6 +103,10 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.idea
+.idea/
+.idea\
+.idea*
 
 # Spyder project settings
 .spyderproject
@@ -121,3 +125,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Project Files
+*.txt
+*/Raw Resources
+Resources/Raw Resources
+.idea/misc.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/inspectionProfiles/profiles_settings.xml
+highscores.txt
