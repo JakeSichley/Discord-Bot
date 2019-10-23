@@ -9,6 +9,7 @@ import datetime
 import pytz
 import requests
 from bs4 import BeautifulSoup
+from memecoin import MemeCoin
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -24,6 +25,8 @@ async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
     for guild in bot.guilds:
         print(f'Connected to Guild \'{guild.name}\'(id:{guild.id})')
+
+    bot.add_cog(MemeCoin(bot))
 
 
 @bot.command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')
@@ -61,7 +64,9 @@ async def on_message(message):
         if message.author.id == OWNER:
             response = response.upper()
 
-        await message.channel.send(response)'''
+        await message.channel.send(response)
+
+    await bot.process_commands(message)'''
 
 
 @bot.command(name='time', help='Responds with the current time. Can be supplied with a timezone.\nFor a full list of '
