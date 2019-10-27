@@ -4,9 +4,10 @@ from discord.ext import commands
 
 class MemeCoin(commands.Cog):
     def __init__(self, bot):
-        print('Cog Added')
         self.bot = bot
-        self.channel = 618847896305139722
+        self.ldchannel = 618847896305139722
+        self.devchannel = 636356259255287808
+        self.channel = self.ldchannel
         self.coins = {}
 
     @commands.Cog.listener()
@@ -14,14 +15,21 @@ class MemeCoin(commands.Cog):
         # Check to make sure the message comes from the appropriate channel
         # Check to make sure the user adding the reaction isn't a bot
         # Check to make sure the reaction isn't being added to a bot's message
-        if reaction.message.channel.id == self.channel and not user.bot and not reaction.message.author.bot:
+        # Meme Coins can only be awarded on messages that have a link or an attachment
+        if (reaction.message.channel.id == self.channel and not user.bot
+                and not reaction.message.author.bot and MemeCoin.__validmeme(reaction.message)):
             if str(reaction) == '✅':
-                if reaction.message.author not in self.coins:
+                if user == reaction.message.author:
+                    await reaction.message.channel.send(f'Man, look at this clown {user.mention}..'
+                                                        f' trying to give themself Meme Coins.. just shameful.')
+                elif reaction.message.author not in self.coins:
                     self.coins[reaction.message.author] = 1
                 else:
                     self.coins[reaction.message.author] += 1
             elif str(reaction) == '❌':
-                if reaction.message.author not in self.coins:
+                if user == reaction.message.author:
+                    return
+                elif reaction.message.author not in self.coins:
                     self.coins[reaction.message.author] = -1
                 else:
                     self.coins[reaction.message.author] -= 1
@@ -31,7 +39,11 @@ class MemeCoin(commands.Cog):
         # Check to make sure the message comes from the appropriate channel
         # Check to make sure the user adding the reaction isn't a bot
         # Check to make sure the reaction isn't being added to a bot's message
-        if reaction.message.channel.id == self.channel and not user.bot and not reaction.message.author.bot:
+        # Meme Coins can only be awarded on messages that have a link or an attachment
+        if (reaction.message.channel.id == self.channel and not user.bot
+                and not reaction.message.author.bot and MemeCoin.__validmeme(reaction.message)):
+            if user == reaction.message.author:
+                return
             if str(reaction) == '✅':
                 if reaction.message.author in self.coins:
                     self.coins[reaction.message.author] -= 1
@@ -39,18 +51,18 @@ class MemeCoin(commands.Cog):
                 if reaction.message.author in self.coins:
                     self.coins[reaction.message.author] += 1
 
-    @commands.command(name='Coins', help='Tests you how many of those sweet, sweet Meme Coins you own!')
+    @commands.command(name='coins', help='Tests you how many of those sweet, sweet Meme Coins you own!')
     async def coins(self, ctx):
         if ctx.message.channel.id == self.channel:
             if ctx.author in self.coins:
                 if self.coins[ctx.author] == 1:
-                    await ctx.send(f'{ctx.author.mention}, you have {self.coins[ctx.author]} meme coin!')
+                    await ctx.send(f'{ctx.author.mention}, you have {self.coins[ctx.author]} Meme Coin!')
                 else:
-                    await ctx.send(f'{ctx.author.mention}, you have {self.coins[ctx.author]} meme coins!')
+                    await ctx.send(f'{ctx.author.mention}, you have {self.coins[ctx.author]} Meme Coins!')
             else:
-                await ctx.send(f'{ctx.author.mention}, you have no meme coins :(')
+                await ctx.send(f'{ctx.author.mention}, you have no Meme Coins :(')
 
-    @commands.command(name='Leaderboard', help='Displays a list of highest rollers in Meme Coin Town!')
+    @commands.command(name='leaderboard', help='Displays a list of highest rollers in Meme Coin Town!')
     async def leaderboard(self, ctx):
         if ctx.message.channel.id == self.channel:
             if len(self.coins) > 0:
@@ -89,3 +101,13 @@ class MemeCoin(commands.Cog):
                                 value='Please give or revoke Meme Coin to construct leaderboards!')
                 embed.set_footer(text="Please report any issues to my owner!")
                 await ctx.send(embed=embed)
+
+    # Private helper method to check whether or not a message mets the criteria for Meme Coins
+    @staticmethod
+    def __validmeme(message):
+        if message.content.find('http') != -1:
+            return True
+        if len(message.attachments) > 0:
+            return True
+
+        return False

@@ -40,33 +40,21 @@ async def roll(ctx, die_pattern):
             await ctx.send(int(die[0]))
 
         else:
-            '''random.seed(time.time())
-            dice = [
-                random.choice(range(1, int(die[1])))
-                # numpy.random.randint(1, int(die[1]))
-                for _ in range(int(die[0]))
-            ]
-            await ctx.send(sum(dice))'''
-
             random.seed(time.time())
             dice = [x for x in range(int(die[0]), int(die[0]) * int(die[1]) + 1)]
             random.shuffle(dice)
             await ctx.send(dice[0])
 
 
-'''@bot.event
+@bot.event
 async def on_message(message):
     if message.author == bot.user:
         return
 
-    if 'cool' in message.content.lower():
-        response = 'Cool. Cool cool cool cool cool cool cool, no doubt no doubt no doubt no doubt.'
-        if message.author.id == OWNER:
-            response = response.upper()
+    if 'calzone' in message.content.lower():
+        await message.channel.send(file=discord.File('calzone.png'))
 
-        await message.channel.send(response)
-
-    await bot.process_commands(message)'''
+    await bot.process_commands(message)
 
 
 @bot.command(name='time', help='Responds with the current time. Can be supplied with a timezone.\nFor a full list of '
