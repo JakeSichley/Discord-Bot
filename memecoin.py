@@ -7,6 +7,7 @@ class MemeCoin(commands.Cog):
         self.bot = bot
         self.ldchannel = 618847896305139722
         self.devchannel = 636356259255287808
+        self.owner = 91995622093123584
         self.channel = self.ldchannel
         self.coins = {}
 
@@ -22,17 +23,17 @@ class MemeCoin(commands.Cog):
                 if user == reaction.message.author:
                     await reaction.message.channel.send(f'Man, look at this clown {user.mention}..'
                                                         f' trying to give themself Meme Coins.. just shameful.')
-                elif userkey(user) not in self.coins:
-                    self.coins[userkey(user)] = 1
+                elif userkey(reaction.message.author) not in self.coins:
+                    self.coins[userkey(reaction.message.author)] = 1
                 else:
-                    self.coins[userkey(user)] += 1
+                    self.coins[userkey(reaction.message.author)] += 1
             elif str(reaction) == '❌':
                 if user == reaction.message.author:
                     return
-                elif userkey(user) not in self.coins:
-                    self.coins[userkey(user)] = -1
+                elif userkey(reaction.message.author) not in self.coins:
+                    self.coins[userkey(reaction.message.author)] = -1
                 else:
-                    self.coins[userkey(user)] -= 1
+                    self.coins[userkey(reaction.message.author)] -= 1
 
     @commands.Cog.listener()
     async def on_reaction_remove(self, reaction, user):
@@ -45,11 +46,11 @@ class MemeCoin(commands.Cog):
             if user == reaction.message.author:
                 return
             if str(reaction) == '✅':
-                if userkey(user) in self.coins:
-                    self.coins[userkey(user)] -= 1
+                if userkey(reaction.message.author) in self.coins:
+                    self.coins[userkey(reaction.message.author)] -= 1
             elif str(reaction) == '❌':
-                if userkey(user) in self.coins:
-                    self.coins[userkey(user)] += 1
+                if userkey(reaction.message.author) in self.coins:
+                    self.coins[userkey(reaction.message.author)] += 1
 
     @commands.command(name='coins', help='Tests you how many of those sweet, sweet Meme Coins you own!')
     async def coins(self, ctx):
@@ -62,7 +63,8 @@ class MemeCoin(commands.Cog):
             else:
                 await ctx.send(f'{ctx.author.mention}, you have no Meme Coins :(')
 
-    @commands.command(name='leaderboard', help='Displays a list of highest rollers in Meme Coin Town!')
+    @commands.command(name='leaderboard', help='Displays a list of highest rollers in Meme Coin Town!',
+                      aliases=['leaderboards'])
     async def leaderboard(self, ctx):
         if ctx.message.channel.id == self.channel:
             if len(self.coins) > 0:
@@ -92,6 +94,20 @@ class MemeCoin(commands.Cog):
                                 value='Please give or revoke Meme Coin to construct leaderboards!')
                 embed.set_footer(text="Please report any issues to my owner!")
                 await ctx.send(embed=embed)
+
+    @commands.command(name='adjust', help='Adjusts Meme Coin values', hidden=True)
+    async def adjust(self, ctx, username, value: int):
+        if ctx.message.author.id == self.owner:
+            _ = username
+            user = ctx.message.mentions[0] if len(ctx.message.mentions) > 0 else None
+
+            if userkey(user) in self.coins:
+                self.coins[userkey(user)] += value
+            else:
+                self.coins[userkey(user)] = value
+
+            plural = 's' if self.coins[userkey(user)] != 1 else ''
+            await ctx.send(f'{user.mention} now has {self.coins[userkey(user)]} Meme Coin{plural}.')
 
 
 '''Helper Functions'''

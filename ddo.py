@@ -11,7 +11,7 @@ class DDO(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')
+    @commands.command(name='roll', help='Simulates rolling dice. Syntax example: 9d6', ignore_extra=True)
     async def roll(self, ctx, die_pattern):
         if not re.search("\d+d\d+", die_pattern):
             await ctx.send('ERROR: Invalid Syntax! Expected (number of die)d(number of sides)')
