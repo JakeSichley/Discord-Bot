@@ -15,3 +15,10 @@ class UtilityFunctions(commands.Cog):
         today = datetime.datetime.now(pytz.timezone(timezone))
         printable_format = today.strftime('%I:%M%p on %A, %B %d, %Y (%Z)')
         await ctx.send(f'{ctx.author.mention}, the current time is {printable_format}')
+
+    @commands.command(name='devserver', help='Responds with an invite link to the development server. Useful for '
+                      'getting assistance with a bug, or requesting a new feature!')
+    async def devserver(self, ctx):
+        message = '_Need help with bugs or want to request a feature? Join the Discord!_'\
+                  '\nhttps://discord.gg/fgHEWdt'
+        await ctx.send(message)
