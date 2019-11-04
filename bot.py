@@ -17,9 +17,9 @@ bot = commands.Bot(command_prefix='!')
 @bot.event
 async def on_ready():
     await bot.change_presence(status=discord.Status.online, activity=discord.Game('Building a Bot Friend!'))
-    print(f'{bot.user.name} has connected to Discord!')
+    '''print(f'{bot.user.name} has connected to Discord!')
     for guild in bot.guilds:
-        print(f'Connected to Guild \'{guild.name}\'(id:{guild.id})')
+        print(f'Connected to Guild \'{guild.name}\'(id:{guild.id})')'''
 
     bot.add_cog(MemeCoin(bot))
     bot.add_cog(DDO(bot))

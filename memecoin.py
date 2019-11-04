@@ -138,7 +138,7 @@ class MemeCoin(commands.Cog):
 
 
 def validmeme(message):
-    # Checks whether or not a message mets the criteria for Meme Coins
+    # Checks whether or not a message meets the criteria for Meme Coins
     if message.content.find('http') != -1:
         return True
     if len(message.attachments) > 0:
