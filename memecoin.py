@@ -1,5 +1,6 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
+import os
 
 
 class MemeCoin(commands.Cog):
@@ -8,8 +9,11 @@ class MemeCoin(commands.Cog):
         self.ldchannel = 618847896305139722
         self.devchannel = 636356259255287808
         self.owner = 91995622093123584
-        self.channel = self.ldchannel
+        self.channel = self.devchannel
+        self.filepath = 'vault.txt'
         self.coins = {}
+        self.load.start()
+        self.save.start()
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
@@ -108,6 +112,26 @@ class MemeCoin(commands.Cog):
 
             plural = 's' if self.coins[userkey(user)] != 1 else ''
             await ctx.send(f'{user.mention} now has {self.coins[userkey(user)]} Meme Coin{plural}.')
+
+    # noinspection PyCallingNonCallable
+    @tasks.loop(minutes=15)
+    async def save(self):
+        with open(self.filepath, 'w') as file:
+            for name, discriminator in self.coins:
+                file.write(f'{name} {discriminator} {self.coins[(name, discriminator)]}\n')
+
+    # noinspection PyCallingNonCallable
+    @tasks.loop(count=1)
+    async def load(self):
+        if not os.path.isfile(self.filepath):
+            return
+        else:
+            self.coins.clear()
+
+        with open(self.filepath) as file:
+            for line in file:
+                entry = line.split(' ')
+                self.coins[(entry[0], entry[1])] = int(entry[2])
 
 
 '''Helper Functions'''
