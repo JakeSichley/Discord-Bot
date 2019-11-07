@@ -166,7 +166,7 @@ class MemeCoin(commands.Cog):
 
         with open(self.filepath) as file:
             for line in file:
-                entry = line.split(' ')
+                entry = line.rsplit(' ', 2)
                 self.coins[(entry[0], entry[1])] = int(entry[2])
 
 
