@@ -9,7 +9,7 @@ class MemeCoin(commands.Cog):
         self.ldchannel = 618847896305139722
         self.devchannel = 636356259255287808
         self.owner = 91995622093123584
-        self.channel = self.ldchannel
+        self.channel = self.devchannel
         self.filepath = 'vault.txt'
         self.coins = {}
         self.load.start()
@@ -102,10 +102,20 @@ class MemeCoin(commands.Cog):
     @commands.command(name='pop', help='Removes a key from the Meme Coin vault', hidden=True)
     async def pop(self, ctx, username):
         if ctx.message.author.id == self.owner and ctx.message.channel.id == self.channel:
-            _ = username
             user = ctx.message.mentions[0] if len(ctx.message.mentions) > 0 else None
 
-            if userkey(user) in self.coins:
+            if user is None:
+                parts = username.split('#', 1)
+                user = (parts[0], parts[1])
+                if user in self.coins:
+                    plural = 's' if self.coins[user] != 1 else ''
+                    await ctx.send(f'{username} with {self.coins[user]}'
+                                   f' Meme Coin{plural} was removed from the vault.')
+                    self.coins.pop(user)
+                else:
+                    await ctx.send(f'{user} is not in the Meme Coin Vaults.')
+
+            elif userkey(user) in self.coins:
                 plural = 's' if self.coins[userkey(user)] != 1 else ''
                 await ctx.send(f'{user.mention} with {self.coins[userkey(user)]}'
                                f' Meme Coin{plural} was removed from the vault.')
