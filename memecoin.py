@@ -9,7 +9,7 @@ class MemeCoin(commands.Cog):
         self.ldchannel = 618847896305139722
         self.devchannel = 636356259255287808
         self.owner = 91995622093123584
-        self.channel = self.devchannel
+        self.channel = self.ldchannel
         self.filepath = 'vault.txt'
         self.coins = {}
         self.load.start()
@@ -99,9 +99,23 @@ class MemeCoin(commands.Cog):
                 embed.set_footer(text="Please report any issues to my owner!")
                 await ctx.send(embed=embed)
 
+    @commands.command(name='pop', help='Removes a key from the Meme Coin vault', hidden=True)
+    async def pop(self, ctx, username):
+        if ctx.message.author.id == self.owner and ctx.message.channel.id == self.channel:
+            _ = username
+            user = ctx.message.mentions[0] if len(ctx.message.mentions) > 0 else None
+
+            if userkey(user) in self.coins:
+                plural = 's' if self.coins[userkey(user)] != 1 else ''
+                await ctx.send(f'{user.mention} with {self.coins[userkey(user)]}'
+                               f' Meme Coin{plural} was removed from the vault.')
+                self.coins.pop(userkey(user))
+            else:
+                await ctx.send(f'{user} is not in the Meme Coin Vaults.')
+
     @commands.command(name='adjust', help='Adjusts Meme Coin values', hidden=True)
     async def adjust(self, ctx, username, value: int):
-        if ctx.message.author.id == self.owner:
+        if ctx.message.author.id == self.owner and ctx.message.channel.id == self.channel:
             _ = username
             user = ctx.message.mentions[0] if len(ctx.message.mentions) > 0 else None
 
@@ -112,6 +126,18 @@ class MemeCoin(commands.Cog):
 
             plural = 's' if self.coins[userkey(user)] != 1 else ''
             await ctx.send(f'{user.mention} now has {self.coins[userkey(user)]} Meme Coin{plural}.')
+
+    @commands.command(name='save', help='Forces a save of the current Meme Coin values', hidden=True)
+    async def forcesave(self, ctx):
+        if ctx.message.author.id == self.owner and ctx.message.channel.id == self.channel:
+            self.save.restart()
+            await ctx.send('Meme Coin data was forcefully saved.')
+
+    @commands.command(name='load', help='Forces a load of the most recent current Meme Coin values', hidden=True)
+    async def forceload(self, ctx):
+        if ctx.message.author.id == self.owner and ctx.message.channel.id == self.channel:
+            self.load.start()
+            await ctx.send('Meme Coin data was forcefully loaded.')
 
     # noinspection PyCallingNonCallable
     @tasks.loop(minutes=15)
