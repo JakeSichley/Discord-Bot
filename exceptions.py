@@ -38,8 +38,14 @@ class Exceptions(commands.Cog):
                 return await ctx.send('I could not find that member. Please try again.')
 
         # Using the permissions tuple allows us to handle multiple errors of similar types
+        # Errors where the using does not have the authority to execute the command
         elif isinstance(error, permissions):
             return await ctx.send(f'{ctx.message.author.mention}, you do not have permission to use this command!')
+
+        # Calling a command currently on cooldown
+        elif isinstance(error, commands.CommandOnCooldown):
+            return await ctx.send(f'{ctx.message.author.mention}, please wait {int(error.retry_after)} seconds before'
+                                  f' calling this command again!')
 
         # All other errors not returned come here. Print the default traceback
         print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr)
