@@ -8,7 +8,6 @@ class MemeCoin(commands.Cog):
         self.bot = bot
         self.ldchannel = 618847896305139722
         self.devchannel = 636356259255287808
-        self.owner = 91995622093123584
         self.channel = self.devchannel
         self.filepath = 'vault.txt'
         self.coins = {}
