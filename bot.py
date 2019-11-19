@@ -5,10 +5,10 @@ from discord.ext import commands
 from memecoin import MemeCoin
 from ddo import DDO
 from utility import UtilityFunctions
+from exceptions import Exceptions
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
-GUILD = int(os.getenv('DISCORD_GUILD'))
 OWNER = int(os.getenv('OWNER_ID'))
 
 bot = commands.Bot(command_prefix='!')
@@ -16,14 +16,17 @@ bot = commands.Bot(command_prefix='!')
 
 @bot.event
 async def on_ready():
-    await bot.change_presence(status=discord.Status.online, activity=discord.Game('Building a Bot Friend!'))
-    '''print(f'{bot.user.name} has connected to Discord!')
+    await bot.change_presence(status=discord.Status.online, activity=discord.Game('Doin\' Bot Stuff'))
+    print(f'{bot.user.name} has connected to Discord!')
     for guild in bot.guilds:
-        print(f'Connected to Guild \'{guild.name}\'(id:{guild.id})')'''
+        print(f'Connected to Guild \'{guild.name}\'(id:{guild.id})')
+
+    bot.owner_id = OWNER
 
     bot.add_cog(MemeCoin(bot))
     bot.add_cog(DDO(bot))
     bot.add_cog(UtilityFunctions(bot))
+    bot.add_cog(Exceptions(bot))
 
 
 @bot.event

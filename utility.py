@@ -22,3 +22,23 @@ class UtilityFunctions(commands.Cog):
         message = '_Need help with bugs or want to request a feature? Join the Discord!_'\
                   '\nhttps://discord.gg/fgHEWdt'
         await ctx.send(message)
+
+    @commands.command(name='logs', help='Pulls every message sent to a channel by the specified user. The bot then '
+                      'writes the messages to a text file')
+    @commands.is_owner()
+    async def pullhistory(self, ctx):
+        user = ctx.message.mentions[0] if len(ctx.message.mentions) > 0 else None
+
+        if user is None:
+            return await ctx.send(f'Command `logs` failed with error: `No Target User`')
+
+        with open('Logs/' + ctx.channel.name + '-' + user.id + '.txt', 'w', encoding='utf-8') as file:
+            async for message in ctx.channel.history(limit=None):
+                if message.author.id == user.id:
+                    file.write(f'{message.clean_content}\n')
+
+        await ctx.send('Finished')
+
+    @pullhistory.error
+    async def pullhistory_error(self, ctx, error):
+        await ctx.send(f'Command `logs` failed with error: `{error.__cause__}`')
