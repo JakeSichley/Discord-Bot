@@ -57,11 +57,11 @@ class DDO(commands.Cog):
 
         # Search each element to see if it contains the data we're interested in
         for string in string_elements:
-            if string.find('Enchantments') is not -1:
+            if string.find('Enchantments') != -1:
                 enchantmentstring = string
-            elif string.lower().find('minimum level') is not -1:
+            elif string.lower().find('minimum level') != -1:
                 minimumlevelstring = string
-            elif string.find('Item Type') is not -1 or string.find('Weapon Type') is not -1:
+            elif string.find('Item Type') != -1 or string.find('Weapon Type') != -1:
                 itemtypestring = string
 
         # If we did not find an enchantments element, return an error
@@ -83,14 +83,14 @@ class DDO(commands.Cog):
         enchantments = []
 
         for element in rows:
-            if element is not '':
+            if element != '':
                 # 'pure' elements have no tooltip or any other html tags
                 if element.find('has_tooltip') == -1 and element.find('</a>') == -1:
                     if element != '</li>':
                         # Clean up element from whitespace and tags
                         result = (element.replace('</li>', '').replace('\n', '').replace('<ul>', ''))
                         # Weird case where an augment slips through
-                        if result is not '' and result.find('Elemental damage') == -1:
+                        if result != '' and result.find('Elemental damage') == -1:
                             enchantments.append(result)
                 # If the element has a tooltip, do some regex magic
                 elif element.find('has_tooltip') != -1:
@@ -122,7 +122,7 @@ class DDO(commands.Cog):
 
         # Check for Attuned to Heroism, as this is coded strangely
         for index in range(len(enchantments)):
-            if enchantments[index].find('Attuned to Heroism') is not -1:
+            if enchantments[index].find('Attuned to Heroism') != -1:
                 # If Attuned to Heroism is an enchantment, remove all sub-enchantments from the final list
                 enchantments = enchantments[0:index + 1]
                 break
