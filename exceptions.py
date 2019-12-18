@@ -47,6 +47,10 @@ class Exceptions(commands.Cog):
             return await ctx.send(f'{ctx.message.author.mention}, please wait {int(error.retry_after)} seconds before'
                                   f' calling this command again!')
 
+        # Bot cannot execute command due to insufficient permissions
+        elif isinstance(error, commands.MissingPermissions):
+            return await ctx.send(f'{ctx.message.author.mention}, I lack the {error}\n{error.__dict__} permissions for this command')
+
         # All other errors not returned come here. Print the default traceback
         print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr)
         traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)

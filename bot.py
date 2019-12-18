@@ -6,6 +6,7 @@ from memecoin import MemeCoin
 from ddo import DDO
 from utility import UtilityFunctions
 from exceptions import Exceptions
+from moderation import Moderation
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -27,6 +28,7 @@ async def on_ready():
     bot.add_cog(DDO(bot))
     bot.add_cog(UtilityFunctions(bot))
     bot.add_cog(Exceptions(bot))
+    bot.add_cog((Moderation(bot)))
 
 
 @bot.event
