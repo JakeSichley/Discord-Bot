@@ -42,3 +42,12 @@ class UtilityFunctions(commands.Cog):
     @pullhistory.error
     async def pullhistory_error(self, ctx, error):
         await ctx.send(f'Command `logs` failed with error: `{error.__cause__}`')
+
+    @commands.command(name='screenshare', help='Generates a link that allows you to screenshare in a '
+                      'guild\'s voice channel.',  aliases=['ss'])
+    async def screenshare(self, ctx):
+        if ctx.author.voice is None:
+            return
+
+        await ctx.send(f'{ctx.author.mention}, here\'s a link to screenshare in your current voice channel: '
+                       f'<http://www.discordapp.com/channels/{ctx.guild.id}/{ctx.author.voice.channel.id}>')

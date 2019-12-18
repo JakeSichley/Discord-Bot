@@ -127,7 +127,7 @@ class MemeCoin(commands.Cog):
 
             if snowflakeid in self.coins:
                 plural = 's' if self.coins[snowflakeid] != 1 else ''
-                context = '`[Automatic Removal: Bad ID]` ' if inactive is True else ''
+                context = '`[Automatic Removal: Bad ID]` ' if inactive else ''
 
                 await ctx.send(f'{context}User ID: `{snowflakeid}` with {self.coins[snowflakeid]}'
                                f' Meme Coin{plural} was removed from the vault.')
