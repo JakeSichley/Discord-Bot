@@ -8,6 +8,8 @@ from bs4 import BeautifulSoup
 
 
 class DDO(commands.Cog):
+    SERVERS = ['Argonnessen', 'Cannith', 'Ghallanda', 'Khyber', 'Orien', 'Sarlona', 'Thelanis', 'Wayfinder']
+
     def __init__(self, bot):
         self.bot = bot
 
@@ -103,7 +105,7 @@ class DDO(commands.Cog):
                             # Finally, Positive Lookbehind to match the closing '>' character preceeding our description
                             # Note: This description was written 'backwards', (positive lookbehind occurs first, etc)
                             result = re.search("(?<=>)( )*(\+\d+ )*(\w|\d)(.+?)(?=</a>)", element)
-                            # If our result is not a Mythic Bonus (because these are on nearly every single item), add it
+                            # If our result is not a Mythic Bonus (these are on nearly every single item), add it
                             if result is not None and str(result.group(0)).find('Mythic') == -1:
                                 enchantments.append(result.group(0).strip())
 
@@ -140,3 +142,30 @@ class DDO(commands.Cog):
                 embed.add_field(name='Enchantments', value='\n'.join(enchantments))
                 embed.set_footer(text="Please report any formatting issues to my owner!")
                 await ctx.send(embed=embed)
+
+    @commands.cooldown(1, 15)
+    @commands.command(name='lfms', help='Returns a list of active LFMS for the specified server.\nValid servers include'
+                      ' Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis, and Wayfinder'
+                      '\nThis command has a cooldown of 15 seconds to respect the rate limit of \'DDO Audit\'.')
+    async def ddolfms(self, ctx, server='Khyber'):
+        async with aiohttp.ClientSession() as session:
+            async with session.get('https://www.playeraudit.com/api/groups') as r:
+                if r.status == 200:
+                    js = await r.json(encoding='utf-8-sig', content_type='text/html')
+                    serverdata = None
+
+                    if server not in self.SERVERS:
+                        server = 'Khyber'
+
+                    for data in js:
+                        if data['Name'] == server:
+                            serverdata = data
+                            break
+
+                    if serverdata is None:
+                        return await ctx.send(f'No Active LFM\'s on {server}!')
+                    else:
+                        quests = [q['QuestName'] for q in serverdata['Groups'] if q['QuestName'] is not None]
+                        groups = [q['Comment'] for q in serverdata['Groups'] if q['QuestName'] is None]
+                        return await ctx.send(f'**Current LFM\'s on {server}:** {", ".join(quests)}\n'
+                                              f'**Other Groups on {server}:** {", ".join(groups)}\n')
