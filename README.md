@@ -14,6 +14,6 @@ The `DDO` cog contains methods specifically related to Dungeons & Dragons Online
 and item information pull from the DDOWiki.
 ## MemeCoin
 The `MemeCoin` cog contains methods related to the ficticious currency created for the Guild's 'Memes' channel. Users can award 
-or revoke 'Meme Coins' at will by reacting to a message with a :heavy_check_mark: or :x: respectively.'
+or revoke 'Meme Coins' at will by reacting to a message with a :heavy_check_mark: or :x: respectively.
 ## Exceptions
 The `Exceptions` cog provides centralized handling for any errors that may arise during execution of the bot.
