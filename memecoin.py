@@ -66,9 +66,9 @@ class MemeCoin(commands.Cog):
             else:
                 await ctx.send(f'{ctx.author.mention}, you have no Meme Coins :(')
 
+    @commands.cooldown(1, 300)
     @commands.command(name='leaderboard', help='Displays a list of highest rollers in Meme Coin Town!',
                       aliases=['leaderboards'])
-    @commands.cooldown(1, 300)
     async def leaderboard(self, ctx):
         if ctx.message.channel.id == self.channel:
             if len(self.coins) > 0:
@@ -114,8 +114,8 @@ class MemeCoin(commands.Cog):
                     embed.set_footer(text="Please report any issues to my owner!")
                     await ctx.send(embed=embed)
 
-    @commands.command(name='pop', help='Removes a key from the Meme Coin vault', hidden=True)
     @commands.is_owner()
+    @commands.command(name='pop', help='Removes a key from the Meme Coin vault', hidden=True)
     async def pop(self, ctx, userid, inactive=False):
         if ctx.message.channel.id == self.channel:
             user = ctx.message.mentions[0] if len(ctx.message.mentions) > 0 else None
@@ -135,8 +135,8 @@ class MemeCoin(commands.Cog):
             else:
                 await ctx.send(f'User ID: `{snowflakeid}` is not in the Meme Coin Vaults.')
 
-    @commands.command(name='adjust', help='Adjusts Meme Coin values', hidden=True)
     @commands.is_owner()
+    @commands.command(name='adjust', help='Adjusts Meme Coin values', hidden=True)
     async def adjust(self, ctx, username, value: int):
         if ctx.message.channel.id == self.channel:
             _ = username
@@ -150,15 +150,15 @@ class MemeCoin(commands.Cog):
             plural = 's' if self.coins[user.id] != 1 else ''
             await ctx.send(f'{user.mention} now has {self.coins[user.id]} Meme Coin{plural}.')
 
-    @commands.command(name='save', help='Forces a save of the current Meme Coin values', hidden=True)
     @commands.is_owner()
+    @commands.command(name='save', help='Forces a save of the current Meme Coin values', hidden=True)
     async def forcesave(self, ctx):
         if ctx.message.channel.id == self.channel:
             self.save.restart()
             await ctx.send('Meme Coin data was forcefully saved.')
 
-    @commands.command(name='load', help='Forces a load of the most recent current Meme Coin values', hidden=True)
     @commands.is_owner()
+    @commands.command(name='load', help='Forces a load of the most recent current Meme Coin values', hidden=True)
     async def forceload(self, ctx):
         if ctx.message.channel.id == self.channel:
             self.load.start()
@@ -190,9 +190,4 @@ class MemeCoin(commands.Cog):
 
 def validmeme(message):
     # Checks whether or not a message meets the criteria for Meme Coins
-    if message.content.find('http') != -1:
-        return True
-    if len(message.attachments) > 0:
-        return True
-
-    return False
+    return message.content.find('http') != -1 or len(message.attachments) > 0

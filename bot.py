@@ -39,6 +39,9 @@ async def on_message(message):
     if 'calzone' in message.content.lower():
         await message.channel.send(file=discord.File('calzone.png'))
 
+    if message.guild is None:
+        print(f'Direct Message from {message.author}\nContent: {message.content}')
+
     await bot.process_commands(message)
 
 
