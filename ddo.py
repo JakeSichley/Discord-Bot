@@ -165,7 +165,15 @@ class DDO(commands.Cog):
                     if serverdata is None:
                         return await ctx.send(f'No Active LFM\'s on {server}!')
                     else:
-                        quests = [q['QuestName'] for q in serverdata['Groups'] if q['QuestName'] is not None]
+                        raids = [q['QuestName'] for q in serverdata['Groups'] if q['AdventureType'] is 'Raid']
+                        quests = [q['QuestName'] for q in serverdata['Groups']
+                                  if q['QuestName'] is not None and q['AdventureType'] is not 'Raid']
                         groups = [q['Comment'] for q in serverdata['Groups'] if q['QuestName'] is None]
-                        return await ctx.send(f'**Current LFM\'s on {server}:** {", ".join(quests)}\n'
-                                              f'**Other Groups on {server}:** {", ".join(groups)}\n')
+
+                        for li in [raids, quests, groups]:
+                            if not li:
+                                li.append('None')
+
+                        return await ctx.send(f'**Current Raids on {server}:** {", ".join(raids)}\n'
+                                              f'**Current Quests on {server}:** {", ".join(quests)}\n'
+                                              f'**Current Groups on {server}:** {", ".join(groups)}\n')
