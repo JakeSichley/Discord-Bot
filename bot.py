@@ -7,6 +7,11 @@ from ddo import DDO
 from utility import UtilityFunctions
 from exceptions import Exceptions
 from moderation import Moderation
+import logging
+
+print(discord.__version__)
+
+logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
