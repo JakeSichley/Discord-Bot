@@ -24,3 +24,8 @@ class Moderation(commands.Cog):
             return True
         else:
             return message.author.id == self.delete_id
+
+
+def setup(bot):
+    bot.add_cog(Moderation(bot))
+    print('Completed Setup for Cog: Moderation')
