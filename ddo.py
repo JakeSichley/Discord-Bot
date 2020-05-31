@@ -260,3 +260,8 @@ class RaidEmbed:
     members: int
     message: discord.message
     embed: discord.Embed
+
+
+def setup(bot):
+    bot.add_cog(DDO(bot))
+    print('Completed Setup for Cog: DDO')

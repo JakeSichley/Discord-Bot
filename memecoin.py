@@ -191,3 +191,8 @@ class MemeCoin(commands.Cog):
 def validmeme(message):
     # Checks whether or not a message meets the criteria for Meme Coins
     return message.content.find('http') != -1 or len(message.attachments) > 0
+
+
+def setup(bot):
+    bot.add_cog(MemeCoin(bot))
+    print('Completed Setup for Cog: Memecoin')

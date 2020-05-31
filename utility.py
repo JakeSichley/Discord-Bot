@@ -1,5 +1,5 @@
 from discord.ext import commands
-from discord import TextChannel, User, Emoji, HTTPException, Message
+from discord import TextChannel, User, Emoji, HTTPException
 import datetime
 import pytz
 
@@ -23,23 +23,6 @@ class UtilityFunctions(commands.Cog):
         message = '_Need help with bugs or want to request a feature? Join the Discord!_'\
                   '\nhttps://discord.gg/fgHEWdt'
         await ctx.send(message)
-
-    @commands.is_owner()
-    @commands.command(name='logs', help='Pulls every message sent to a channel by the specified user. The bot then '
-                      'writes the messages to a text file')
-    async def pullhistory(self, ctx, channel: TextChannel):
-        # user = ctx.message.mentions[0] if len(ctx.message.mentions) > 0 else None
-
-        # if user is None:
-            # return await ctx.send(f'Command `logs` failed with error: `No Target User`')
-
-        # with open('Logs/' + ctx.channel.name + '-' + user.id + '.txt', 'w', encoding='utf-8') as file:
-
-        await ctx.send('Finished')
-
-    @pullhistory.error
-    async def pullhistory_error(self, ctx, error):
-        await ctx.send(f'Command `logs` failed with error: `{error.__cause__}`')
 
     @commands.is_owner()
     @commands.command(name='length', help='Returns the number of messages sent to a specified channel.')
@@ -124,7 +107,7 @@ class UtilityFunctions(commands.Cog):
 
     @commands.is_owner()
     @commands.command(name='getmessage')
-    async def getmessage(self, ctx, channel, mesid): # start: TextChannel, message: int):
+    async def getmessage(self, ctx, channel, mesid):  # start: TextChannel, message: int):
         print('invoked')
         chan = self.bot.get_channel(int(channel))
         if chan is not None:
@@ -136,3 +119,8 @@ class UtilityFunctions(commands.Cog):
             print('Failed')
 
         await ctx.send('Invoked')
+
+
+def setup(bot):
+    bot.add_cog(UtilityFunctions(bot))
+    print('Completed Setup for Cog: UtilityFunctions')
