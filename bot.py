@@ -11,7 +11,8 @@ load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 OWNER = int(os.getenv('OWNER_ID'))
 
-bot = commands.Bot(command_prefix='#')
+bot = commands.Bot(command_prefix='#', case_insensitive=True)
+bot.owner_id = OWNER
 
 # load extensions (filename)
 bot.load_extension('admin')
@@ -24,12 +25,11 @@ bot.load_extension('moderation')
 
 @bot.event
 async def on_ready():
-    await bot.change_presence(status=discord.Status.online, activity=discord.Game('Doin\' Bot Stuff'))
+    await bot.change_presence(status=discord.Status.online,
+                              activity=discord.Activity(name='My Spaghetti Code', type=discord.ActivityType.watching))
     print(f'{bot.user.name} has connected to Discord!')
     for guild in bot.guilds:
         print(f'Connected to Guild \'{guild.name}\'(id:{guild.id})')
-
-    bot.owner_id = OWNER
 
 
 @bot.event

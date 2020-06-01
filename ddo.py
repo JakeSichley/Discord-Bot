@@ -6,6 +6,7 @@ import time
 import aiohttp
 from bs4 import BeautifulSoup
 from dataclasses import dataclass
+from asyncio import sleep
 
 
 class DDO(commands.Cog):
@@ -180,7 +181,7 @@ class DDO(commands.Cog):
                                   f'**Current Quests on {server}:** {", ".join(quests)}\n'
                                   f'**Current Groups on {server}:** {", ".join(groups)}\n')
 
-    @tasks.loop(seconds=20)
+    @tasks.loop(seconds=30)
     async def queryddoaudit(self):
         async with aiohttp.ClientSession() as session:
             async with session.get('https://www.playeraudit.com/api/groups') as r:
@@ -193,12 +194,9 @@ class DDO(commands.Cog):
     async def beforeapiloop(self):
         await self.bot.wait_until_ready()
 
-    @tasks.loop(seconds=15)
+    @tasks.loop(seconds=30)
     async def checkforvalidraids(self):
         lex_user = self.bot.get_user(self.LEX_ID)
-
-        if lex_user is None or self.apidata is None:
-            return
 
         khyberdata = None
         for data in self.apidata:
@@ -206,7 +204,7 @@ class DDO(commands.Cog):
                 khyberdata = data
                 break
 
-        if khyberdata is None:
+        if lex_user is None or self.apidata is None or khyberdata is None:
             return
 
         raids = [quest for quest in khyberdata['Groups'] if (quest['AdventureType'] == 'Raid'
@@ -217,41 +215,45 @@ class DDO(commands.Cog):
             return
 
         for raid in raids:
-            if raid['Leader']['Name'] not in self.raiddata or\
-                    self.raiddata[raid['Leader']['Name']].quest != raid['QuestName']:
+            name = raid['Leader']['Name']
+            if name not in self.raiddata or self.raiddata[name].quest != raid['QuestName']:
                 embed = discord.Embed(title=f'{raid["Leader"]["Name"]} is leading a '
                                             f'{raid["Difficulty"]} {raid["QuestName"]}!', color=0x1dcaff)
                 embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
-                embed.add_field(name='Raid Leader', value=raid['Leader']['Name'], inline=False)
+                embed.add_field(name='Raid Leader', value=name, inline=False)
                 embed.add_field(name='Difficulty', value=raid['Difficulty'], inline=False)
-                embed.add_field(name='Raid Size', value=f'{len(raid["Members"])} Members', inline=False)
+                embed.add_field(name='Raid Size', value=f'{len(raid["Members"]) + 1} Members', inline=False)
                 embed.add_field(name='Active Time', value=f'{raid["AdventureActive"]} Minutes', inline=False)
                 embed.add_field(name='Comment', value=raid['Comment'], inline=False)
                 embed.set_footer(text="Please report any issues to my owner!")
                 message = await lex_user.send(embed=embed)
-                self.raiddata[raid['Leader']['Name']] = RaidEmbed(raid['QuestName'], len(raid["Members"]),
-                                                                  message, embed)
+                self.raiddata[name] = RaidEmbed(raid['QuestName'], len(raid["Members"]), message, embed)
 
-            elif raid['Leader']['Name'] in self.raiddata and\
-                    self.raiddata[raid['Leader']['Name']].quest == raid['QuestName'] and \
-                    self.raiddata[raid['Leader']['Name']].members != len(raid["Members"]):
-                self.raiddata[raid['Leader']['Name']].members = len(raid["Members"])
-                self.raiddata[raid['Leader']['Name']].embed.set_field_at(2, name='Raid Size', inline=False,
-                                                                         value=f'{len(raid["Members"])} Members')
-                self.raiddata[raid['Leader']['Name']].embed.set_field_at(3, name='Active Time', inline=False,
-                                                                         value=f'{raid["AdventureActive"]} Minutes')
-                await self.raiddata[raid['Leader']['Name']].message.edit(
-                    embed=self.raiddata[raid['Leader']['Name']].embed)
+            elif name in self.raiddata and self.raiddata[name].quest == raid['QuestName'] and \
+                    self.raiddata[name].members != len(raid["Members"]):
+                self.raiddata[name].members = len(raid["Members"])
+                self.raiddata[name].embed.set_field_at(2, name='Raid Size', inline=False,
+                                                       value=f'{len(raid["Members"]) + 1} Members')
+                self.raiddata[name].embed.set_field_at(3, name='Active Time', inline=False,
+                                                       value=f'{raid["AdventureActive"]} Minutes')
+                await self.raiddata[name].message.edit(embed=self.raiddata[name].embed)
 
     @checkforvalidraids.before_loop
-    async def beforektloop(self):
+    async def beforevaidraidsloop(self):
         await self.bot.wait_until_ready()
+        await sleep(3)
 
     @commands.command(name='killloop', hidden=True)
     async def killloop(self, ctx):
         self.checkforvalidraids.cancel()
         self.queryddoaudit.cancel()
         await ctx.send('All Loops Terminated.')
+
+    def cog_unload(self):
+        self.checkforvalidraids.stop()
+        self.queryddoaudit.stop()
+        self.raiddata.clear()
+        print('Completed Unload for Cog: DDO')
 
 
 @dataclass

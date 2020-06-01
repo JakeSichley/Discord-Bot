@@ -184,6 +184,11 @@ class MemeCoin(commands.Cog):
                 entry = line.split(' ')
                 self.coins[int(entry[0])] = int(entry[1])
 
+    def cog_unload(self):
+        self.load.stop()
+        self.save.stop()
+        print('Completed Unload for Cog: DDO')
+
 
 '''Helper Functions'''
 
