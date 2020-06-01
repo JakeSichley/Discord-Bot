@@ -55,3 +55,8 @@ class Exceptions(commands.Cog):
         # All other errors not returned come here. Print the default traceback
         print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr)
         traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
+
+
+def setup(bot):
+    bot.add_cog(Exceptions(bot))
+    print('Completed Setup for Cog: Exceptions')

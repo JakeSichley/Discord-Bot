@@ -1,17 +1,24 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import random
 import re
 import time
 import aiohttp
 from bs4 import BeautifulSoup
+from dataclasses import dataclass
+from asyncio import sleep
 
 
 class DDO(commands.Cog):
     SERVERS = ['Argonnessen', 'Cannith', 'Ghallanda', 'Khyber', 'Orien', 'Sarlona', 'Thelanis', 'Wayfinder']
+    LEX_ID = 91995622093123584
 
     def __init__(self, bot):
         self.bot = bot
+        self.apidata = None
+        self.raiddata = {}
+        self.queryddoaudit.start()
+        self.checkforvalidraids.start()
 
     @commands.command(name='roll', help='Simulates rolling dice. Syntax example: 9d6', ignore_extra=True)
     async def roll(self, ctx, die_pattern):
@@ -143,37 +150,120 @@ class DDO(commands.Cog):
                 embed.set_footer(text="Please report any formatting issues to my owner!")
                 await ctx.send(embed=embed)
 
-    @commands.cooldown(1, 15)
     @commands.command(name='lfms', help='Returns a list of active LFMS for the specified server.\nValid servers include'
                       ' Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis, and Wayfinder'
-                      '\nThis command has a cooldown of 15 seconds to respect the rate limit of \'DDO Audit\'.')
+                      '\nInformation is populated from \'DDO Audit\' every 20 seconds.')
     async def ddolfms(self, ctx, server='Khyber'):
+        if server not in self.SERVERS:
+            server = 'Khyber'
+
+        # make sure the api result has the requested server
+        serverdata = None
+
+        for data in self.apidata:
+            if data['Name'] == server:
+                serverdata = data
+                break
+
+        if serverdata is None:
+            return await ctx.send(f'No Active LFM\'s on {server}!')
+        else:
+            raids = [q['QuestName'] for q in serverdata['Groups'] if q['AdventureType'] == 'Raid']
+            quests = [q['QuestName'] for q in serverdata['Groups']
+                      if q['QuestName'] is not None and q['AdventureType'] != 'Raid']
+            groups = [q['Comment'] for q in serverdata['Groups'] if q['QuestName'] is None]
+
+            for li in [raids, quests, groups]:
+                if not li:
+                    li.append('None')
+
+            return await ctx.send(f'**Current Raids on {server}:** {", ".join(raids)}\n'
+                                  f'**Current Quests on {server}:** {", ".join(quests)}\n'
+                                  f'**Current Groups on {server}:** {", ".join(groups)}\n')
+
+    @tasks.loop(seconds=30)
+    async def queryddoaudit(self):
         async with aiohttp.ClientSession() as session:
             async with session.get('https://www.playeraudit.com/api/groups') as r:
                 if r.status == 200:
-                    js = await r.json(encoding='utf-8-sig', content_type='text/html')
-                    serverdata = None
+                    self.apidata = await r.json(encoding='utf-8-sig', content_type='text/html')
+                else:
+                    self.apidata = None
 
-                    if server not in self.SERVERS:
-                        server = 'Khyber'
+    @queryddoaudit.before_loop
+    async def beforeapiloop(self):
+        await self.bot.wait_until_ready()
 
-                    for data in js:
-                        if data['Name'] == server:
-                            serverdata = data
-                            break
+    @tasks.loop(seconds=30)
+    async def checkforvalidraids(self):
+        lex_user = self.bot.get_user(self.LEX_ID)
 
-                    if serverdata is None:
-                        return await ctx.send(f'No Active LFM\'s on {server}!')
-                    else:
-                        raids = [q['QuestName'] for q in serverdata['Groups'] if q['AdventureType'] is 'Raid']
-                        quests = [q['QuestName'] for q in serverdata['Groups']
-                                  if q['QuestName'] is not None and q['AdventureType'] is not 'Raid']
-                        groups = [q['Comment'] for q in serverdata['Groups'] if q['QuestName'] is None]
+        khyberdata = None
+        for data in self.apidata:
+            if data['Name'] == 'Khyber':
+                khyberdata = data
+                break
 
-                        for li in [raids, quests, groups]:
-                            if not li:
-                                li.append('None')
+        if lex_user is None or self.apidata is None or khyberdata is None:
+            return
 
-                        return await ctx.send(f'**Current Raids on {server}:** {", ".join(raids)}\n'
-                                              f'**Current Quests on {server}:** {", ".join(quests)}\n'
-                                              f'**Current Groups on {server}:** {", ".join(groups)}\n')
+        raids = [quest for quest in khyberdata['Groups'] if (quest['AdventureType'] == 'Raid'
+                 and quest['MinimumLevel'] >= 20)]
+
+        if not raids:
+            self.raiddata.clear()
+            return
+
+        for raid in raids:
+            name = raid['Leader']['Name']
+            if name not in self.raiddata or self.raiddata[name].quest != raid['QuestName']:
+                embed = discord.Embed(title=f'{raid["Leader"]["Name"]} is leading a '
+                                            f'{raid["Difficulty"]} {raid["QuestName"]}!', color=0x1dcaff)
+                embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
+                embed.add_field(name='Raid Leader', value=name, inline=False)
+                embed.add_field(name='Difficulty', value=raid['Difficulty'], inline=False)
+                embed.add_field(name='Raid Size', value=f'{len(raid["Members"]) + 1} Members', inline=False)
+                embed.add_field(name='Active Time', value=f'{raid["AdventureActive"]} Minutes', inline=False)
+                embed.add_field(name='Comment', value=raid['Comment'], inline=False)
+                embed.set_footer(text="Please report any issues to my owner!")
+                message = await lex_user.send(embed=embed)
+                self.raiddata[name] = RaidEmbed(raid['QuestName'], len(raid["Members"]), message, embed)
+
+            elif name in self.raiddata and self.raiddata[name].quest == raid['QuestName'] and \
+                    self.raiddata[name].members != len(raid["Members"]):
+                self.raiddata[name].members = len(raid["Members"])
+                self.raiddata[name].embed.set_field_at(2, name='Raid Size', inline=False,
+                                                       value=f'{len(raid["Members"]) + 1} Members')
+                self.raiddata[name].embed.set_field_at(3, name='Active Time', inline=False,
+                                                       value=f'{raid["AdventureActive"]} Minutes')
+                await self.raiddata[name].message.edit(embed=self.raiddata[name].embed)
+
+    @checkforvalidraids.before_loop
+    async def beforevaidraidsloop(self):
+        await self.bot.wait_until_ready()
+        await sleep(3)
+
+    @commands.command(name='killloop', hidden=True)
+    async def killloop(self, ctx):
+        self.checkforvalidraids.cancel()
+        self.queryddoaudit.cancel()
+        await ctx.send('All Loops Terminated.')
+
+    def cog_unload(self):
+        self.checkforvalidraids.stop()
+        self.queryddoaudit.stop()
+        self.raiddata.clear()
+        print('Completed Unload for Cog: DDO')
+
+
+@dataclass
+class RaidEmbed:
+    quest: str
+    members: int
+    message: discord.message
+    embed: discord.Embed
+
+
+def setup(bot):
+    bot.add_cog(DDO(bot))
+    print('Completed Setup for Cog: DDO')
