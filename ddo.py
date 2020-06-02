@@ -1,9 +1,9 @@
-import discord
+from discord import HTTPException, Message, Embed
 from discord.ext import commands, tasks
-import random
-import re
-import time
-import aiohttp
+from random import seed, shuffle
+from re import search
+from time import time
+from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 from dataclasses import dataclass
 from asyncio import sleep
@@ -22,18 +22,18 @@ class DDO(commands.Cog):
 
     @commands.command(name='roll', help='Simulates rolling dice. Syntax example: 9d6', ignore_extra=True)
     async def roll(self, ctx, die_pattern):
-        if not re.search("\d+d\d+", die_pattern):
+        if not search("\d+d\d+", die_pattern):
             await ctx.send('ERROR: Invalid Syntax! Expected (number of die)d(number of sides)')
         else:
-            die = re.search("\d+d\d+", die_pattern).group().split('d')
+            die = search("\d+d\d+", die_pattern).group().split('d')
 
             if int(die[1]) == 1:
                 await ctx.send(int(die[0]))
 
             else:
-                random.seed(time.time())
+                seed(time())
                 dice = [x for x in range(int(die[0]), int(die[0]) * int(die[1]) + 1)]
-                random.shuffle(dice)
+                shuffle(dice)
                 await ctx.send(dice[0])
 
     @commands.command(name='ddoitem', help='Pulls basic information about an item in Dungeons & Dragons Online '
@@ -43,7 +43,7 @@ class DDO(commands.Cog):
         itemname = '_'.join(item)
         url = 'https://ddowiki.com/page/Item:' + itemname
 
-        async with aiohttp.ClientSession() as session:
+        async with ClientSession() as session:
             async with session.get(url) as r:
                 # If the page 404's, return an error message
                 if r.status == 404:
@@ -111,7 +111,7 @@ class DDO(commands.Cog):
                             #   look for 0 or more of these and add them to our match
                             # Finally, Positive Lookbehind to match the closing '>' character preceeding our description
                             # Note: This description was written 'backwards', (positive lookbehind occurs first, etc)
-                            result = re.search("(?<=>)( )*(\+\d+ )*(\w|\d)(.+?)(?=</a>)", element)
+                            result = search("(?<=>)( )*(\+\d+ )*(\w|\d)(.+?)(?=</a>)", element)
                             # If our result is not a Mythic Bonus (these are on nearly every single item), add it
                             if result is not None and str(result.group(0)).find('Mythic') == -1:
                                 enchantments.append(result.group(0).strip())
@@ -122,11 +122,11 @@ class DDO(commands.Cog):
 
                 # If we have a minimum level string, extract the minimum level using regex
                 if minimumlevelstring is not None:
-                    minimumlevel = int(re.search("\d+?(?=(\n</td>))", minimumlevelstring).group(0))
+                    minimumlevel = int(search("\d+?(?=(\n</td>))", minimumlevelstring).group(0))
 
                 # If we have a item type string, extract the item type using regex
                 if itemtypestring is not None:
-                    itemtype = re.search("(?<=>).+?(?=(\n</td>))", itemtypestring).group(0)
+                    itemtype = search("(?<=>).+?(?=(\n</td>))", itemtypestring).group(0)
                     # Sometimes (in the case of weapons) the parent type is bolded - strip these tags
                     itemtype = itemtype.replace('<b>', '').replace('</b>', '')
 
@@ -141,7 +141,7 @@ class DDO(commands.Cog):
                 itemname = itemname.replace('_', ' ')
 
                 # Create and send our embedded object
-                embed = discord.Embed(title='**' + str(itemname) + '**', url=url, color=0x6879f2)
+                embed = Embed(title='**' + str(itemname) + '**', url=url, color=0x6879f2)
                 embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
                 embed.set_thumbnail(url='https://i.imgur.com/QV6uUZf.png')
                 embed.add_field(name='Minimum Level', value=str(minimumlevel))
@@ -183,7 +183,7 @@ class DDO(commands.Cog):
 
     @tasks.loop(seconds=30)
     async def queryddoaudit(self):
-        async with aiohttp.ClientSession() as session:
+        async with ClientSession() as session:
             async with session.get('https://www.playeraudit.com/api/groups') as r:
                 if r.status == 200:
                     self.apidata = await r.json(encoding='utf-8-sig', content_type='text/html')
@@ -198,13 +198,16 @@ class DDO(commands.Cog):
     async def checkforvalidraids(self):
         lex_user = self.bot.get_user(self.LEX_ID)
 
+        if lex_user is None or self.apidata is None:
+            return
+
         khyberdata = None
         for data in self.apidata:
             if data['Name'] == 'Khyber':
                 khyberdata = data
                 break
 
-        if lex_user is None or self.apidata is None or khyberdata is None:
+        if khyberdata is None:
             return
 
         raids = [quest for quest in khyberdata['Groups'] if (quest['AdventureType'] == 'Raid'
@@ -217,17 +220,13 @@ class DDO(commands.Cog):
         for raid in raids:
             name = raid['Leader']['Name']
             if name not in self.raiddata or self.raiddata[name].quest != raid['QuestName']:
-                embed = discord.Embed(title=f'{raid["Leader"]["Name"]} is leading a '
-                                            f'{raid["Difficulty"]} {raid["QuestName"]}!', color=0x1dcaff)
-                embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
-                embed.add_field(name='Raid Leader', value=name, inline=False)
-                embed.add_field(name='Difficulty', value=raid['Difficulty'], inline=False)
-                embed.add_field(name='Raid Size', value=f'{len(raid["Members"]) + 1} Members', inline=False)
-                embed.add_field(name='Active Time', value=f'{raid["AdventureActive"]} Minutes', inline=False)
-                embed.add_field(name='Comment', value=raid['Comment'], inline=False)
-                embed.set_footer(text="Please report any issues to my owner!")
-                message = await lex_user.send(embed=embed)
-                self.raiddata[name] = RaidEmbed(raid['QuestName'], len(raid["Members"]), message, embed)
+                embed = buildembed(raid, name, self.bot.user.name, self.bot.user.avatar_url)
+
+                try:
+                    message = await lex_user.send(embed=embed)
+                    self.raiddata[name] = RaidEmbed(raid['QuestName'], len(raid["Members"]), message, embed)
+                except HTTPException as e:
+                    print(e)
 
             elif name in self.raiddata and self.raiddata[name].quest == raid['QuestName'] and \
                     self.raiddata[name].members != len(raid["Members"]):
@@ -260,8 +259,24 @@ class DDO(commands.Cog):
 class RaidEmbed:
     quest: str
     members: int
-    message: discord.message
-    embed: discord.Embed
+    message: Message
+    embed: Embed
+
+
+def buildembed(raid, name, bname, bavatar):
+    comment = 'None' if raid['Comment'] is None or raid['Comment'] == '' else raid['Comment']
+    title = 'Group' if raid["QuestName"] is None or raid["QuestName"] == '' else raid["QuestName"]
+
+    embed = Embed(title=f'{raid["Leader"]["Name"]} is leading a {raid["Difficulty"]} {title}!', color=0x1dcaff)
+    embed.set_author(name=bname, icon_url=bavatar)
+    embed.add_field(name='Raid Leader', value=name, inline=False)
+    embed.add_field(name='Difficulty', value=raid['Difficulty'], inline=False)
+    embed.add_field(name='Raid Size', value=f'{len(raid["Members"]) + 1} Members', inline=False)
+    embed.add_field(name='Active Time', value=f'{raid["AdventureActive"]} Minutes', inline=False)
+    embed.add_field(name='Comment', value=comment, inline=False)
+    embed.set_footer(text="Please report any issues to my owner!")
+
+    return embed
 
 
 def setup(bot):

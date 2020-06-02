@@ -22,7 +22,17 @@ class Admin(commands.Cog):
             self.bot.unload_extension(module)
             await ctx.send(f'Unloaded Module: `{module}`')
         except commands.ExtensionNotLoaded:
-            await ctx.send(f'Module: `{module}` Not Loaded')
+            await ctx.send(f'Could Not Load Module: `{module}`')
+
+    @commands.is_owner()
+    @commands.command(name='mreload', hidden=True)
+    async def unload(self, ctx, module):
+        try:
+            self.bot.unload_extension(module)
+            self.bot.load_extension(module)
+            await ctx.send(f'Manually Reloaded Module: `{module}`')
+        except commands.ExtensionNotLoaded:
+            await ctx.send(f'Could Not Manually Reloaded Module: `{module}`')
 
     @commands.is_owner()
     @commands.command(name='logout', aliases=['shutdown'], hidden=True)

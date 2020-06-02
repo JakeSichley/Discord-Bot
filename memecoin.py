@@ -1,6 +1,6 @@
-import discord
 from discord.ext import commands, tasks
-import os
+from discord import Embed
+from os import path
 
 
 class MemeCoin(commands.Cog):
@@ -91,8 +91,8 @@ class MemeCoin(commands.Cog):
                     most = formattedscores[:5]
                     least = (formattedscores[::-1])[:5]
 
-                    embed = discord.Embed(title="Meme Coin Leaderboards",
-                                          description="Whose Meme Coins stash reigns supreme?!\n", color=0xffff00)
+                    embed = Embed(title="Meme Coin Leaderboards",
+                                  description="Whose Meme Coins stash reigns supreme?!\n", color=0xffff00)
                     embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
                     embed.add_field(name='\u200B', value='\u200B', inline=True)
                     embed.add_field(name='\u200B', value='\u200B', inline=True)
@@ -103,8 +103,8 @@ class MemeCoin(commands.Cog):
                     await ctx.send(embed=embed)
 
                 else:
-                    embed = discord.Embed(title="Meme Coin Leaderboards",
-                                          description="Whose Meme Coins stash reigns supreme?!", color=0xffff00)
+                    embed = Embed(title="Meme Coin Leaderboards",
+                                  description="Whose Meme Coins stash reigns supreme?!", color=0xffff00)
                     embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
                     embed.add_field(name='\u200B', value='\u200B', inline=True)
                     embed.add_field(name='\u200B', value='\u200B', inline=True)
@@ -164,17 +164,15 @@ class MemeCoin(commands.Cog):
             self.load.start()
             await ctx.send('Meme Coin data was forcefully loaded.')
 
-    # noinspection PyCallingNonCallable
     @tasks.loop(minutes=15)
     async def save(self):
         with open(self.filepath, 'w') as file:
             for userid in self.coins:
                 file.write(f'{userid} {self.coins[userid]}\n')
 
-    # noinspection PyCallingNonCallable
     @tasks.loop(count=1)
     async def load(self):
-        if not os.path.isfile(self.filepath):
+        if not path.isfile(self.filepath):
             return
         else:
             self.coins.clear()
@@ -185,9 +183,9 @@ class MemeCoin(commands.Cog):
                 self.coins[int(entry[0])] = int(entry[1])
 
     def cog_unload(self):
-        self.load.stop()
-        self.save.stop()
-        print('Completed Unload for Cog: DDO')
+        self.load.cancel()
+        self.save.cancel()
+        print('Completed Unload for Cog: MemeCoin')
 
 
 '''Helper Functions'''
@@ -200,4 +198,4 @@ def validmeme(message):
 
 def setup(bot):
     bot.add_cog(MemeCoin(bot))
-    print('Completed Setup for Cog: Memecoin')
+    print('Completed Setup for Cog: MemeCoin')
