@@ -25,7 +25,7 @@ class UtilityFunctions(commands.Cog):
         await ctx.send(message)
 
     @commands.is_owner()
-    @commands.command(name='length', help='Returns the number of messages sent to a specified channel.')
+    @commands.command(name='length', help='Returns the number of messages sent to a specified channel.', hidden=True)
     async def length(self, ctx, channel: TextChannel):
         async with ctx.channel.typing():
             await ctx.send(f'The length of `#{channel}` in guild `{ctx.guild.name}` is'
@@ -36,7 +36,7 @@ class UtilityFunctions(commands.Cog):
         await ctx.send(f'Command `length` failed with error: `{error.__cause__}`')
 
     @commands.is_owner()
-    @commands.command(name='countemoji', help='Returns the number of times an emoji was by a specified user.')
+    @commands.command(name='countemoji', help='Returns the number of times an emoji was by a user.', hidden=True)
     async def countemoji(self, ctx, user: User, emoji: Emoji):
         total = 0
 
@@ -54,7 +54,7 @@ class UtilityFunctions(commands.Cog):
         await ctx.send(f'Command `countemoji` failed with error: `{error.__cause__}`')
 
     @commands.is_owner()
-    @commands.command(name='archive', help='Archives a channel.')
+    @commands.command(name='archive', help='Archives a channel.', hidden=True)
     # async def archive(self, ctx, start: TextChannel, end: TextChannel):
     async def archive(self, ctx, start, end):
         print('Invoked')
@@ -104,21 +104,6 @@ class UtilityFunctions(commands.Cog):
     @archive.error
     async def archive_error(self, ctx, error):
         await ctx.send(f'Command `archive` failed with error: `{error.__cause__}`')
-
-    @commands.is_owner()
-    @commands.command(name='getmessage')
-    async def getmessage(self, ctx, channel, mesid):  # start: TextChannel, message: int):
-        print('invoked')
-        chan = self.bot.get_channel(int(channel))
-        if chan is not None:
-            print('Success')
-            this_message = await chan.fetch_message(int(mesid))
-            print(this_message.clean_content)
-            print(this_message.content)
-        else:
-            print('Failed')
-
-        await ctx.send('Invoked')
 
 
 def setup(bot):

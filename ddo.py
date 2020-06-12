@@ -7,10 +7,13 @@ from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 from dataclasses import dataclass
 from asyncio import sleep
+from json.decoder import JSONDecodeError
 
 
 class DDO(commands.Cog):
-    SERVERS = ['Argonnessen', 'Cannith', 'Ghallanda', 'Khyber', 'Orien', 'Sarlona', 'Thelanis', 'Wayfinder']
+    SERVERS = ('Argonnessen', 'Cannith', 'Ghallanda', 'Khyber', 'Orien', 'Sarlona', 'Thelanis', 'Wayfinder')
+    ADVENTURE_TYPES = ('Quest', 'Raid', 'Wilderness')
+    DIFFICULTIES = ('Casual', 'Normal', 'Hard', 'Elite', 'Reaper')
     LEX_ID = 91995622093123584
 
     def __init__(self, bot):
@@ -154,19 +157,17 @@ class DDO(commands.Cog):
                       ' Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis, and Wayfinder'
                       '\nInformation is populated from \'DDO Audit\' every 20 seconds.')
     async def ddolfms(self, ctx, server='Khyber'):
+        if self.apidata is None:
+            return await ctx.send('Failed to query DDO Audit API.')
+
         if server not in self.SERVERS:
             server = 'Khyber'
 
-        # make sure the api result has the requested server
-        serverdata = None
-
-        for data in self.apidata:
-            if data['Name'] == server:
-                serverdata = data
-                break
-
-        if serverdata is None:
+        try:
+            serverdata = self.apidata[self.SERVERS.index(server)]
+        except ValueError:
             return await ctx.send(f'No Active LFM\'s on {server}!')
+
         else:
             raids = [q['QuestName'] for q in serverdata['Groups'] if q['AdventureType'] == 'Raid']
             quests = [q['QuestName'] for q in serverdata['Groups']
@@ -181,12 +182,70 @@ class DDO(commands.Cog):
                                   f'**Current Quests on {server}:** {", ".join(quests)}\n'
                                   f'**Current Groups on {server}:** {", ".join(groups)}\n')
 
+    @commands.command(name='flfms', help='Returns a filtered list of active LFMS for the specified server.\n'
+                      'Option filters include: LFM Type: (Quest, Raid, Wilderness), Difficulty: (Casual, Normal, Hard,'
+                      'Elite, Reaper), and Level: (1-30). You MUST supply a server.\n'
+                      'Valid servers include Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis, and'
+                      'Wayfinder\nInformation is populated from \'DDO Audit\' every 30 seconds.')
+    async def ddofilterlfms(self, ctx, *args):
+        if self.apidata is None:
+            return await ctx.send('Failed to query DDO Audit API.')
+
+        # attempt to parse arguments provided
+        server = atype = diff = level = None
+
+        for arg in args:
+            # parse string arguments first
+            if arg in self.SERVERS:
+                server = arg
+            elif arg in self.ADVENTURE_TYPES:
+                atype = arg
+            elif arg in self.DIFFICULTIES:
+                diff = arg
+            # if we can't parse the arg to one of the above, try to convert the arg to an int
+            # if we can't cast to int OR a successful cast is outside our acceptable range, level = None
+            else:
+                try:
+                    level = int(arg)
+                    if level < 1 or level > 30:
+                        level = None
+                except ValueError:
+                    level = None
+
+        try:
+            serverdata = self.apidata[self.SERVERS.index(server)]
+        except ValueError:
+            return await ctx.send(f'No Active LFM\'s on {server} - Cannot filter LFMs!')
+
+        # await ctx.send(f'{server}, {atype}, {diff}, {level}')
+
+        # build sets for each of our individual filters, as well as a master set of all quests
+        allquests = {q['QuestName'] for q in serverdata['Groups']}
+        atypes = {q['QuestName'] for q in serverdata['Groups'] if atype is not None and q['AdventureType'] == atype}
+        diffs = {q['QuestName'] for q in serverdata['Groups'] if diff is not None and q['Difficulty'] == diff}
+        levels = {q['QuestName'] for q in serverdata['Groups'] if level is not None and
+                  q['MinimumLevel'] <= level <= q['MaximumLevel']}
+
+        # if our value is not None, start performing intersection calculations on the full set
+        for filtered_set, value in [(atypes, atype), (diffs, diff), (levels, level)]:
+            if value is not None:
+                allquests.intersection_update(filtered_set)
+
+        if not allquests:
+            allquests.add('None')
+
+        await ctx.send(f'**Filtered Results on {server}:** {", ".join(allquests)}')
+
     @tasks.loop(seconds=30)
     async def queryddoaudit(self):
         async with ClientSession() as session:
             async with session.get('https://www.playeraudit.com/api/groups') as r:
                 if r.status == 200:
-                    self.apidata = await r.json(encoding='utf-8-sig', content_type='text/html')
+                    try:
+                        self.apidata = await r.json(encoding='utf-8-sig', content_type='text/html')
+                    except JSONDecodeError as e:
+                        self.apidata = None
+                        print(e)
                 else:
                     self.apidata = None
 
@@ -249,8 +308,8 @@ class DDO(commands.Cog):
         await ctx.send('All Loops Terminated.')
 
     def cog_unload(self):
-        self.checkforvalidraids.stop()
-        self.queryddoaudit.stop()
+        self.checkforvalidraids.cancel()
+        self.queryddoaudit.cancel()
         self.raiddata.clear()
         print('Completed Unload for Cog: DDO')
 

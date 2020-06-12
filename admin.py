@@ -26,7 +26,7 @@ class Admin(commands.Cog):
 
     @commands.is_owner()
     @commands.command(name='mreload', hidden=True)
-    async def unload(self, ctx, module):
+    async def mreload(self, ctx, module):
         try:
             self.bot.unload_extension(module)
             self.bot.load_extension(module)
@@ -39,6 +39,16 @@ class Admin(commands.Cog):
     async def logout(self, ctx):
         await ctx.send('Logging Out')
         await self.bot.logout()
+
+    @commands.is_owner()
+    @commands.command(name='eval', hidden=True)
+    async def eval(self, ctx, _ev: str):
+        try:
+            output = eval(_ev)
+        except Exception as e:
+            output = e
+
+        await ctx.send(output)
 
 
 def setup(bot):

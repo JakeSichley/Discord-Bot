@@ -10,6 +10,7 @@ logging.basicConfig(level=logging.INFO)
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 OWNER = int(os.getenv('OWNER_ID'))
+PREFIX = os.getenv('PREFIX')
 
 # load extensions (filename)
 initial_extensions = ('admin', 'ddo', 'utility', 'exceptions', 'moderation')
@@ -23,7 +24,7 @@ class DreamBot(commands.Bot):
     RECONNECT_BEHAVIOR = False
 
     def __init__(self):
-        super().__init__(command_prefix='!', case_insensitive=True, owner_id=OWNER)
+        super().__init__(command_prefix=PREFIX, case_insensitive=True, owner_id=OWNER)
 
         for cog in initial_extensions:
             try:
