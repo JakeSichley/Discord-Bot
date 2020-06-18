@@ -1,4 +1,5 @@
 from discord.ext import commands
+from discord import HTTPException
 from sys import stderr
 from traceback import print_exception
 
@@ -29,8 +30,8 @@ class Exceptions(commands.Cog):
         elif isinstance(error, commands.NoPrivateMessage):
             try:
                 return await ctx.author.send(f'{ctx.command} can not be used in Private Messages.')
-            except:
-                pass
+            except HTTPException as e:
+                print(f'Commands Error Handler Error: (NoPrivateMessage) {e}')
 
         # Check where the command came from
         elif isinstance(error, commands.BadArgument):
