@@ -2,6 +2,7 @@ from discord.ext import commands
 from discord import TextChannel, User, Emoji, HTTPException
 import datetime
 import pytz
+import aiosqlite
 
 
 class UtilityFunctions(commands.Cog):
@@ -14,7 +15,7 @@ class UtilityFunctions(commands.Cog):
         if timezone not in pytz.all_timezones:
             timezone = 'UTC'
         today = datetime.datetime.now(pytz.timezone(timezone))
-        printable_format = today.strftime('%I:%M%p on %A, %B %d, %Y (%Z)')
+        printable_format = today.strftime("%I:%M %p on %A, %B %d, %Y (%Z)")
         await ctx.send(f'{ctx.author.mention}, the current time is {printable_format}')
 
     @commands.command(name='devserver', help='Responds with an invite link to the development server. Useful for '
@@ -25,7 +26,7 @@ class UtilityFunctions(commands.Cog):
         await ctx.send(message)
 
     @commands.is_owner()
-    @commands.command(name='length', help='Returns the number of messages sent to a specified channel.')
+    @commands.command(name='length', help='Returns the number of messages sent to a specified channel.', hidden=True)
     async def length(self, ctx, channel: TextChannel):
         async with ctx.channel.typing():
             await ctx.send(f'The length of `#{channel}` in guild `{ctx.guild.name}` is'
@@ -36,7 +37,7 @@ class UtilityFunctions(commands.Cog):
         await ctx.send(f'Command `length` failed with error: `{error.__cause__}`')
 
     @commands.is_owner()
-    @commands.command(name='countemoji', help='Returns the number of times an emoji was by a specified user.')
+    @commands.command(name='countemoji', help='Returns the number of times an emoji was by a user.', hidden=True)
     async def countemoji(self, ctx, user: User, emoji: Emoji):
         total = 0
 
@@ -54,14 +55,11 @@ class UtilityFunctions(commands.Cog):
         await ctx.send(f'Command `countemoji` failed with error: `{error.__cause__}`')
 
     @commands.is_owner()
-    @commands.command(name='archive', help='Archives a channel.')
+    @commands.command(name='archive', help='Archives a channel.', hidden=True)
     # async def archive(self, ctx, start: TextChannel, end: TextChannel):
     async def archive(self, ctx, start, end):
-        print('Invoked')
         begin = self.bot.get_channel(int(start))
-        print(begin)
         destination = self.bot.get_channel(int(end))
-        print(destination)
 
         if begin is None or destination is None:
             await ctx.send('Could not fetch one or more channels.')
@@ -105,20 +103,49 @@ class UtilityFunctions(commands.Cog):
     async def archive_error(self, ctx, error):
         await ctx.send(f'Command `archive` failed with error: `{error.__cause__}`')
 
-    @commands.is_owner()
-    @commands.command(name='getmessage')
-    async def getmessage(self, ctx, channel, mesid):  # start: TextChannel, message: int):
-        print('invoked')
-        chan = self.bot.get_channel(int(channel))
-        if chan is not None:
-            print('Success')
-            this_message = await chan.fetch_message(int(mesid))
-            print(this_message.clean_content)
-            print(this_message.content)
-        else:
-            print('Failed')
+    @commands.cooldown(1, 86400, commands.BucketType.guild)
+    @commands.has_permissions(administrator=True)
+    @commands.guild_only()
+    @commands.command(name='setprefix', help='Sets the bot\'s prefix for this guild. Administrator use only.')
+    async def set_prefix(self, ctx, pre):
+        try:
+            async with aiosqlite.connect(self.bot.DATABASE_NAME) as db:
+                async with db.execute('SELECT EXISTS(SELECT 1 FROM PREFIXES WHERE GUILD=?)', (ctx.guild.id,)) as cursor:
+                    if (await cursor.fetchone())[0] == 1:
+                        await db.execute('UPDATE PREFIXES SET PREFIX=? WHERE GUILD=?', (pre, ctx.guild.id))
+                        await db.commit()
+                        await ctx.send(f'Updated the prefix to `{pre}`.')
+                    else:
+                        await db.execute('INSERT INTO PREFIXES (GUILD, PREFIX) VALUES (?, ?)', (ctx.guild.id, pre))
+                        await db.commit()
+                        await ctx.send(f'Changed the prefix to `{pre}`.')
+                    self.bot.prefixes[ctx.guild.id] = pre
+        except aiosqlite.Error as e:
+            await ctx.send('Failed to change the guild\'s prefix.')
+            print(f'Set Prefix SQLite Error: {e}')
 
-        await ctx.send('Invoked')
+    @commands.guild_only()
+    @commands.command(name='getprefix', help='Gets the bot\'s prefix for this guild.')
+    async def get_prefix(self, ctx):
+        try:
+            async with aiosqlite.connect(self.bot.DATABASE_NAME) as db:
+                async with db.execute('SELECT PREFIX FROM PREFIXES WHERE GUILD=?', (ctx.guild.id,)) as cursor:
+                    result = await cursor.fetchone()
+                    if result is None:
+                        return await ctx.send(self.bot.DEFAULT_PREFIX)
+                    else:
+                        return await ctx.send(f'Prefix: `{result[0]}`')
+        except aiosqlite.Error as e:
+            await ctx.send('Could not retrieve the guild\'s prefix.')
+            print(f'Set Prefix SQLite Error: {e}')
+
+    @commands.command(name='uptime', help='Returns current bot uptime.')
+    async def uptime(self, ctx):
+        time = datetime.datetime.now() - self.bot.uptime
+        hours, remainder = divmod(time.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        await ctx.send(f'Bot Epoch: {self.bot.uptime.strftime("%I:%M %p on %A, %B %d, %Y")}'
+                       f'\nBot Uptime: {time.days} Days, {hours} Hours, {minutes} Minutes, {seconds} Seconds')
 
 
 def setup(bot):
