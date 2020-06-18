@@ -103,7 +103,7 @@ class UtilityFunctions(commands.Cog):
     async def archive_error(self, ctx, error):
         await ctx.send(f'Command `archive` failed with error: `{error.__cause__}`')
 
-    @commands.cooldown(1, 86400, commands.BucketType.guild)
+    @commands.cooldown(1, 600, commands.BucketType.guild)
     @commands.has_permissions(administrator=True)
     @commands.guild_only()
     @commands.command(name='setprefix', help='Sets the bot\'s prefix for this guild. Administrator use only.')

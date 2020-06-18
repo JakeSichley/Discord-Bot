@@ -18,7 +18,7 @@ PREFIX = os.getenv('PREFIX')
 DATABASE = os.getenv('DATABASE')
 
 # load extensions (filename)
-initial_extensions = ('admin', 'ddo', 'memecoin' 'utility', 'exceptions', 'moderation')
+initial_extensions = ('admin', 'ddo', 'memecoin', 'utility', 'exceptions', 'moderation')
 # unused extensions: None
 
 # define cogs with tasks for reconnection behavior

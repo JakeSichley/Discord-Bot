@@ -85,9 +85,12 @@ class Admin(commands.Cog):
         try:
             async with aiosqlite.connect(self.bot.DATABASE_NAME) as db:
                 async with db.execute("SELECT * FROM Prefixes") as cursor:
-                    async for guild, prefix in cursor:
-                        self.bot.prefixes[int(guild)] = prefix
-
+                    rows = await cursor.fetchall()
+                    if not rows:
+                        self.bot.prefixes.clear()
+                    else:
+                        async for guild, prefix in cursor:
+                            self.bot.prefixes[int(guild)] = prefix
                     await ctx.send('Reloaded Prefixes.')
 
         except aiosqlite.Error as e:

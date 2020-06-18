@@ -156,7 +156,7 @@ class DDO(commands.Cog):
     @commands.command(name='lfms', help='Returns a list of active LFMS for the specified server.\nValid servers include'
                       ' Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis, and Wayfinder'
                       '\nInformation is populated from \'DDO Audit\' every 20 seconds.')
-    async def ddolfms(self, ctx, server='Khyber'):
+    async def ddo_lfms(self, ctx, server='Khyber'):
         if self.api_data is None:
             return await ctx.send('Failed to query DDO Audit API.')
 
@@ -187,7 +187,7 @@ class DDO(commands.Cog):
                       'Elite, Reaper), and Level: (1-30). You MUST supply a server.\n'
                       'Valid servers include Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis, and'
                       'Wayfinder\nInformation is populated from \'DDO Audit\' every 30 seconds.')
-    async def ddofilterlfms(self, ctx, *args):
+    async def ddo_filter_lfms(self, ctx, *args):
         if self.api_data is None:
             return await ctx.send('Failed to query DDO Audit API.')
 
@@ -289,9 +289,9 @@ class DDO(commands.Cog):
                     self.raid_data[name].members != len(raid["Members"]):
                 self.raid_data[name].members = len(raid["Members"])
                 self.raid_data[name].embed.set_field_at(2, name='Raid Size', inline=False,
-                                                       value=f'{len(raid["Members"]) + 1} Members')
+                                                        value=f'{len(raid["Members"]) + 1} Members')
                 self.raid_data[name].embed.set_field_at(3, name='Active Time', inline=False,
-                                                       value=f'{raid["AdventureActive"]} Minutes')
+                                                        value=f'{raid["AdventureActive"]} Minutes')
                 await self.raid_data[name].message.edit(embed=self.raid_data[name].embed)
 
     @check_for_valid_raids.before_loop
