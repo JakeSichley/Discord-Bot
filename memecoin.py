@@ -12,65 +12,68 @@ def check_memecoin_channel():
 class MemeCoin(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.channel = 636356259255287808
 
-    @check_memecoin_channel()
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
         # Check to make sure the message comes from the appropriate channel
         # Check to make sure the user adding the reaction isn't a bot
         # Check to make sure the reaction isn't being added to a bot's message
         # Meme Coins can only be awarded on messages that have a link or an attachment
-        if not user.bot and not reaction.message.author.bot and valid_meme(reaction.message):
-            query = values = None
+        if not (await check_coin_requirements(reaction, user, self.channel)):
+            return
 
-            if str(reaction) == '✅':
-                if user == reaction.message.author:
-                    await reaction.message.channel.send(f'Man, look at this clown {user.mention}..'
-                                                        f' trying to give themself Meme Coins.. just shameful.')
-                elif (await check_for_user(self.bot.DATABASE_NAME, reaction.message.author.id)) != 1:
-                    query = 'INSERT INTO MEMECOIN (USER_ID, COINS) VALUES (?, ?)'
-                    values = (reaction.message.author.id, 1)
-                else:
-                    query = 'UPDATE MEMECOIN SET COINS=COINS+1 WHERE USER_ID=?'
-                    values = (reaction.message.author.id,)
-            elif str(reaction) == '❌':
-                if user == reaction.message.author:
-                    return
-                elif (await check_for_user(self.bot.DATABASE_NAME, reaction.message.author.id)) != 1:
-                    query = 'INSERT INTO MEMECOIN (USER_ID, COINS) VALUES (?, ?)'
-                    values = (reaction.message.author.id, -1)
-                else:
-                    query = 'UPDATE MEMECOIN SET COINS=COINS-1 WHERE USER_ID=?'
-                    values = (reaction.message.author.id,)
+        query = values = None
 
-            if query is not None:
-                await execute_query(self.bot.DATABASE_NAME, query, values, 'MemeCoin Reaction_Add Database Transaction')
+        if str(reaction) == '✅':
+            if user == reaction.message.author:
+                await reaction.message.channel.send(f'Man, look at this clown {user.mention}..'
+                                                    f' trying to give themself Meme Coins.. just shameful.')
+            elif (await check_for_user(self.bot.DATABASE_NAME, reaction.message.author.id)) != 1:
+                query = 'INSERT INTO MEMECOIN (USER_ID, COINS) VALUES (?, ?)'
+                values = (reaction.message.author.id, 1)
+            else:
+                query = 'UPDATE MEMECOIN SET COINS=COINS+1 WHERE USER_ID=?'
+                values = (reaction.message.author.id,)
+        elif str(reaction) == '❌':
+            if user == reaction.message.author:
+                return
+            elif (await check_for_user(self.bot.DATABASE_NAME, reaction.message.author.id)) != 1:
+                query = 'INSERT INTO MEMECOIN (USER_ID, COINS) VALUES (?, ?)'
+                values = (reaction.message.author.id, -1)
+            else:
+                query = 'UPDATE MEMECOIN SET COINS=COINS-1 WHERE USER_ID=?'
+                values = (reaction.message.author.id,)
 
-    @check_memecoin_channel()
+        if query is not None:
+            await execute_query(self.bot.DATABASE_NAME, query, values, 'MemeCoin Reaction_Add Database Transaction')
+
     @commands.Cog.listener()
     async def on_reaction_remove(self, reaction, user):
         # Check to make sure the message comes from the appropriate channel
         # Check to make sure the user adding the reaction isn't a bot
         # Check to make sure the reaction isn't being added to a bot's message
         # Meme Coins can only be awarded on messages that have a link or an attachment
-        if not user.bot and not reaction.message.author.bot and valid_meme(reaction.message):
-            query = None
+        if not (await check_coin_requirements(reaction, user, self.channel)):
+            return
 
-            if user == reaction.message.author:
-                return
-            elif str(reaction) == '✅':
-                if (await check_for_user(self.bot.DATABASE_NAME, reaction.message.author.id)) == 1:
-                    query = 'UPDATE MEMECOIN SET COINS=COINS-1 WHERE USER_ID=?'
-            elif str(reaction) == '❌':
-                if (await check_for_user(self.bot.DATABASE_NAME, reaction.message.author.id)) == 1:
-                    query = 'UPDATE MEMECOIN SET COINS=COINS+1 WHERE USER_ID=?'
+        query = None
 
-            if query is not None:
-                await execute_query(self.bot.DATABASE_NAME, query, (reaction.message.author.id,),
-                                    'MemeCoin Reaction_Remove Database Transaction')
+        if user == reaction.message.author:
+            return
+        elif str(reaction) == '✅':
+            if (await check_for_user(self.bot.DATABASE_NAME, reaction.message.author.id)) == 1:
+                query = 'UPDATE MEMECOIN SET COINS=COINS-1 WHERE USER_ID=?'
+        elif str(reaction) == '❌':
+            if (await check_for_user(self.bot.DATABASE_NAME, reaction.message.author.id)) == 1:
+                query = 'UPDATE MEMECOIN SET COINS=COINS+1 WHERE USER_ID=?'
+
+        if query is not None:
+            await execute_query(self.bot.DATABASE_NAME, query, (reaction.message.author.id,),
+                                'MemeCoin Reaction_Remove Database Transaction')
 
     @check_memecoin_channel()
-    @commands.command(name='coins', help='Tests you how many of those sweet, sweet Meme Coins you own!')
+    @commands.command(name='coins', help='Checks you how many of those sweet, sweet Meme Coins you own!')
     async def coins(self, ctx):
         if (await check_for_user(self.bot.DATABASE_NAME, ctx.author.id)) == 1:
             result = await retrieve_query(self.bot.DATABASE_NAME, 'SELECT COINS FROM MEMECOIN WHERE USER_ID=?',
@@ -88,8 +91,17 @@ class MemeCoin(commands.Cog):
     @commands.command(name='leaderboard', help='Displays a list of highest rollers in Meme Coin Town!',
                       aliases=['leaderboards'])
     async def leaderboard(self, ctx):
+        embed = Embed(title="Meme Coin Leaderboards",
+                      description="Whose Meme Coins stash reigns supreme?!\n", color=0xffff00)
+        embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
+        embed.add_field(name='\u200B', value='\u200B', inline=True)
+        embed.add_field(name='\u200B', value='\u200B', inline=True)
+        embed.add_field(name='\u200B', value='\u200B', inline=True)
+        embed.set_footer(text="Please report any issues to my owner!")
+
         result = await retrieve_query(self.bot.DATABASE_NAME, 'SELECT * FROM MEMECOIN', (),
                                       'MemeCoin Leaderboard Retrival Database')
+
         if len(result) > 0:
             top_scores = sorted(result, key=lambda x: x[1], reverse=True)
             formatted_scores = []
@@ -99,25 +111,16 @@ class MemeCoin(commands.Cog):
                 if user is not None:
                     formatted_scores.append(user.name + ': ' + str(tup[1]))
 
-            embed = Embed(title="Meme Coin Leaderboards",
-                          description="Whose Meme Coins stash reigns supreme?!\n", color=0xffff00)
-            embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
-            embed.add_field(name='\u200B', value='\u200B', inline=True)
-            embed.add_field(name='\u200B', value='\u200B', inline=True)
-            embed.add_field(name='\u200B', value='\u200B', inline=True)
-            embed.set_footer(text="Please report any issues to my owner!")
+            most = formatted_scores[:5]
+            least = (formatted_scores[::-1])[:5]
 
-            if len(formatted_scores) > 0:
-                most = formatted_scores[:5]
-                least = (formatted_scores[::-1])[:5]
+            embed.add_field(name='Most Coins', value='\n'.join(most), inline=True)
+            embed.add_field(name='Least Coins', value='\n'.join(least), inline=True)
+        else:
+            embed.add_field(name='No Current Meme Coin Owners!',
+                            value='Please give or revoke Meme Coin to construct leaderboards!')
 
-                embed.add_field(name='Most Coins', value='\n'.join(most), inline=True)
-                embed.add_field(name='Least Coins', value='\n'.join(least), inline=True)
-            else:
-                embed.add_field(name='No Current Meme Coin Owners!',
-                                value='Please give or revoke Meme Coin to construct leaderboards!')
-
-            await ctx.send(embed=embed)
+        await ctx.send(embed=embed)
 
     def cog_unload(self):
         print('Completed Unload for Cog: MemeCoin')
@@ -126,9 +129,17 @@ class MemeCoin(commands.Cog):
 '''Helper Functions'''
 
 
-def valid_meme(message):
-    # Checks whether or not a message meets the criteria for Meme Coins
-    return message.content.find('http') != -1 or len(message.attachments) > 0
+async def check_coin_requirements(reaction, user, channel):
+    # check for bots
+    # if user.bot and reaction.message.author.bot and not valid_meme(reaction.message):
+    # ctx.message.channel.id == 636356259255287808
+    if user.bot or reaction.message.author.bot:
+        return False
+    if not (reaction.message.content.find('http') != -1 or len(reaction.message.attachments) > 0):
+        return False
+    if reaction.message.channel.id != channel:
+        return False
+    return True
 
 
 async def check_for_user(database_name, user_id):

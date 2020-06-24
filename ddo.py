@@ -218,11 +218,14 @@ class DDO(commands.Cog):
             return await ctx.send(f'No Active LFM\'s on {server} - Cannot filter LFMs!')
 
         # build sets for each of our individual filters, as well as a master set of all quests
-        all_quests = {q['QuestName'] for q in server_data['Groups']}
-        atypes = {q['QuestName'] for q in server_data['Groups'] if atype is not None and q['AdventureType'] == atype}
-        diffs = {q['QuestName'] for q in server_data['Groups'] if diff is not None and q['Difficulty'] == diff}
-        levels = {q['QuestName'] for q in server_data['Groups'] if level is not None and
-                  q['MinimumLevel'] <= level <= q['MaximumLevel']}
+        all_quests = {(q['Leader']['Name'], q['QuestName'], q['Difficulty'], q['AdventureType'])
+                      for q in server_data['Groups'] if q['QuestName'] is not None}
+        atypes = {(q['Leader']['Name'], q['QuestName'], q['Difficulty'], q['AdventureType'])
+                  for q in server_data['Groups'] if atype is not None and q['AdventureType'] == atype}
+        diffs = {(q['Leader']['Name'], q['QuestName'], q['Difficulty'], q['AdventureType'])
+                 for q in server_data['Groups'] if diff is not None and q['Difficulty'] == diff}
+        levels = {(q['Leader']['Name'], q['QuestName'], q['Difficulty'], q['AdventureType']) for q
+                  in server_data['Groups'] if level is not None and q['MinimumLevel'] <= level <= q['MaximumLevel']}
 
         # if our value is not None, start performing intersection calculations on the full set
         for filtered_set, value in [(atypes, atype), (diffs, diff), (levels, level)]:
@@ -230,9 +233,9 @@ class DDO(commands.Cog):
                 all_quests.intersection_update(filtered_set)
 
         if not all_quests:
-            all_quests.add('None')
-
-        await ctx.send(f'**Filtered Results on {server}:** {", ".join(all_quests)}')
+            await ctx.send(f'**Filtered Results on {server}:** None')
+        else:
+            await ctx.send(f'**Filtered Results on {server}:** {", ".join(x[1] for x in all_quests)}')
 
     @tasks.loop(seconds=30)
     async def query_ddo_audit(self):
@@ -258,13 +261,9 @@ class DDO(commands.Cog):
         if lex_user is None or self.api_data is None:
             return
 
-        khyber_data = None
-        for data in self.api_data:
-            if data['Name'] == 'Khyber':
-                khyber_data = data
-                break
-
-        if khyber_data is None:
+        try:
+            khyber_data = self.api_data[self.SERVERS.index('Khyber')]
+        except ValueError:
             return
 
         raids = [quest for quest in khyber_data['Groups'] if (quest['AdventureType'] == 'Raid'
@@ -309,6 +308,7 @@ class DDO(commands.Cog):
         self.check_for_valid_raids.cancel()
         self.query_ddo_audit.cancel()
         self.raid_data.clear()
+        self.api_data = None
         print('Completed Unload for Cog: DDO')
 
 

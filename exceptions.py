@@ -45,8 +45,11 @@ class Exceptions(commands.Cog):
 
         # Calling a command currently on cooldown
         elif isinstance(error, commands.CommandOnCooldown):
-            return await ctx.send(f'{ctx.message.author.mention}, please wait {int(error.retry_after)} seconds before'
-                                  f' calling this command again!')
+            if ctx.author.id == self.bot.owner_id:
+                await ctx.reinvoke()
+            else:
+                return await ctx.send(f'{ctx.message.author.mention}, please wait {int(error.retry_after)} seconds '
+                                      f'before calling this command again!')
 
         # Bot cannot execute command due to insufficient permissions
         elif isinstance(error, commands.MissingPermissions):

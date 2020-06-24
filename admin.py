@@ -97,6 +97,13 @@ class Admin(commands.Cog):
             await ctx.send(f'Error: {e}')
             print(f'Reload Prefixes Error: {e}')
 
+    @commands.is_owner()
+    @commands.command(name='resetcooldown', hidden=True)
+    async def reset_cooldown(self, ctx, command):
+        self.bot.get_command(command).reset_cooldown(ctx)
+
+        await ctx.send(f'Reset cooldown of Command: `{command}`')
+
 
 def setup(bot):
     bot.add_cog(Admin(bot))

@@ -3,7 +3,7 @@ import discord
 import logging
 import aiosqlite
 from dotenv import load_dotenv
-from discord.ext.commands import ExtensionError, Bot
+from discord.ext.commands import ExtensionError, Bot, when_mentioned_or
 import datetime
 
 # todo: update memecoin storage
@@ -59,10 +59,6 @@ class DreamBot(Bot):
         if message.guild is None:
             print(f'Direct Message from {message.author}\nContent: {message.content}')
 
-        if self.user.mentioned_in(message) and 'prefix' in message.content.lower() and message.guild is not None:
-            await message.channel.send(f'It seems you\'re trying to find the prefix for this guild! '
-                                       f'**Prefix**: `{await get_prefix(self, message)}`')
-
         await self.process_commands(message)
 
     async def on_disconnect(self):
@@ -105,9 +101,9 @@ class DreamBot(Bot):
 
 
 async def get_prefix(bot, message):
-    if message.guild.id in bot.prefixes:
-        return bot.prefixes[message.guild.id]
-    return PREFIX
+    if message.guild is not None and message.guild.id in bot.prefixes:
+        return when_mentioned_or(bot.prefixes[message.guild.id])(bot, message)
+    return when_mentioned_or(PREFIX)(bot, message)
 
 
 dream_bot = DreamBot()

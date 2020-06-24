@@ -20,7 +20,7 @@ class UtilityFunctions(commands.Cog):
 
     @commands.command(name='devserver', help='Responds with an invite link to the development server. Useful for '
                       'getting assistance with a bug, or requesting a new feature!')
-    async def devserver(self, ctx):
+    async def dev_server(self, ctx):
         message = '_Need help with bugs or want to request a feature? Join the Discord!_'\
                   '\nhttps://discord.gg/fgHEWdt'
         await ctx.send(message)
@@ -38,7 +38,7 @@ class UtilityFunctions(commands.Cog):
 
     @commands.is_owner()
     @commands.command(name='countemoji', help='Returns the number of times an emoji was by a user.', hidden=True)
-    async def countemoji(self, ctx, user: User, emoji: Emoji):
+    async def count_emoji(self, ctx, user: User, emoji: Emoji):
         total = 0
 
         async with ctx.channel.typing():
@@ -50,13 +50,12 @@ class UtilityFunctions(commands.Cog):
 
         await ctx.send(f'User `{str(user)}` has sent {str(emoji)} {total} times in guild `{ctx.guild.name}`.')
 
-    @countemoji.error
-    async def countemoji_error(self, ctx, error):
+    @count_emoji.error
+    async def count_emoji_error(self, ctx, error):
         await ctx.send(f'Command `countemoji` failed with error: `{error.__cause__}`')
 
     @commands.is_owner()
     @commands.command(name='archive', help='Archives a channel.', hidden=True)
-    # async def archive(self, ctx, start: TextChannel, end: TextChannel):
     async def archive(self, ctx, start, end):
         begin = self.bot.get_channel(int(start))
         destination = self.bot.get_channel(int(end))
@@ -110,13 +109,14 @@ class UtilityFunctions(commands.Cog):
     async def set_prefix(self, ctx, pre):
         try:
             async with aiosqlite.connect(self.bot.DATABASE_NAME) as db:
-                async with db.execute('SELECT EXISTS(SELECT 1 FROM PREFIXES WHERE GUILD=?)', (ctx.guild.id,)) as cursor:
+                async with db.execute('SELECT EXISTS(SELECT 1 FROM PREFIXES WHERE GUILD_ID=?)',
+                                      (ctx.guild.id,)) as cursor:
                     if (await cursor.fetchone())[0] == 1:
-                        await db.execute('UPDATE PREFIXES SET PREFIX=? WHERE GUILD=?', (pre, ctx.guild.id))
+                        await db.execute('UPDATE PREFIXES SET PREFIX=? WHERE GUILD_ID=?', (pre, ctx.guild.id))
                         await db.commit()
                         await ctx.send(f'Updated the prefix to `{pre}`.')
                     else:
-                        await db.execute('INSERT INTO PREFIXES (GUILD, PREFIX) VALUES (?, ?)', (ctx.guild.id, pre))
+                        await db.execute('INSERT INTO PREFIXES (GUILD_ID, PREFIX) VALUES (?, ?)', (ctx.guild.id, pre))
                         await db.commit()
                         await ctx.send(f'Changed the prefix to `{pre}`.')
                     self.bot.prefixes[ctx.guild.id] = pre
@@ -125,11 +125,11 @@ class UtilityFunctions(commands.Cog):
             print(f'Set Prefix SQLite Error: {e}')
 
     @commands.guild_only()
-    @commands.command(name='getprefix', help='Gets the bot\'s prefix for this guild.')
+    @commands.command(name='getprefix', aliases=['prefix'], help='Gets the bot\'s prefix for this guild.')
     async def get_prefix(self, ctx):
         try:
             async with aiosqlite.connect(self.bot.DATABASE_NAME) as db:
-                async with db.execute('SELECT PREFIX FROM PREFIXES WHERE GUILD=?', (ctx.guild.id,)) as cursor:
+                async with db.execute('SELECT PREFIX FROM PREFIXES WHERE GUILD_ID=?', (ctx.guild.id,)) as cursor:
                     result = await cursor.fetchone()
                     if result is None:
                         return await ctx.send(self.bot.DEFAULT_PREFIX)
