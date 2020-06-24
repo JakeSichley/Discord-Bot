@@ -38,7 +38,7 @@ class DreamBot(Bot):
 
         for cog in initial_extensions:
             try:
-                self.load_extension(cog)
+                self.load_extension('cogs.' + cog)
             except ExtensionError as e:
                 print(e)
 
