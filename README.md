@@ -31,5 +31,6 @@ or revoke 'Meme Coins' at will by reacting to a message with a :heavy_check_mark
 The `Moderation` cog contains methods related to the moderation of a Discord server.
 
 ## Utility
-The `Utility` cog contains various unrelated methods, such as the current time and an invite to the development server.
+The `Utility` cog contains various unrelated methods, such as the current time in a specified timezone, an invite to the
+development server, and setting a guild-specific command prefix.
 

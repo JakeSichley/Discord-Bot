@@ -1,17 +1,44 @@
 from discord.ext import commands
-from discord import TextChannel, User, Emoji, HTTPException
 import datetime
 import pytz
 import aiosqlite
 
 
-class UtilityFunctions(commands.Cog):
+class Utility(commands.Cog):
+    """
+    A Cogs class that contains utility commands for the bot.
+
+    Attributes:
+        bot (commands.Bot): The Discord bot class.
+    """
+
     def __init__(self, bot):
+        """
+        The constructor for the UtilityFunctions class.
+
+        Parameters:
+           bot (DreamBot): The Discord bot class.
+        """
+
         self.bot = bot
 
     @commands.command(name='time', help='Responds with the current time. Can be supplied with a timezone.\nFor a full '
                       'list of supported timezones, see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones')
     async def current_time(self, ctx, timezone='UTC'):
+        """
+        A method to output the current time in a specified timezone.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            timezone (str): A support pytz timezone. Default: 'UTC'.
+
+        Output:
+            The time in the specified timezone.
+
+        Returns:
+            None.
+        """
+
         if timezone not in pytz.all_timezones:
             timezone = 'UTC'
         today = datetime.datetime.now(pytz.timezone(timezone))
@@ -21,92 +48,47 @@ class UtilityFunctions(commands.Cog):
     @commands.command(name='devserver', help='Responds with an invite link to the development server. Useful for '
                       'getting assistance with a bug, or requesting a new feature!')
     async def dev_server(self, ctx):
-        message = '_Need help with bugs or want to request a feature? Join the Discord!_'\
-                  '\nhttps://discord.gg/fgHEWdt'
-        await ctx.send(message)
+        """
+        A method to output a link to the DreamBot development server.
 
-    @commands.is_owner()
-    @commands.command(name='length', help='Returns the number of messages sent to a specified channel.', hidden=True)
-    async def length(self, ctx, channel: TextChannel):
-        async with ctx.channel.typing():
-            await ctx.send(f'The length of `#{channel}` in guild `{ctx.guild.name}` is'
-                           f' {len(await channel.history(limit=None).flatten())} messages.')
+        Parameters:
+            ctx (commands.Context): The invocation context.
 
-    @length.error
-    async def length_error(self, ctx, error):
-        await ctx.send(f'Command `length` failed with error: `{error.__cause__}`')
+        Output:
+            A link to the development server.
 
-    @commands.is_owner()
-    @commands.command(name='countemoji', help='Returns the number of times an emoji was by a user.', hidden=True)
-    async def count_emoji(self, ctx, user: User, emoji: Emoji):
-        total = 0
+        Returns:
+            None.
+        """
 
-        async with ctx.channel.typing():
-            for channel in ctx.guild.text_channels:
-                async for message in channel.history(limit=None):
-                    if message.author.id == user.id:
-                        if str(emoji) in message.content:
-                            total += 1
-
-        await ctx.send(f'User `{str(user)}` has sent {str(emoji)} {total} times in guild `{ctx.guild.name}`.')
-
-    @count_emoji.error
-    async def count_emoji_error(self, ctx, error):
-        await ctx.send(f'Command `countemoji` failed with error: `{error.__cause__}`')
-
-    @commands.is_owner()
-    @commands.command(name='archive', help='Archives a channel.', hidden=True)
-    async def archive(self, ctx, start, end):
-        begin = self.bot.get_channel(int(start))
-        destination = self.bot.get_channel(int(end))
-
-        if begin is None or destination is None:
-            await ctx.send('Could not fetch one or more channels.')
-
-        else:
-            async with destination.typing():
-                async for message in begin.history(limit=None, oldest_first=True):
-                    if len(message.attachments) > 0:
-                        try:
-                            files = []
-                            for attachment in message.attachments:
-                                files.append(await attachment.to_file())
-                        except HTTPException:
-                            pass
-
-                        if len(message.clean_content) > 1800:
-                            await destination.send(f'**{message.author} - '
-                                                   f'{message.created_at.strftime("%I:%M%p on %A, %B %d, %Y")}**'
-                                                   f'\n{message.clean_content[:1000]}')
-                            await destination.send(f'**{message.author} - '
-                                                   f'{message.created_at.strftime("%I:%M%p on %A, %B %d, %Y")}**'
-                                                   f'\n{message.clean_content[1000:]}', files=files)
-                        else:
-                            await destination.send(f'**{message.author} - '
-                                                   f'{message.created_at.strftime("%I:%M%p on %A, %B %d, %Y")}**'
-                                                   f'\n{message.clean_content}', files=files)
-                    else:
-                        if len(message.clean_content) > 1800:
-                            await destination.send(f'**{message.author} - '
-                                                   f'{message.created_at.strftime("%I:%M%p on %A, %B %d, %Y")}**'
-                                                   f'\n{message.clean_content[:1000]}')
-                            await destination.send(f'**{message.author} - '
-                                                   f'{message.created_at.strftime("%I:%M%p on %A, %B %d, %Y")}**'
-                                                   f'\n{message.clean_content[1000:]}')
-                        else:
-                            await destination.send(f'**{message.author} - '
-                                                   f'{message.created_at.strftime("%I:%M%p on %A, %B %d, %Y")}**'
-                                                   f'\n{message.clean_content}')
-
-    @archive.error
-    async def archive_error(self, ctx, error):
-        await ctx.send(f'Command `archive` failed with error: `{error.__cause__}`')
+        await ctx.send('_Need help with bugs or want to request a feature? Join the Discord!_'
+                       '\nhttps://discord.gg/fgHEWdt')
 
     @commands.cooldown(1, 600, commands.BucketType.guild)
     @commands.has_permissions(administrator=True)
     @commands.guild_only()
     @commands.command(name='setprefix', help='Sets the bot\'s prefix for this guild. Administrator use only.')
     async def set_prefix(self, ctx, pre):
+        """
+        A method to change the command prefix for a guild. Only usable by a guild's administrators.
+
+        Checks:
+            cooldown(): Whether or not the command is on cooldown. Can be used (1) time per (10) minutes per (Guild).
+            has_permissions(administrator): Whether or not the invoking user is an administrator.
+            guild_only(): Whether or not the command was invoked from a guild. No direct messages.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            pre (str): The new prefix to use.
+
+        Output:
+            Success: Confirmation that the prefix changed.
+            Failure: An error noting the change was not completed.
+
+        Returns:
+            None.
+        """
+
         try:
             async with aiosqlite.connect(self.bot.DATABASE_NAME) as db:
                 async with db.execute('SELECT EXISTS(SELECT 1 FROM PREFIXES WHERE GUILD_ID=?)',
@@ -120,6 +102,7 @@ class UtilityFunctions(commands.Cog):
                         await db.commit()
                         await ctx.send(f'Changed the prefix to `{pre}`.')
                     self.bot.prefixes[ctx.guild.id] = pre
+
         except aiosqlite.Error as e:
             await ctx.send('Failed to change the guild\'s prefix.')
             print(f'Set Prefix SQLite Error: {e}')
@@ -127,20 +110,51 @@ class UtilityFunctions(commands.Cog):
     @commands.guild_only()
     @commands.command(name='getprefix', aliases=['prefix'], help='Gets the bot\'s prefix for this guild.')
     async def get_prefix(self, ctx):
+        """
+        A method that outputs the command prefix for a guild.
+
+        Checks:
+            guild_only(): Whether or not the command was invoked from a guild. No direct messages.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+
+        Output:
+            Success: The prefix assigned to the guild.
+            Failure: An error noting the prefix could not be fetched.
+
+        Returns:
+            None.
+        """
+
         try:
             async with aiosqlite.connect(self.bot.DATABASE_NAME) as db:
                 async with db.execute('SELECT PREFIX FROM PREFIXES WHERE GUILD_ID=?', (ctx.guild.id,)) as cursor:
                     result = await cursor.fetchone()
                     if result is None:
-                        return await ctx.send(self.bot.DEFAULT_PREFIX)
+                        await ctx.send(self.bot.DEFAULT_PREFIX)
                     else:
-                        return await ctx.send(f'Prefix: `{result[0]}`')
+                        await ctx.send(f'Prefix: `{result[0]}`')
+
         except aiosqlite.Error as e:
             await ctx.send('Could not retrieve the guild\'s prefix.')
             print(f'Set Prefix SQLite Error: {e}')
 
     @commands.command(name='uptime', help='Returns current bot uptime.')
     async def uptime(self, ctx):
+        """
+        A method that outputs the uptime of the bot.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+
+        Output:
+            The date and time the bot was started, as well as the duration the bot has been online.
+
+        Returns:
+            None.
+        """
+
         time = datetime.datetime.now() - self.bot.uptime
         hours, remainder = divmod(time.seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
@@ -149,5 +163,15 @@ class UtilityFunctions(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(UtilityFunctions(bot))
+    """
+    A setup function that allows the cog to be treated as an extension.
+
+    Parameters:
+        bot (DreamBot): The bot the cog should be added to.
+
+    Returns:
+        None.
+    """
+
+    bot.add_cog(Utility(bot))
     print('Completed Setup for Cog: UtilityFunctions')

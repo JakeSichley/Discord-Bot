@@ -11,12 +11,36 @@ from json.decoder import JSONDecodeError
 
 
 class DDO(commands.Cog):
+    """
+    A Cogs class that contains Dungeons & Dragons Online commands.
+
+    Constants:
+        SERVERS (tuple): A tuple of valid servers for DDOAudit
+        ADVENTURE_TYPES (tuple): A tuple of valid adventure types for DDOAudit
+        DIFFICUlTIES (tuple): A tuple of valid difficulties for DDOAudit
+        LEX_ID (int): The ID of the user to send raid alerts to.
+
+    Attributes:
+        bot (commands.Bot): The Discord bot.
+        api_data (dict): The response data from DDOAudit (used for LFMS).
+        raid_data (dict): Maintains data for notifications; ensures no duplicate messages.
+        query_ddo_audit (ext.tasks): Stores the task that queries DDOAudit every 30 seconds.
+        check_for_valid_raids (ext.tasks): Stores the task that send LFM notifications.
+    """
+
     SERVERS = ('Argonnessen', 'Cannith', 'Ghallanda', 'Khyber', 'Orien', 'Sarlona', 'Thelanis', 'Wayfinder')
     ADVENTURE_TYPES = ('Quest', 'Raid', 'Wilderness')
     DIFFICULTIES = ('Casual', 'Normal', 'Hard', 'Elite', 'Reaper')
     LEX_ID = 91995622093123584
 
     def __init__(self, bot):
+        """
+        The constructor for the Moderation class.
+
+        Parameters:
+            bot (DreamBot): The Discord bot class.
+        """
+
         self.bot = bot
         self.api_data = None
         self.raid_data = {}
@@ -25,26 +49,60 @@ class DDO(commands.Cog):
 
     @commands.command(name='roll', help='Simulates rolling dice. Syntax example: 9d6', ignore_extra=True)
     async def roll(self, ctx, die_pattern):
+        """
+        A method to simulate the rolling of dice.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            die_pattern (str): The die pattern to roll. Example: 9d6 -> Nine Six-Sided die.
+
+        Output:
+            Success: The result of the die pattern rolled.
+            Failure: A description of the syntax error that occured.
+
+        Returns:
+            None.
+        """
+
+        # search for the proper die pattern using regex
         if not search("\d+d\d+", die_pattern):
             await ctx.send('ERROR: Invalid Syntax! Expected (number of die)d(number of sides)')
         else:
             die = search("\d+d\d+", die_pattern).group().split('d')
 
+            # should the die to roll be a one sided die, return the number of die to roll
+            # 9d1 -> 9
             if int(die[1]) == 1:
-                await ctx.send(int(die[0]))
+                await ctx.send(die[0])
 
             else:
+                # seed shuffle with the current time
                 seed(time())
+                # create a list of all possible roll outcomes
                 dice = [x for x in range(int(die[0]), int(die[0]) * int(die[1]) + 1)]
+                # shuffle the list and send the first index's result
                 shuffle(dice)
-                await ctx.send(dice[0])
+                await ctx.send(str(dice[0]))
 
     @commands.command(name='ddoitem', help='Pulls basic information about an item in Dungeons & Dragons Online '
                       'from the wiki')
-    async def ddo_item(self, ctx, *item):
-        # Join all the parameters together
-        item_name = '_'.join(item)
-        url = 'https://ddowiki.com/page/Item:' + item_name
+    async def ddo_item(self, ctx, *, item):
+        """
+        A method that outputs an embed detailing the properties of an item on the DDOWiki.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            item (str): The name of the item to return details on.
+
+        Output:
+            Success: A discord.Embed detailing the item type, minimum level, and enchantments.
+            Failure: A description of the syntax error that occured.
+
+        Returns:
+            None.
+        """
+
+        url = 'https://ddowiki.com/page/Item:' + item.replace(' ', '_')
 
         async with ClientSession() as session:
             async with session.get(url) as r:
@@ -140,11 +198,8 @@ class DDO(commands.Cog):
                         enchantments = enchantments[0:index + 1]
                         break
 
-                # Replace the item name underscores from the url with spaces
-                item_name = item_name.replace('_', ' ')
-
                 # Create and send our embedded object
-                embed = Embed(title='**' + str(item_name) + '**', url=url, color=0x6879f2)
+                embed = Embed(title='**' + item + '**', url=url, color=0x6879f2)
                 embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
                 embed.set_thumbnail(url='https://i.imgur.com/QV6uUZf.png')
                 embed.add_field(name='Minimum Level', value=str(minimum_level))
@@ -157,8 +212,23 @@ class DDO(commands.Cog):
                       ' Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis, and Wayfinder'
                       '\nInformation is populated from \'DDO Audit\' every 20 seconds.')
     async def ddo_lfms(self, ctx, server='Khyber'):
+        """
+        A method that outputs a list of all active groups on a server.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            server (str): The name of the server to return lfms for. Default: 'Khyber'.
+
+        Output:
+            Success: A message detailing the lfms per category.
+            Failure: A description of the error that occured.
+
+        Returns:
+            None.
+        """
         if self.api_data is None:
-            return await ctx.send('Failed to query DDO Audit API.')
+            await ctx.send('Failed to query DDO Audit API.')
+            return
 
         if server not in self.SERVERS:
             server = 'Khyber'
@@ -166,21 +236,24 @@ class DDO(commands.Cog):
         try:
             server_data = self.api_data[self.SERVERS.index(server)]
         except ValueError:
-            return await ctx.send(f'No Active LFM\'s on {server}!')
+            await ctx.send(f'No Active LFM\'s on {server}!')
+            return
 
+        # Divide the groups into three lists: Raids, Quests, and Groups (No Listed Quest)
         else:
             raids = [q['QuestName'] for q in server_data['Groups'] if q['AdventureType'] == 'Raid']
             quests = [q['QuestName'] for q in server_data['Groups']
                       if q['QuestName'] is not None and q['AdventureType'] != 'Raid']
             groups = [q['Comment'] for q in server_data['Groups'] if q['QuestName'] is None]
 
+            # Should a list be empty, append 'None'
             for li in [raids, quests, groups]:
                 if not li:
                     li.append('None')
 
-            return await ctx.send(f'**Current Raids on {server}:** {", ".join(raids)}\n'
-                                  f'**Current Quests on {server}:** {", ".join(quests)}\n'
-                                  f'**Current Groups on {server}:** {", ".join(groups)}\n')
+            await ctx.send(f'**Current Raids on {server}:** {", ".join(raids)}\n'
+                           f'**Current Quests on {server}:** {", ".join(quests)}\n'
+                           f'**Current Groups on {server}:** {", ".join(groups)}\n')
 
     @commands.command(name='flfms', help='Returns a filtered list of active LFMS for the specified server.\n'
                       'Option filters include: LFM Type: (Quest, Raid, Wilderness), Difficulty: (Casual, Normal, Hard,'
@@ -188,8 +261,24 @@ class DDO(commands.Cog):
                       'Valid servers include Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis, and'
                       'Wayfinder\nInformation is populated from \'DDO Audit\' every 30 seconds.')
     async def ddo_filter_lfms(self, ctx, *args):
+        """
+        A method that outputs a list of all active groups on a server that match the specified filters.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            args (str): The filter options. Options include Type, Difficulty, Level, and a non-optional Server.
+
+        Output:
+            Success: A message detailing the filtered lfms.
+            Failure: A description syntax error that occured.
+
+        Returns:
+            None.
+        """
+
         if self.api_data is None:
-            return await ctx.send('Failed to query DDO Audit API.')
+            await ctx.send('Failed to query DDO Audit API.')
+            return
 
         # attempt to parse arguments provided
         server = atype = diff = level = None
@@ -215,9 +304,12 @@ class DDO(commands.Cog):
         try:
             server_data = self.api_data[self.SERVERS.index(server)]
         except ValueError:
-            return await ctx.send(f'No Active LFM\'s on {server} - Cannot filter LFMs!')
+            await ctx.send(f'No Active LFM\'s on {server} - Cannot filter LFMs!')
+            return
 
         # build sets for each of our individual filters, as well as a master set of all quests
+        # sets are tuples of (LeaderName, QuestName, Difficulty, AdventureType), with LeaderName
+        #   included to allow for different hashes of otherwise identical groups
         all_quests = {(q['Leader']['Name'], q['QuestName'], q['Difficulty'], q['AdventureType'])
                       for q in server_data['Groups'] if q['QuestName'] is not None}
         atypes = {(q['Leader']['Name'], q['QuestName'], q['Difficulty'], q['AdventureType'])
@@ -239,6 +331,20 @@ class DDO(commands.Cog):
 
     @tasks.loop(seconds=30)
     async def query_ddo_audit(self):
+        """
+        A discord.ext.tasks loop that queries the DDOAudit API for LFM information.
+        Executes every 30 seconds to comply with DDOAudit's rate limit (15 seconds).
+
+        Parameters:
+            None.
+
+        Output:
+            None.
+
+        Returns:
+            None.
+        """
+
         async with ClientSession() as session:
             async with session.get('https://www.playeraudit.com/api/groups') as r:
                 if r.status == 200:
@@ -252,38 +358,70 @@ class DDO(commands.Cog):
 
     @query_ddo_audit.before_loop
     async def before_api_query_loop(self):
+        """
+        A pre-task method to ensure the bot is ready before executing.
+
+        Returns:
+            None.
+        """
+
         await self.bot.wait_until_ready()
 
     @tasks.loop(seconds=30)
     async def check_for_valid_raids(self):
+        """
+        A discord.ext.tasks loop that checks for Epic Raids and alerts a user if there are any.
+        Executes every 30 seconds to mirror DDOAudit API data update interval.
+
+        Parameters:
+            None.
+
+        Output (Special Destination: DMChannel):
+            Success: A discord.Embed extensively detailing the raid.
+            Failure: None.
+
+        Returns:
+            None.
+        """
+
+        # attempt to get Lex's user. Should this fail, or the api_data be None, return
         lex_user = self.bot.get_user(self.LEX_ID)
 
         if lex_user is None or self.api_data is None:
             return
 
+        # if khyber_data can't be processed, return
         try:
             khyber_data = self.api_data[self.SERVERS.index('Khyber')]
         except ValueError:
             return
 
+        # filter epic raids (>= Level 20)
         raids = [quest for quest in khyber_data['Groups'] if (quest['AdventureType'] == 'Raid'
                  and quest['MinimumLevel'] >= 20)]
 
+        # If there are not any epic raids, clear our cache of alerts
         if not raids:
             self.raid_data.clear()
             return
 
         for raid in raids:
             name = raid['Leader']['Name']
+            # if the leader's name IS NOT in our alert cache, OR
+            #   the leader's name IS in the alert cache, but with a different quest name
+            # we have a valid alert to send
             if name not in self.raid_data or self.raid_data[name].quest != raid['QuestName']:
                 embed = build_embed(raid, name, self.bot.user.name, self.bot.user.avatar_url)
 
+                # build the embed, attempt to send it, and add the alert to our cache
                 try:
                     message = await lex_user.send(embed=embed)
                     self.raid_data[name] = RaidEmbed(raid['QuestName'], len(raid["Members"]), message, embed)
                 except HTTPException as e:
                     print(e)
 
+            # if the leader's name IS in our cache, AND the quest name is the same AND there's a different raid size
+            # we can edit the original embed with the updated raid size (and updated 'ActiveTime' while we're at it)
             elif name in self.raid_data and self.raid_data[name].quest == raid['QuestName'] and \
                     self.raid_data[name].members != len(raid["Members"]):
                 self.raid_data[name].members = len(raid["Members"])
@@ -295,16 +433,31 @@ class DDO(commands.Cog):
 
     @check_for_valid_raids.before_loop
     async def before_valid_raids_loop(self):
+        """
+        A pre-task method to ensure the bot is ready before executing.
+        Additionally sleeps for three seconds to ensure DDOAudit API data has been retrieved.
+
+        Returns:
+            None.
+        """
+
         await self.bot.wait_until_ready()
         await sleep(3)
 
-    @commands.command(name='killloop', hidden=True)
-    async def kill_loop(self, ctx):
-        self.check_for_valid_raids.cancel()
-        self.query_ddo_audit.cancel()
-        await ctx.send('All Loops Terminated.')
-
     def cog_unload(self):
+        """
+        A method detailing custom extension unloading procedures.
+        Clears internal caches and immediately and forcefully exits any discord.ext.tasks.
+
+        Parameters:
+            None.
+
+        Output:
+            None.
+
+        Returns:
+            None.
+        """
         self.check_for_valid_raids.cancel()
         self.query_ddo_audit.cancel()
         self.raid_data.clear()
@@ -314,6 +467,11 @@ class DDO(commands.Cog):
 
 @dataclass
 class RaidEmbed:
+    """
+    A dataclass to store information about discord.Embeds.
+    Used in check_for_valid_raids() to track and update send embeds.
+    """
+
     quest: str
     members: int
     message: Message
@@ -321,6 +479,20 @@ class RaidEmbed:
 
 
 def build_embed(raid, name, bot_name, bot_avatar):
+    """
+    A function to build a discord.Embed from DDOAudit API data.
+    Used in check_for_valid_raids() to tidy up code.
+
+    Parameters:
+        raid (dict): All information pertaining to the current raid.
+        name (str): The name of the raid leader.
+        bot_name (str): The name of the bot.
+        bot_avatar (str): The url of the bot's avatar.
+
+    Returns:
+        embed (discord.Embed): A fully constructed embed ready to be sent.
+    """
+
     comment = 'None' if raid['Comment'] is None or raid['Comment'] == '' else raid['Comment']
     title = 'Group' if raid["QuestName"] is None or raid["QuestName"] == '' else raid["QuestName"]
 
@@ -337,5 +509,15 @@ def build_embed(raid, name, bot_name, bot_avatar):
 
 
 def setup(bot):
+    """
+    A setup function that allows the cog to be treated as an extension.
+
+    Parameters:
+        bot (DreamBot): The bot the cog should be added to.
+
+    Returns:
+        None.
+    """
+
     bot.add_cog(DDO(bot))
     print('Completed Setup for Cog: DDO')
