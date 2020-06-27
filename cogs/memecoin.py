@@ -1,8 +1,6 @@
 from discord.ext import commands
-from discord import Embed
+from discord import Embed, HTTPException
 import aiosqlite
-
-# todo: Convert reaction listener events to be raw payload events
 
 
 def check_memecoin_channel():
@@ -42,15 +40,15 @@ class MemeCoin(commands.Cog):
         self.channel = 636356259255287808
 
     @commands.Cog.listener()
-    async def on_reaction_add(self, reaction, user):
+    async def on_raw_reaction_add(self, payload):
         """
-        A listener method that is called whenever a reaction is added to a cached message.
+        A listener method that is called whenever a reaction is added.
+        'raw' events fire regardless of whether or not a message is cached.
         Requirements listed in check_coin_requirements() must be met to proceed.
         Meme Coin records are stored in the database.
 
         Parameters:
-            reaction (discord.Reaction): The current state of the reaction.
-            user (discord.User): The user who added the reaction.
+            payload (discord.RawReactionActionEvent): Represents a payload for a raw reaction event.
 
         Output:
             None.
@@ -59,48 +57,44 @@ class MemeCoin(commands.Cog):
             None.
         """
 
-        if not (await check_coin_requirements(reaction, user, self.channel)):
+        query = values = None
+        author_id = await check_coin_requirements(self.bot, payload, self.channel)
+
+        if author_id == -1:
             return
 
-        query = values = None
-
-        if str(reaction) == '✅':
-            if user == reaction.message.author:
-                await reaction.message.channel.send(f'Man, look at this clown {user.mention}..'
-                                                    f' trying to give themself Meme Coins.. just shameful.')
+        if str(payload.emoji) == '✅':
             # if the user is NOT in the database, create their record with a value of 1
-            elif not (await check_for_user(self.bot.DATABASE_NAME, reaction.message.author.id)):
+            if not (await check_for_user(self.bot.DATABASE_NAME, author_id)):
                 query = 'INSERT INTO MEMECOIN (USER_ID, COINS) VALUES (?, ?)'
-                values = (reaction.message.author.id, 1)
+                values = (author_id, 1)
             # otherwise, increment their record
             else:
                 query = 'UPDATE MEMECOIN SET COINS=COINS+1 WHERE USER_ID=?'
-                values = (reaction.message.author.id,)
-        elif str(reaction) == '❌':
-            if user == reaction.message.author:
-                return
+                values = (author_id,)
+        elif str(payload.emoji) == '❌':
             # if the user is NOT in the database, create their record with a value of -1
-            elif not (await check_for_user(self.bot.DATABASE_NAME, reaction.message.author.id)):
+            if not (await check_for_user(self.bot.DATABASE_NAME, author_id)):
                 query = 'INSERT INTO MEMECOIN (USER_ID, COINS) VALUES (?, ?)'
-                values = (reaction.message.author.id, -1)
+                values = (author_id, -1)
             # otherwise, decrement their record
             else:
                 query = 'UPDATE MEMECOIN SET COINS=COINS-1 WHERE USER_ID=?'
-                values = (reaction.message.author.id,)
+                values = (author_id,)
 
         if query is not None:
             await execute_query(self.bot.DATABASE_NAME, query, values, 'MemeCoin Reaction_Add Database Transaction')
 
     @commands.Cog.listener()
-    async def on_reaction_remove(self, reaction, user):
+    async def on_raw_reaction_remove(self, payload):
         """
-        A listener method that is called whenever a reaction is removed from a cached message.
+        A listener method that is called whenever a reaction is removed.
+        'raw' events fire regardless of whether or not a message is cached.
         Requirements listed in check_coin_requirements() must be met to proceed.
         Meme Coin records are stored in the database.
 
         Parameters:
-            reaction (discord.Reaction): The current state of the reaction.
-            user (discord.User): The user who added the reaction.
+            payload (discord.RawReactionActionEvent): Represents a payload for a raw reaction event.
 
         Output:
             None.
@@ -109,23 +103,22 @@ class MemeCoin(commands.Cog):
             None.
         """
 
-        if not (await check_coin_requirements(reaction, user, self.channel)):
-            return
-
         query = None
+        author_id = await check_coin_requirements(self.bot, payload, self.channel)
 
-        if user == reaction.message.author:
+        if author_id == -1:
             return
+
         # Don't create a record on a reaction removal. Increment or decrement an existing record where appropriate
-        elif str(reaction) == '✅':
-            if await check_for_user(self.bot.DATABASE_NAME, reaction.message.author.id):
+        if str(payload.emoji) == '✅':
+            if await check_for_user(self.bot.DATABASE_NAME, author_id):
                 query = 'UPDATE MEMECOIN SET COINS=COINS-1 WHERE USER_ID=?'
-        elif str(reaction) == '❌':
-            if await check_for_user(self.bot.DATABASE_NAME, reaction.message.author.id):
+        elif str(payload.emoji) == '❌':
+            if await check_for_user(self.bot.DATABASE_NAME, author_id):
                 query = 'UPDATE MEMECOIN SET COINS=COINS+1 WHERE USER_ID=?'
 
         if query is not None:
-            await execute_query(self.bot.DATABASE_NAME, query, (reaction.message.author.id,),
+            await execute_query(self.bot.DATABASE_NAME, query, (author_id,),
                                 'MemeCoin Reaction_Remove Database Transaction')
 
     @check_memecoin_channel()
@@ -215,31 +208,50 @@ class MemeCoin(commands.Cog):
         await ctx.send(embed=embed)
 
 
-async def check_coin_requirements(reaction, user, channel):
+async def check_coin_requirements(bot, payload, memecoin_channel):
     """
-    A method that checks whether or not a message is eligible for Meme Coins.
+    A method that checks whether or not an event is eligible for Meme Coins.
+    Returns -1 if requirements are not met.
     Requirements:
         Check to make sure the message comes from the appropriate channel
         Check to make sure the user adding the reaction isn't a bot
+        Check to make sure the user adding the reaction isn't adding it to their own message
         Check to make sure the reaction isn't being added to a bot's message
-        Meme Coins can only be awarded on messages that have a link or an attachment
+        Check to make sure the message has either an attachment or a link
 
     Parameters:
-        reaction (discord.Reaction): The current state of the reaction.
-        user (discord.User): The user who added the reaction.
-        channel (int): The id of invocation channel.
+        bot (DreamBot): The Discord bot class.
+        payload (discord.RawReactionActionEvent): Represents a payload for a raw reaction event.
+        memecoin_channel (int): The ID of the Meme Coin channel.
 
     Returns:
-        (boolean): Whether or not the requirements have been met.
+        (int): If the requirements have been met - the original message's author id. Else - -1.
     """
 
-    if user.bot or reaction.message.author.bot:
-        return False
-    if not (reaction.message.content.find('http') != -1 or len(reaction.message.attachments) > 0):
-        return False
-    if reaction.message.channel.id != channel:
-        return False
-    return True
+    # get the original message: fetch channel -> fetch message
+    try:
+        original_channel = bot.get_channel(payload.channel_id)
+        original_message = await original_channel.fetch_message(payload.message_id)
+        reaction_author = bot.get_user(payload.user_id)
+        message_author = original_message.author
+
+        # if we failed to fetch any of our prerequisites, return false
+        if not all((original_channel, original_message, reaction_author, message_author)):
+            return -1
+
+    except HTTPException as e:
+        print(f'Check Coin Requirements Error: {e}')
+        return -1
+
+    if reaction_author.bot or message_author.bot:
+        return -1
+    if not (original_message.content.find('http') != -1 or len(original_message.attachments) > 0):
+        return -1
+    if original_channel.id != memecoin_channel:
+        return -1
+    if reaction_author.id == message_author.id:
+        return -1
+    return message_author.id
 
 
 async def check_for_user(database_name, user_id):
