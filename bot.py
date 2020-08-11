@@ -1,26 +1,28 @@
-import os
 import discord
 import logging
 import aiosqlite
+from os import getenv
+from sys import version
 from dotenv import load_dotenv
 from discord.ext.commands import ExtensionError, Bot, when_mentioned_or
-import datetime
+from datetime import datetime
+from asyncio import sleep
 
+# todo: implement subclassed help command to remove docstrings from help commands
+
+print(f'Current Python Version: {version}')
 print(f'Current Discord Version: {discord.__version__}')
 logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
-OWNER = int(os.getenv('OWNER_ID'))
-PREFIX = os.getenv('PREFIX')
-DATABASE = os.getenv('DATABASE')
+TOKEN = getenv('DISCORD_TOKEN')
+OWNER = int(getenv('OWNER_ID'))
+PREFIX = getenv('PREFIX')
+DATABASE = getenv('DATABASE')
 
 # load extensions (filename)
-initial_extensions = ('admin', 'ddo', 'memecoin', 'utility', 'exceptions', 'moderation')
+initial_extensions = ('admin', 'ddo', 'memecoin', 'utility', 'exceptions', 'moderation', 'music', 'images',)
 # unused extensions: None
-
-# define cogs with tasks for reconnection behavior
-task_extensions = ('DDO',)
 
 
 class DreamBot(Bot):
@@ -39,6 +41,7 @@ class DreamBot(Bot):
 
     DATABASE_NAME = DATABASE
     DEFAULT_PREFIX = PREFIX
+    ALERTS_CHANNEL = 742210950681067540
 
     def __init__(self):
         """
@@ -78,7 +81,7 @@ class DreamBot(Bot):
             await self.change_presence(status=discord.Status.online, activity=discord.Activity(name='My Spaghetti Code',
                                        type=discord.ActivityType.watching))
             await self.retrieve_prefixes()
-            self.uptime = datetime.datetime.now()
+            self.uptime = datetime.now()
             self.initialized = True
 
         print('READY')
@@ -98,7 +101,7 @@ class DreamBot(Bot):
             return
 
         if message.guild is None:
-            print(f'Direct Message from {message.author}\nContent: {message.content}')
+            print(f'Direct Message from {message.author}\nContent: {message.clean_content}')
 
         await self.process_commands(message)
 
@@ -135,6 +138,35 @@ class DreamBot(Bot):
         """
 
         super().run(TOKEN)
+
+    async def alert(self, **kwargs: dict) -> None:
+        """
+        A bot-wide method that allows alerts to be documented in the alerts channel for immediate notifications.
+
+        Parameters:
+            kwargs (dict): A dictionary of kwargs to build the alert with (Expected: {cog, meth, details}).
+
+        Returns:
+            None.
+        """
+
+        alert_string = f'**Alert Raised in Cog:** {kwargs.pop("cog")}' \
+                       f'\n**Method:** {kwargs.pop("meth")}' \
+                       f'\n**Time:** {datetime.now().strftime("%I:%M %p on %A, %B %d, %Y")}' \
+                       f'\n\n**Details:** {kwargs.pop("details")}\n'
+        alert_string += '\n'.join(f'**{key}:** {item}' for key, item in kwargs.items())
+
+        alert_channel: discord.TextChannel = self.get_channel(self.ALERTS_CHANNEL)
+
+        for _ in range(5):
+            try:
+                await alert_channel.send(alert_string)
+                return
+            except discord.HTTPException:
+                await sleep(15)
+
+        print('FAILED TO SEND ALERT')
+        print(alert_string)
 
 
 async def get_prefix(bot, message):

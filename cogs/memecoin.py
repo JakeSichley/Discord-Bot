@@ -58,9 +58,7 @@ class MemeCoin(commands.Cog):
         """
 
         query = values = None
-        author_id = await check_coin_requirements(self.bot, payload, self.channel)
-
-        if author_id == -1:
+        if not (author_id := await check_coin_requirements(self.bot, payload, self.channel)):
             return
 
         if str(payload.emoji) == '✅':
@@ -104,9 +102,7 @@ class MemeCoin(commands.Cog):
         """
 
         query = None
-        author_id = await check_coin_requirements(self.bot, payload, self.channel)
-
-        if author_id == -1:
+        if not (author_id := await check_coin_requirements(self.bot, payload, self.channel)):
             return
 
         # Don't create a record on a reaction removal. Increment or decrement an existing record where appropriate
@@ -184,7 +180,7 @@ class MemeCoin(commands.Cog):
         embed.set_footer(text="Please report any issues to my owner!")
 
         result = await retrieve_query(self.bot.DATABASE_NAME, 'SELECT * FROM MEMECOIN', (),
-                                      'MemeCoin Leaderboard Retrival Database')
+                                      'MemeCoin Leaderboard Retrieval Database')
 
         if len(result) > 0:
             top_scores = sorted(result, key=lambda x: x[1], reverse=True)
@@ -237,20 +233,20 @@ async def check_coin_requirements(bot, payload, memecoin_channel):
 
         # if we failed to fetch any of our prerequisites, return false
         if not all((original_channel, original_message, reaction_author, message_author)):
-            return -1
+            return None
 
     except HTTPException as e:
         print(f'Check Coin Requirements Error: {e}')
-        return -1
+        return None
 
     if reaction_author.bot or message_author.bot:
-        return -1
+        return None
     if not (original_message.content.find('http') != -1 or len(original_message.attachments) > 0):
-        return -1
+        return None
     if original_channel.id != memecoin_channel:
-        return -1
+        return None
     if reaction_author.id == message_author.id:
-        return -1
+        return None
     return message_author.id
 
 
@@ -312,7 +308,7 @@ async def retrieve_query(database_name, query, values, instigator='Default MemeC
         instigator (str): The invocation context of the query. Default: 'Default MemeCoin'.
 
     Returns:
-        (list): A list of sqlite3 row objects. Can be an empty list.
+        (list): A list of sqlite3 row objects. Can be empty.
     """
 
     try:
