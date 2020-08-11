@@ -1,12 +1,12 @@
 from discord import HTTPException, Message, Embed
 from discord.ext import commands, tasks
-from random import seed, shuffle
-from re import search
+from random import seed, shuffle, randrange
+from re import search, findall
 from time import time
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 from dataclasses import dataclass
-from asyncio import sleep
+from asyncio import sleep, wait_for, TimeoutError
 from json.decoder import JSONDecodeError
 
 
@@ -24,12 +24,13 @@ class DDO(commands.Cog):
         bot (commands.Bot): The Discord bot.
         api_data (dict): The response data from DDOAudit (used for LFMS).
         raid_data (dict): Maintains data for notifications; ensures no duplicate messages.
+        reconnect_tries (int): The number of consecutive unsuccessful queries to the DDOAudit.
         query_ddo_audit (ext.tasks): Stores the task that queries DDOAudit every 30 seconds.
         check_for_valid_raids (ext.tasks): Stores the task that send LFM notifications.
     """
 
-    SERVERS = ('Argonnessen', 'Cannith', 'Ghallanda', 'Khyber', 'Orien', 'Sarlona', 'Thelanis', 'Wayfinder')
-    ADVENTURE_TYPES = ('Quest', 'Raid', 'Wilderness')
+    SERVERS = ('Argonnessen', 'Cannith', 'Ghallanda', 'Khyber', 'Orien', 'Sarlona', 'Thelanis', 'Wayfinder', 'Hardcore')
+    QUEST_TYPES = ('Solo', 'Quest', 'Raid')
     DIFFICULTIES = ('Casual', 'Normal', 'Hard', 'Elite', 'Reaper')
     LEX_ID = 91995622093123584
 
@@ -44,49 +45,93 @@ class DDO(commands.Cog):
         self.bot = bot
         self.api_data = None
         self.raid_data = {}
+        self.reconnect_tries = 0
         self.query_ddo_audit.start()
         self.check_for_valid_raids.start()
 
-    @commands.command(name='roll', help='Simulates rolling dice. Syntax example: 9d6', ignore_extra=True)
-    async def roll(self, ctx, die_pattern):
+    @commands.command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')
+    async def roll(self, ctx, *, pattern) -> None:
         """
         A method to simulate the rolling of dice.
 
         Parameters:
             ctx (commands.Context): The invocation context.
-            die_pattern (str): The die pattern to roll. Example: 9d6 -> Nine Six-Sided die.
+            pattern (str): The die pattern to roll. Example: 9d6 -> Nine Six-Sided die.
 
         Output:
             Success: The result of the die pattern rolled.
-            Failure: A description of the syntax error that occured.
+            Failure: A description of the syntax error that occurred.
 
         Returns:
             None.
         """
 
-        # search for the proper die pattern using regex
-        if not search("\d+d\d+", die_pattern):
-            await ctx.send('ERROR: Invalid Syntax! Expected (number of die)d(number of sides)')
-        else:
-            die = search("\d+d\d+", die_pattern).group().split('d')
-
-            # should the die to roll be a one sided die, return the number of die to roll
-            # 9d1 -> 9
-            if int(die[1]) == 1:
-                await ctx.send(die[0])
-
-            else:
-                # seed shuffle with the current time
+        async def evaluate_dice(dice: str) -> [int]:
+            die = dice.split('d')
+            # create a list of all possible roll outcomes
+            # dice = [x for x in range(int(die[0]), int(die[0]) * int(die[1]) + 1)]
+            dice = []
+            for _ in range(10):
                 seed(time())
-                # create a list of all possible roll outcomes
-                dice = [x for x in range(int(die[0]), int(die[0]) * int(die[1]) + 1)]
-                # shuffle the list and send the first index's result
-                shuffle(dice)
-                await ctx.send(str(dice[0]))
+                dice.append([randrange(1, int(die[1]) + 1) for _ in range(int(die[0]))])
+            shuffle(dice)
+            # shuffle the list and send the first index's result
+            return dice[0]
+
+        async def evaluate_dice_string(string: str) -> str:
+            # avoid exposing eval() to the user -> manually parse the arithmetic expression we've generated
+            # while we have valid expressions, break them down into groups
+            while match := search(r'(\d+)([+\-])(\d+)', string):
+                match = match.groups()
+
+                if match[1] == '+':
+                    total = int(match[0]) + int(match[2])
+                else:
+                    total = int(match[0]) - int(match[2])
+
+                # replace the expression with the result and continue
+                string = string.replace(f'{"".join(match)}', str(total), 1)
+
+            return string
+
+        # remove all spaces from the string, and manually add a space to the front
+        # this allows this regex pattern to find a 'd#' at the beginning
+        pattern = ' ' + pattern.replace(' ', '')
+        # build a dict of the single die in the pattern (ex: 'd20', 'd2', etc.)
+        single_die = {x[0] + x[1]: x[0] + '1' + x[1] for x in findall(r'([^\d])(d\d+)', pattern)}
+        # replace all the single die with a '1d#' alternative, ensuring all dice follow the #d# format
+        for key, value in single_die.items():
+            pattern = pattern.replace(key, value.strip(), 1)
+        # with all die in the same format, extract all the requested rolls
+        die_patterns = findall(r'\d+d\d+', pattern)
+        # build a dict of results {request: result}
+        results = {die: await evaluate_dice(die) for die in die_patterns}
+        # build a result string we can present to the user
+        breakdown = f'Roll: **{pattern}**\nResult: **$**\n\nBreakdown:'
+
+        # group all of the non-die rolls together so we can append it the breakdown
+        non_die = findall(r'([+|-]\d+)(?=\+|-|$)', pattern)
+
+        # give the user a breakdown of each of their requested rolls
+        for key, value in results.items():
+            pattern = pattern.replace(key, str(sum(value)), 1)
+            breakdown += f'\n{key} ({sum(value)}): {value}'
+
+        # if the user supplied non-die args, add those to the breakdown
+        if non_die:
+            non_die_total = sum([int(x) for x in non_die])
+            breakdown += f'\nNon-Die ({non_die_total}): {[int(x) for x in non_die]}'
+
+        async with ctx.channel.typing():
+            try:
+                final_value = await wait_for(evaluate_dice_string(pattern), 3)
+                await ctx.send(breakdown.replace('$', final_value))
+            except TimeoutError:
+                await ctx.send('Die Evaluation Timeout Error')
 
     @commands.command(name='ddoitem', help='Pulls basic information about an item in Dungeons & Dragons Online '
                       'from the wiki')
-    async def ddo_item(self, ctx, *, item):
+    async def ddo_item(self, ctx, *, item) -> None:
         """
         A method that outputs an embed detailing the properties of an item on the DDOWiki.
 
@@ -96,7 +141,7 @@ class DDO(commands.Cog):
 
         Output:
             Success: A discord.Embed detailing the item type, minimum level, and enchantments.
-            Failure: A description of the syntax error that occured.
+            Failure: A description of the syntax error that occurred.
 
         Returns:
             None.
@@ -167,10 +212,10 @@ class DDO(commands.Cog):
                         elif element.find('has_tooltip') != -1:
                             # Enchantment description is always before the first closing '</a>'
                             # Positive Lookahead for the fewest number of characters
-                            # These characters are always preceeded by a word or a digit
+                            # These characters are always preceded by a word or a digit
                             # Sometimes, enchantments have a leading space, or a '+' character
                             #   look for 0 or more of these and add them to our match
-                            # Finally, Positive Lookbehind to match the closing '>' character preceeding our description
+                            # Finally, Positive Lookbehind to match the closing '>' character preceding our description
                             # Note: This description was written 'backwards', (positive lookbehind occurs first, etc)
                             result = search("(?<=>)( )*(\+\d+ )*(\w|\d)(.+?)(?=</a>)", element)
                             # If our result is not a Mythic Bonus (these are on nearly every single item), add it
@@ -221,11 +266,12 @@ class DDO(commands.Cog):
 
         Output:
             Success: A message detailing the lfms per category.
-            Failure: A description of the error that occured.
+            Failure: A description of the error that occurred.
 
         Returns:
             None.
         """
+
         if self.api_data is None:
             await ctx.send('Failed to query DDO Audit API.')
             return
@@ -241,10 +287,9 @@ class DDO(commands.Cog):
 
         # Divide the groups into three lists: Raids, Quests, and Groups (No Listed Quest)
         else:
-            raids = [q['QuestName'] for q in server_data['Groups'] if q['AdventureType'] == 'Raid']
-            quests = [q['QuestName'] for q in server_data['Groups']
-                      if q['QuestName'] is not None and q['AdventureType'] != 'Raid']
-            groups = [q['Comment'] for q in server_data['Groups'] if q['QuestName'] is None]
+            raids = [q['Quest']['Name'] for q in server_data['Groups'] if q['Quest'] and q['Quest']['Type'] == 'Raid']
+            quests = [q['Quest']['Name'] for q in server_data['Groups'] if q['Quest'] and q['Quest']['Type'] != 'Raid']
+            groups = [q['Comment'] for q in server_data['Groups'] if not q['Quest'] and q['Comment']]
 
             # Should a list be empty, append 'None'
             for li in [raids, quests, groups]:
@@ -256,10 +301,10 @@ class DDO(commands.Cog):
                            f'**Current Groups on {server}:** {", ".join(groups)}\n')
 
     @commands.command(name='flfms', help='Returns a filtered list of active LFMS for the specified server.\n'
-                      'Option filters include: LFM Type: (Quest, Raid, Wilderness), Difficulty: (Casual, Normal, Hard,'
-                      'Elite, Reaper), and Level: (1-30). You MUST supply a server.\n'
-                      'Valid servers include Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis, and'
-                      'Wayfinder\nInformation is populated from \'DDO Audit\' every 30 seconds.')
+                      'Optional filters include: LFM Type: (Solo, Quest, Raid), Difficulty: (Casual, Normal, Hard, '
+                      'Elite, Reaper), and Level: (1-30).\nYou MUST supply a server.\n'
+                      'Valid servers include Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis, '
+                      'Wayfinder, and Hardcore.\nInformation is populated from \'DDO Audit\' every 30 seconds.')
     async def ddo_filter_lfms(self, ctx, *args):
         """
         A method that outputs a list of all active groups on a server that match the specified filters.
@@ -287,7 +332,7 @@ class DDO(commands.Cog):
             # parse string arguments first
             if arg in self.SERVERS:
                 server = arg
-            elif arg in self.ADVENTURE_TYPES:
+            elif arg in self.QUEST_TYPES:
                 atype = arg
             elif arg in self.DIFFICULTIES:
                 diff = arg
@@ -310,14 +355,15 @@ class DDO(commands.Cog):
         # build sets for each of our individual filters, as well as a master set of all quests
         # sets are tuples of (LeaderName, QuestName, Difficulty, AdventureType), with LeaderName
         #   included to allow for different hashes of otherwise identical groups
-        all_quests = {(q['Leader']['Name'], q['QuestName'], q['Difficulty'], q['AdventureType'])
-                      for q in server_data['Groups'] if q['QuestName'] is not None}
-        atypes = {(q['Leader']['Name'], q['QuestName'], q['Difficulty'], q['AdventureType'])
-                  for q in server_data['Groups'] if atype is not None and q['AdventureType'] == atype}
-        diffs = {(q['Leader']['Name'], q['QuestName'], q['Difficulty'], q['AdventureType'])
-                 for q in server_data['Groups'] if diff is not None and q['Difficulty'] == diff}
-        levels = {(q['Leader']['Name'], q['QuestName'], q['Difficulty'], q['AdventureType']) for q
-                  in server_data['Groups'] if level is not None and q['MinimumLevel'] <= level <= q['MaximumLevel']}
+
+        all_quests = {(q['Leader']['Name'], q['Quest']['Name'], q['Difficulty'], q['Quest']['Type'])
+                      for q in server_data['Groups'] if q['Quest']}
+        atypes = {(q['Leader']['Name'], q['Quest']['Name'], q['Difficulty'], q['Quest']['Type'])
+                  for q in server_data['Groups'] if q['Quest'] and atype and q['Quest']['Type'] == atype}
+        diffs = {(q['Leader']['Name'], q['Quest']['Name'], q['Difficulty'], q['Quest']['Type'])
+                 for q in server_data['Groups'] if q['Quest'] and diff and q['Difficulty'] == diff}
+        levels = {(q['Leader']['Name'], q['Quest']['Name'], q['Difficulty'], q['Quest']['Type']) for q
+                  in server_data['Groups'] if q['Quest'] and level and q['MinimumLevel'] <= level <= q['MaximumLevel']}
 
         # if our value is not None, start performing intersection calculations on the full set
         for filtered_set, value in [(atypes, atype), (diffs, diff), (levels, level)]:
@@ -349,12 +395,20 @@ class DDO(commands.Cog):
             async with session.get('https://www.playeraudit.com/api/groups') as r:
                 if r.status == 200:
                     try:
-                        self.api_data = await r.json(encoding='utf-8-sig', content_type='text/html')
+                        self.api_data = await r.json(encoding='utf-8-sig', content_type='application/json')
+                        self.reconnect_tries = 0
+                        return
                     except JSONDecodeError as e:
-                        self.api_data = None
-                        print(e)
-                else:
-                    self.api_data = None
+                        print(f'DDOAudit JSONDecode Error: {e}')
+
+                self.api_data = None
+                self.reconnect_tries += 1
+
+                # if the query fails 5 times in a row, delay querying the API for an hour
+                if self.reconnect_tries % 5 == 0:
+                    await self.bot.alert(cog='DDO', meth='query_ddo_audit', details='Failed to Query DDOAudit',
+                                         sleep_time=f'{min(int(self.reconnect_tries / 5), 6)} Hours')
+                    await sleep(3600 * min(int(self.reconnect_tries / 5), 6))
 
     @query_ddo_audit.before_loop
     async def before_api_query_loop(self):
@@ -397,8 +451,8 @@ class DDO(commands.Cog):
             return
 
         # filter epic raids (>= Level 20)
-        raids = [quest for quest in khyber_data['Groups'] if (quest['AdventureType'] == 'Raid'
-                 and quest['MinimumLevel'] >= 20)]
+        raids = [q for q in khyber_data['Groups']
+                 if q['Quest'] and q['Quest']['Type'] == 'Raid' and q['MinimumLevel'] >= 20]
 
         # If there are not any epic raids, clear our cache of alerts
         if not raids:
@@ -410,19 +464,19 @@ class DDO(commands.Cog):
             # if the leader's name IS NOT in our alert cache, OR
             #   the leader's name IS in the alert cache, but with a different quest name
             # we have a valid alert to send
-            if name not in self.raid_data or self.raid_data[name].quest != raid['QuestName']:
+            if name not in self.raid_data or self.raid_data[name].quest != raid['Quest']['Name']:
                 embed = build_embed(raid, name, self.bot.user.name, self.bot.user.avatar_url)
 
                 # build the embed, attempt to send it, and add the alert to our cache
                 try:
                     message = await lex_user.send(embed=embed)
-                    self.raid_data[name] = RaidEmbed(raid['QuestName'], len(raid["Members"]), message, embed)
+                    self.raid_data[name] = RaidEmbed(raid['Quest']['Name'], len(raid["Members"]), message, embed)
                 except HTTPException as e:
                     print(e)
 
             # if the leader's name IS in our cache, AND the quest name is the same AND there's a different raid size
             # we can edit the original embed with the updated raid size (and updated 'ActiveTime' while we're at it)
-            elif name in self.raid_data and self.raid_data[name].quest == raid['QuestName'] and \
+            elif name in self.raid_data and self.raid_data[name].quest == raid['Quest']['Name'] and \
                     self.raid_data[name].members != len(raid["Members"]):
                 self.raid_data[name].members = len(raid["Members"])
                 self.raid_data[name].embed.set_field_at(2, name='Raid Size', inline=False,
@@ -458,6 +512,7 @@ class DDO(commands.Cog):
         Returns:
             None.
         """
+
         self.check_for_valid_raids.cancel()
         self.query_ddo_audit.cancel()
         self.raid_data.clear()
@@ -478,7 +533,7 @@ class RaidEmbed:
     embed: Embed
 
 
-def build_embed(raid, name, bot_name, bot_avatar):
+def build_embed(raid: dict, name: str, bot_name: str, bot_avatar: str) -> Embed:
     """
     A function to build a discord.Embed from DDOAudit API data.
     Used in check_for_valid_raids() to tidy up code.
@@ -494,7 +549,7 @@ def build_embed(raid, name, bot_name, bot_avatar):
     """
 
     comment = 'None' if raid['Comment'] is None or raid['Comment'] == '' else raid['Comment']
-    title = 'Group' if raid["QuestName"] is None or raid["QuestName"] == '' else raid["QuestName"]
+    title = 'Group' if raid['Quest']['Name'] is None or raid['Quest']['Name'] == '' else raid['Quest']['Name']
 
     embed = Embed(title=f'{raid["Leader"]["Name"]} is leading a {raid["Difficulty"]} {title}!', color=0x1dcaff)
     embed.set_author(name=bot_name, icon_url=bot_avatar)

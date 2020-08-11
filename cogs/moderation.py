@@ -1,6 +1,11 @@
 from discord.ext import commands
 from discord import User
 
+# todo: Add automatic role joining
+# todo: not this cog, reaction roles
+# todo: set logging channel (table: guild_id -> channel_id, permissions)
+# todo: implement logging bit permissions
+
 
 class Moderation(commands.Cog):
     """
@@ -8,7 +13,6 @@ class Moderation(commands.Cog):
 
     Attributes:
         bot (commands.Bot): The Discord bot class.
-        delete_id (int: discord.User): An intermediary variable to store a user ID during method: purge
     """
 
     def __init__(self, bot):
@@ -20,7 +24,6 @@ class Moderation(commands.Cog):
         """
 
         self.bot = bot
-        self.delete_id = None
 
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True, read_message_history=True)
@@ -49,27 +52,11 @@ class Moderation(commands.Cog):
         """
 
         if user is None:
-            self.delete_id = None
+            await ctx.channel.purge(limit=limit + 1)
         else:
-            self.delete_id = user.id
-
-        await ctx.channel.purge(limit=limit + 1, check=self.purgecheck)
-
-    def purgecheck(self, message):
-        """
-        A method to check whether or not a message should be deleted during purge().
-
-        Parameters:
-            message (discord.Message): The message to check criterion against.
-
-        Returns:
-            (boolean): Whether or not the message meets the deletion criterion.
-        """
-
-        if self.delete_id is None:
-            return True
-        else:
-            return message.author.id == self.delete_id
+            def purge_check(message):
+                return message.author.id == user.id
+            await ctx.channel.purge(limit=limit + 1, check=purge_check)
 
 
 def setup(bot):

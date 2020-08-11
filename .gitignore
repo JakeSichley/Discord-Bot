@@ -135,3 +135,4 @@ Resources/Raw Resources
 .idea/inspectionProfiles/profiles_settings.xml
 tests.py
 BotDatabase
+cogs/test.py

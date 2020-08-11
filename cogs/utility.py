@@ -1,4 +1,5 @@
 from discord.ext import commands
+from discord import Member, Embed, PublicUserFlags
 import datetime
 import pytz
 import aiosqlite
@@ -24,7 +25,7 @@ class Utility(commands.Cog):
 
     @commands.command(name='time', help='Responds with the current time. Can be supplied with a timezone.\nFor a full '
                       'list of supported timezones, see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones')
-    async def current_time(self, ctx, timezone='UTC'):
+    async def current_time(self, ctx, timezone='UTC') -> None:
         """
         A method to output the current time in a specified timezone.
 
@@ -47,7 +48,7 @@ class Utility(commands.Cog):
 
     @commands.command(name='devserver', help='Responds with an invite link to the development server. Useful for '
                       'getting assistance with a bug, or requesting a new feature!')
-    async def dev_server(self, ctx):
+    async def dev_server(self, ctx) -> None:
         """
         A method to output a link to the DreamBot development server.
 
@@ -68,7 +69,7 @@ class Utility(commands.Cog):
     @commands.has_permissions(administrator=True)
     @commands.guild_only()
     @commands.command(name='setprefix', help='Sets the bot\'s prefix for this guild. Administrator use only.')
-    async def set_prefix(self, ctx, pre):
+    async def set_prefix(self, ctx, pre) -> None:
         """
         A method to change the command prefix for a guild. Only usable by a guild's administrators.
 
@@ -109,7 +110,7 @@ class Utility(commands.Cog):
 
     @commands.guild_only()
     @commands.command(name='getprefix', aliases=['prefix'], help='Gets the bot\'s prefix for this guild.')
-    async def get_prefix(self, ctx):
+    async def get_prefix(self, ctx) -> None:
         """
         A method that outputs the command prefix for a guild.
 
@@ -141,7 +142,7 @@ class Utility(commands.Cog):
             print(f'Set Prefix SQLite Error: {e}')
 
     @commands.command(name='uptime', help='Returns current bot uptime.')
-    async def uptime(self, ctx):
+    async def uptime(self, ctx) -> None:
         """
         A method that outputs the uptime of the bot.
 
@@ -160,6 +161,57 @@ class Utility(commands.Cog):
         minutes, seconds = divmod(remainder, 60)
         await ctx.send(f'Bot Epoch: {self.bot.uptime.strftime("%I:%M %p on %A, %B %d, %Y")}'
                        f'\nBot Uptime: {time.days} Days, {hours} Hours, {minutes} Minutes, {seconds} Seconds')
+
+    @commands.command(name='userinfo', aliases=['ui'],
+                      help='Generates an embed detailing information about the specified user')
+    async def user_info(self, ctx, user: Member) -> None:
+        """
+        A method that outputs user information.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            user (discord.Member): The member to generate information about.
+
+        Output:
+            Information about the specified user, including creation and join date.
+
+        Returns:
+            None.
+        """
+
+        embed = Embed(title=f'{str(user)}\'s User In formation', color=0x1dcaff)
+        if user.nick:
+            embed.description = f'Known as **{user.nick}** round\' these parts'
+        embed.set_thumbnail(url=user.avatar_url)
+        embed.add_field(name='Account Created', value=user.created_at.strftime('%I:%M %p on %A, %B %d, %Y'))
+        embed.add_field(name='Joined Server', value=user.joined_at.strftime('%I:%M %p on %A, %B %d, %Y'))
+        members = sorted(ctx.guild.members, key=lambda x: x.joined_at)
+        embed.add_field(name='Join Position', value=str(members.index(user)))
+        embed.add_field(name='User ID', value=str(user.id), inline=False)
+        embed.add_field(name='User Flags', value=await readable_flags(user.public_flags), inline=False)
+        embed.add_field(name='Roles', value=', '.join(str(x) for x in (user.roles[::-1])[:-1]), inline=False)
+        embed.set_footer(text="Please report any issues to my owner!")
+
+        await ctx.send(embed=embed)
+
+
+async def readable_flags(flags: PublicUserFlags) -> str:
+    """
+    A method that converts PublicUserFlag enums to usable strings.
+
+    Parameters:
+        flags (PublicUserFlags): The public user flags for a given user.
+
+    Returns:
+        (str): An embed-ready string detailing the user's flags.
+    """
+
+    flag_strings = [' '.join(x.capitalize() for x in flag[0].split('_')) for flag in flags if flag[1]]
+
+    if flag_strings:
+        return ', '.join(flag_strings)
+    else:
+        return 'None'
 
 
 def setup(bot):
