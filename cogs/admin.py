@@ -216,7 +216,7 @@ class Admin(commands.Cog):
         await ctx.send(output)
 
     @commands.command(name='sql', hidden=True)
-    async def sql(self, ctx, *, _ev: str):
+    async def sql(self, ctx, *, query: str):
         """
         A command to execute a sqlite3 statement.
         If the statement type is 'SELECT', successful executions will send the result.
@@ -227,7 +227,7 @@ class Admin(commands.Cog):
 
         Parameters:
             ctx (commands.Context): The invocation context.
-            _ev (str): The statement to be executed..
+            query (str): The statement to be executed.
 
         Output:
             Success ('SELECT'): The result of the selection statement.
@@ -240,13 +240,13 @@ class Admin(commands.Cog):
 
         try:
             async with aiosqlite.connect(self.bot.DATABASE_NAME) as db:
-                if 'SELECT' in _ev:
-                    async with db.execute(_ev) as cursor:
+                if (query.upper()).startswith('SELECT'):
+                    async with db.execute(query) as cursor:
                         await ctx.send(await cursor.fetchall())
                 else:
-                    await db.execute(_ev)
+                    affected = await db.execute(query)
                     await db.commit()
-                    await ctx.send('Executed.')
+                    await ctx.send(f'Executed. {affected.rowcount} rows affected.')
 
         except aiosqlite.Error as e:
             await ctx.send(f'Error: {e}')

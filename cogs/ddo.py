@@ -17,7 +17,7 @@ class DDO(commands.Cog):
     Constants:
         SERVERS (tuple): A tuple of valid servers for DDOAudit
         ADVENTURE_TYPES (tuple): A tuple of valid adventure types for DDOAudit
-        DIFFICUlTIES (tuple): A tuple of valid difficulties for DDOAudit
+        DIFFICULTIES (tuple): A tuple of valid difficulties for DDOAudit
         LEX_ID (int): The ID of the user to send raid alerts to.
 
     Attributes:
