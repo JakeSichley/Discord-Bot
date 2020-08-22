@@ -73,8 +73,52 @@ async def exists_query(database_name: str, query: str, values: tuple) -> bool:
         return False
 
 
+async def cleanup(messages: List[discord.Message], channel: discord.TextChannel) -> None:
+    """
+    Cleans up all prompt messages sent by the bot a command's setup.
+    Attempts to bulk delete messages if permissions allow; otherwise messages are deleted individually.
+
+    Parameters:
+        messages (list[discord.Message]): The list of messages to delete.
+        channel (discord.TextChannel): The channel to delete the messages from.
+
+    Returns:
+        None.
+    """
+
+    try:
+        await channel.delete_messages(messages)
+    except discord.Forbidden:
+        while messages:
+            await messages.pop().delete()
+    except discord.DiscordException:
+        pass
+
+
 class GuildConverter(IDConverter):
+    """
+    Converts to a discord.Guild
+
+    All lookups are via the local guild.
+
+    The lookup strategy is as follows (in order):
+
+    1. Lookup by ID.
+    4. Lookup by name
+    """
+
     async def convert(self, ctx, argument):
+        """
+        Attempts to convert the argument into a discord.Guild object.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            argument (str): The arg to be converted.
+
+        Returns:
+            result (discord.Guild): The resulting discord.Guild. Could be None if conversion failed without exceptions.
+        """
+
         match = self._get_id_match(argument)
         result = None
         guild = ctx.guild

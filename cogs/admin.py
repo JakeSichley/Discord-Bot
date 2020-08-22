@@ -5,7 +5,6 @@ from contextlib import redirect_stdout
 from textwrap import indent
 from traceback import format_exc
 import aiosqlite
-from typing import List
 
 
 class Admin(commands.Cog):
@@ -22,7 +21,7 @@ class Admin(commands.Cog):
         The constructor for the Admin class.
 
         Parameters:
-            bot (DreamBot): The Discord bot class.
+            bot (commands.Bot): The Discord bot.
         """
 
         self.bot = bot
@@ -42,7 +41,7 @@ class Admin(commands.Cog):
 
         return await self.bot.is_owner(ctx.author)
 
-    @commands.command(name='admin help', aliases=['ahelp'], hidden=True)
+    @commands.command(name='adminhelp', aliases=['ahelp'], hidden=True)
     async def admin_help_command(self, ctx):
         """
         A command to generate help information for the Admin cog.
@@ -66,7 +65,7 @@ class Admin(commands.Cog):
         help_string = f'```Admin Cog.\n\nCommands:'
 
         for command in list_of_commands:
-            help_string += f'\n  {command.name} {" " * (longest_command_name - len(command.name))} {command.short_doc}'
+            help_string += f'\n  {command.name:{longest_command_name + 1}} {command.short_doc}'
 
         help_string += '\n\nType ?help command for more info on a command.\n' \
                        'You can also type ?help category for more info on a category.```'
@@ -384,7 +383,7 @@ def setup(bot):
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (DreamBot): The bot the cog should be added to.
+        bot (commands.Bot): The bot the cog should be added to.
 
     Returns:
         None.

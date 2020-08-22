@@ -39,7 +39,7 @@ class DDO(commands.Cog):
         The constructor for the Moderation class.
 
         Parameters:
-            bot (DreamBot): The Discord bot class.
+            bot (commands.Bot): The Discord bot.
         """
 
         self.bot = bot
@@ -407,7 +407,7 @@ class DDO(commands.Cog):
                 # if the query fails 5 times in a row, delay querying the API for an hour
                 if self.reconnect_tries % 5 == 0:
                     await self.bot.alert(cog='DDO', meth='query_ddo_audit', details='Failed to Query DDOAudit',
-                                         sleep_time=f'{min(int(self.reconnect_tries / 5), 6)} Hours')
+                                         sleep_time=f'{min(int(self.reconnect_tries / 5), 6)} Hour(s)')
                     await sleep(3600 * min(int(self.reconnect_tries / 5), 6))
 
     @query_ddo_audit.before_loop
@@ -568,7 +568,7 @@ def setup(bot):
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (DreamBot): The bot the cog should be added to.
+        bot (commands.Bot): The bot the cog should be added to.
 
     Returns:
         None.

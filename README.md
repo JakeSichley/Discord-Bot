@@ -4,7 +4,7 @@ A Python-based bot for Discord utilizing [Rapptz's Discord Wrapper](https://gith
 #### Versions
 **Python**: 3.8.1
 
-**discord.py**: 1.4.0
+**discord.py**: 1.4.1
 
 # Overview
 This bot is designed for personal use in Discord servers that I somehow have power in.
@@ -47,3 +47,7 @@ implementation.
 
 ## Images
 The `Images` cog implements a number of image manipulation commands supported by Pillow.
+
+## Reactions
+The `Reactions` cog implements the concept of 'Reaction Roles'. Users can react to specified messages to receive 
+corresponding roles within the guild.

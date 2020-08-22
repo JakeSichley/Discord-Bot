@@ -8,8 +8,6 @@ from discord.ext.commands import ExtensionError, Bot, when_mentioned_or
 from datetime import datetime
 from asyncio import sleep
 
-# todo: implement subclassed help command to remove docstrings from help commands
-
 print(f'Current Python Version: {version}')
 print(f'Current Discord Version: {discord.__version__}')
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +19,7 @@ PREFIX = getenv('PREFIX')
 DATABASE = getenv('DATABASE')
 
 # load extensions (filename)
-initial_extensions = ('admin', 'ddo', 'memecoin', 'utility', 'exceptions', 'moderation', 'music', 'images',)
+initial_extensions = ('admin', 'ddo', 'memecoin', 'utility', 'exceptions', 'moderation', 'images', 'reactions')
 # unused extensions: None
 
 

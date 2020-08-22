@@ -18,7 +18,7 @@ class Utility(commands.Cog):
         The constructor for the UtilityFunctions class.
 
         Parameters:
-           bot (DreamBot): The Discord bot class.
+           bot (commands.Bot): The Discord bot.
         """
 
         self.bot = bot
@@ -219,7 +219,7 @@ def setup(bot):
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (DreamBot): The bot the cog should be added to.
+        bot (commands.Bot): The bot the cog should be added to.
 
     Returns:
         None.
