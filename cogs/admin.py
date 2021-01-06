@@ -125,34 +125,6 @@ class Admin(commands.Cog):
         except commands.ExtensionNotLoaded:
             await ctx.send(f'Could Not Unload Module: `{module}`')
 
-    @commands.command(name='mreload', hidden=True)
-    async def mreload(self, ctx, module):
-        """
-        A command to 'manually' reload a module. Explicitly unloads then reloads a module.
-        If the reload fails, the previous state of module is maintained.
-        If the module is not loaded, attempt to load the module.
-
-        Checks:
-            is_owner(): Whether or not the invoking user is the bot's owner.
-
-        Parameters:
-            ctx (commands.Context): The invocation context.
-            module (str): The module to be reloaded.
-
-        Output:
-            The status of the 'manual' reload.
-
-        Returns:
-            None.
-        """
-
-        try:
-            self.bot.unload_extension('cogs.' + module)
-            self.bot.load_extension('cogs.' + module)
-            await ctx.send(f'Manually Reloaded Module: `{module}`')
-        except commands.ExtensionNotLoaded:
-            await ctx.send(f'Could Not Manually Reloaded Module: `{module}`')
-
     @commands.command(name='logout', aliases=['shutdown'], hidden=True)
     async def logout(self, ctx):
         """
@@ -249,7 +221,7 @@ class Admin(commands.Cog):
 
         except aiosqlite.Error as e:
             await ctx.send(f'Error: {e}')
-            print(f'Set Prefix SQLite Error: {e}')
+            print(f'Admin SQL Command Error: {e}')
 
     @commands.command(name='reloadprefixes', aliases=['rp'], hidden=True)
     async def reload_prefixes(self, ctx):

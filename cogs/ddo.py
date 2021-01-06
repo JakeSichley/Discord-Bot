@@ -22,7 +22,7 @@ class DDO(commands.Cog):
 
     Attributes:
         bot (commands.Bot): The Discord bot.
-        api_data (dict): The response data from DDOAudit (used for LFMS).
+        api_data (dict): The response data from DDOAudit (used for LFMs).
         raid_data (dict): Maintains data for notifications; ensures no duplicate messages.
         reconnect_tries (int): The number of consecutive unsuccessful queries to the DDOAudit.
         query_ddo_audit (ext.tasks): Stores the task that queries DDOAudit every 30 seconds.
@@ -253,7 +253,7 @@ class DDO(commands.Cog):
                 embed.set_footer(text="Please report any formatting issues to my owner!")
                 await ctx.send(embed=embed)
 
-    @commands.command(name='lfms', help='Returns a list of active LFMS for the specified server.\nValid servers include'
+    @commands.command(name='lfms', help='Returns a list of active LFMs for the specified server.\nValid servers include'
                       ' Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis, and Wayfinder'
                       '\nInformation is populated from \'DDO Audit\' every 20 seconds.')
     async def ddo_lfms(self, ctx, server='Khyber'):
@@ -300,7 +300,7 @@ class DDO(commands.Cog):
                            f'**Current Quests on {server}:** {", ".join(quests)}\n'
                            f'**Current Groups on {server}:** {", ".join(groups)}\n')
 
-    @commands.command(name='flfms', help='Returns a filtered list of active LFMS for the specified server.\n'
+    @commands.command(name='flfms', help='Returns a filtered list of active LFMs for the specified server.\n'
                       'Optional filters include: LFM Type: (Solo, Quest, Raid), Difficulty: (Casual, Normal, Hard, '
                       'Elite, Reaper), and Level: (1-30).\nYou MUST supply a server.\n'
                       'Valid servers include Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis, '

@@ -1,6 +1,8 @@
 import aiosqlite
 import discord
-from typing import List
+import datetime
+import pytz
+from typing import List, Sequence, Any, Iterator, Tuple
 from discord.ext.commands import IDConverter, BadArgument
 
 
@@ -95,6 +97,22 @@ async def cleanup(messages: List[discord.Message], channel: discord.TextChannel)
         pass
 
 
+def localize_time(time: datetime.datetime) -> str:
+    """
+    Localizes datetime objects to Pacific time and converts the format to a readable string.
+
+    Parameters:
+        time (datetime.datetime): The datetime object to localize.
+
+    Returns:
+        (str): The readable and localized date and time.
+    """
+
+    pacific = datetime.datetime.now(pytz.timezone('US/Pacific'))
+    offset_time = time + datetime.timedelta(seconds=pacific.utcoffset().total_seconds())
+    return offset_time.strftime('%I:%M %p on %A, %B %d, %Y')
+
+
 class GuildConverter(IDConverter):
     """
     Converts to a discord.Guild
@@ -135,3 +153,24 @@ class GuildConverter(IDConverter):
             raise BadArgument('Guild "{}" not found.'.format(argument))
 
         return result
+
+
+def pairs(sequence: Sequence[Any]) -> Iterator[Tuple[Any, Any]]:
+    """
+    Generator that yields pairs of items in a sequence
+
+    Parameters:
+        sequence (Sequence[Any]): A sequence of items.
+
+    Returns:
+        None.
+
+    Yields:
+        (Iterator[(Any, Any)]): The next pair of items from the sequence.
+    """
+
+    i = iter(sequence)
+    prev = next(i)
+    for item in i:
+        yield prev, item
+        prev = next(i)

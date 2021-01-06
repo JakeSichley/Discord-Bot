@@ -1,5 +1,6 @@
 from discord.ext import commands
 from discord import Member, Embed, PublicUserFlags
+from utils import localize_time
 import datetime
 import pytz
 import aiosqlite
@@ -179,17 +180,18 @@ class Utility(commands.Cog):
             None.
         """
 
-        embed = Embed(title=f'{str(user)}\'s User In formation', color=0x1dcaff)
+        embed = Embed(title=f'{str(user)}\'s User Information', color=0x1dcaff)
         if user.nick:
             embed.description = f'Known as **{user.nick}** round\' these parts'
         embed.set_thumbnail(url=user.avatar_url)
-        embed.add_field(name='Account Created', value=user.created_at.strftime('%I:%M %p on %A, %B %d, %Y'))
-        embed.add_field(name='Joined Server', value=user.joined_at.strftime('%I:%M %p on %A, %B %d, %Y'))
+        embed.add_field(name='Account Created', value=localize_time(user.created_at))
+        embed.add_field(name='Joined Server', value=localize_time(user.joined_at))
         members = sorted(ctx.guild.members, key=lambda x: x.joined_at)
         embed.add_field(name='Join Position', value=str(members.index(user)))
         embed.add_field(name='User ID', value=str(user.id), inline=False)
         embed.add_field(name='User Flags', value=await readable_flags(user.public_flags), inline=False)
-        embed.add_field(name='Roles', value=', '.join(str(x) for x in (user.roles[::-1])[:-1]), inline=False)
+        roles = ', '.join(str(x) for x in (user.roles[::-1])[:-1])
+        embed.add_field(name='Roles', value=roles if roles else 'None', inline=False)
         embed.set_footer(text="Please report any issues to my owner!")
 
         await ctx.send(embed=embed)

@@ -1,7 +1,7 @@
 from discord.ext import commands
 from discord import HTTPException
 from sys import stderr
-from traceback import print_exception
+from traceback import print_exception, format_exception
 
 
 class Exceptions(commands.Cog):
@@ -23,7 +23,7 @@ class Exceptions(commands.Cog):
         self.bot = bot
 
     @commands.Cog.listener()
-    async def on_command_error(self, ctx, error):
+    async def on_command_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
         """
         A listener method that is called whenever a command encounters an error.
         Most user-facing exceptions output a message detailing why the command invocation failed.
@@ -85,13 +85,23 @@ class Exceptions(commands.Cog):
             else:
                 await ctx.send(f'{ctx.message.author.mention}, please wait {int(error.retry_after)} seconds '
                                f'before calling this command again!')
-                return
+            return
+
+        # Calling a command currently at max concurrency
+        elif isinstance(error, commands.MaxConcurrencyReached):
+            await ctx.send(f'{ctx.message.author.mention}, the maximum concurrency for this command has been reached. '
+                           f'It can be used a maximum of {error.number} time(s) per {error.per.name} concurrently.')
+            return
 
         # Bot cannot execute command due to insufficient permissions
         elif isinstance(error, commands.MissingPermissions):
             await ctx.send(f'{ctx.message.author.mention}, I lack the {error}\n{error.__dict__}'
                            f' permissions for this command')
             return
+
+        # Reloading an extension that currently has errors
+        elif isinstance(error, commands.ExtensionError):
+            await ctx.send(f'```py\n{"".join(format_exception(type(error), error, error.__traceback__))}```')
 
         # All other errors not returned come here. Print the default traceback
         print('Ignoring exception in command {}:'.format(ctx.command), file=stderr)

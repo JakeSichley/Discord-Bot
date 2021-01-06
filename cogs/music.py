@@ -364,7 +364,7 @@ class InteractiveController(menus.Menu):
 
     async def send_initial_message(self, ctx: commands.Context, channel: discord.TextChannel) -> discord.Message:
         """
-        Check to make sure the reaction added meets our criteria.
+        Sends the initial menu message.
 
         Parameters:
             ctx (commands.Context): The context to send the initial message with.
