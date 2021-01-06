@@ -5,7 +5,6 @@ from contextlib import redirect_stdout
 from textwrap import indent
 from traceback import format_exc
 import aiosqlite
-from typing import List
 
 
 class Admin(commands.Cog):
@@ -22,7 +21,7 @@ class Admin(commands.Cog):
         The constructor for the Admin class.
 
         Parameters:
-            bot (DreamBot): The Discord bot class.
+            bot (commands.Bot): The Discord bot.
         """
 
         self.bot = bot
@@ -42,7 +41,7 @@ class Admin(commands.Cog):
 
         return await self.bot.is_owner(ctx.author)
 
-    @commands.command(name='admin help', aliases=['ahelp'], hidden=True)
+    @commands.command(name='adminhelp', aliases=['ahelp'], hidden=True)
     async def admin_help_command(self, ctx):
         """
         A command to generate help information for the Admin cog.
@@ -66,7 +65,7 @@ class Admin(commands.Cog):
         help_string = f'```Admin Cog.\n\nCommands:'
 
         for command in list_of_commands:
-            help_string += f'\n  {command.name} {" " * (longest_command_name - len(command.name))} {command.short_doc}'
+            help_string += f'\n  {command.name:{longest_command_name + 1}} {command.short_doc}'
 
         help_string += '\n\nType ?help command for more info on a command.\n' \
                        'You can also type ?help category for more info on a category.```'
@@ -125,34 +124,6 @@ class Admin(commands.Cog):
             await ctx.send(f'Unloaded Module: `{module}`')
         except commands.ExtensionNotLoaded:
             await ctx.send(f'Could Not Unload Module: `{module}`')
-
-    @commands.command(name='mreload', hidden=True)
-    async def mreload(self, ctx, module):
-        """
-        A command to 'manually' reload a module. Explicitly unloads then reloads a module.
-        If the reload fails, the previous state of module is maintained.
-        If the module is not loaded, attempt to load the module.
-
-        Checks:
-            is_owner(): Whether or not the invoking user is the bot's owner.
-
-        Parameters:
-            ctx (commands.Context): The invocation context.
-            module (str): The module to be reloaded.
-
-        Output:
-            The status of the 'manual' reload.
-
-        Returns:
-            None.
-        """
-
-        try:
-            self.bot.unload_extension('cogs.' + module)
-            self.bot.load_extension('cogs.' + module)
-            await ctx.send(f'Manually Reloaded Module: `{module}`')
-        except commands.ExtensionNotLoaded:
-            await ctx.send(f'Could Not Manually Reloaded Module: `{module}`')
 
     @commands.command(name='logout', aliases=['shutdown'], hidden=True)
     async def logout(self, ctx):
@@ -216,7 +187,7 @@ class Admin(commands.Cog):
         await ctx.send(output)
 
     @commands.command(name='sql', hidden=True)
-    async def sql(self, ctx, *, _ev: str):
+    async def sql(self, ctx, *, query: str):
         """
         A command to execute a sqlite3 statement.
         If the statement type is 'SELECT', successful executions will send the result.
@@ -227,7 +198,7 @@ class Admin(commands.Cog):
 
         Parameters:
             ctx (commands.Context): The invocation context.
-            _ev (str): The statement to be executed..
+            query (str): The statement to be executed.
 
         Output:
             Success ('SELECT'): The result of the selection statement.
@@ -240,17 +211,17 @@ class Admin(commands.Cog):
 
         try:
             async with aiosqlite.connect(self.bot.DATABASE_NAME) as db:
-                if 'SELECT' in _ev:
-                    async with db.execute(_ev) as cursor:
+                if (query.upper()).startswith('SELECT'):
+                    async with db.execute(query) as cursor:
                         await ctx.send(await cursor.fetchall())
                 else:
-                    await db.execute(_ev)
+                    affected = await db.execute(query)
                     await db.commit()
-                    await ctx.send('Executed.')
+                    await ctx.send(f'Executed. {affected.rowcount} rows affected.')
 
         except aiosqlite.Error as e:
             await ctx.send(f'Error: {e}')
-            print(f'Set Prefix SQLite Error: {e}')
+            print(f'Admin SQL Command Error: {e}')
 
     @commands.command(name='reloadprefixes', aliases=['rp'], hidden=True)
     async def reload_prefixes(self, ctx):
@@ -384,7 +355,7 @@ def setup(bot):
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (DreamBot): The bot the cog should be added to.
+        bot (commands.Bot): The bot the cog should be added to.
 
     Returns:
         None.

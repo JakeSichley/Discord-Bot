@@ -17,12 +17,12 @@ class DDO(commands.Cog):
     Constants:
         SERVERS (tuple): A tuple of valid servers for DDOAudit
         ADVENTURE_TYPES (tuple): A tuple of valid adventure types for DDOAudit
-        DIFFICUlTIES (tuple): A tuple of valid difficulties for DDOAudit
+        DIFFICULTIES (tuple): A tuple of valid difficulties for DDOAudit
         LEX_ID (int): The ID of the user to send raid alerts to.
 
     Attributes:
         bot (commands.Bot): The Discord bot.
-        api_data (dict): The response data from DDOAudit (used for LFMS).
+        api_data (dict): The response data from DDOAudit (used for LFMs).
         raid_data (dict): Maintains data for notifications; ensures no duplicate messages.
         reconnect_tries (int): The number of consecutive unsuccessful queries to the DDOAudit.
         query_ddo_audit (ext.tasks): Stores the task that queries DDOAudit every 30 seconds.
@@ -39,7 +39,7 @@ class DDO(commands.Cog):
         The constructor for the Moderation class.
 
         Parameters:
-            bot (DreamBot): The Discord bot class.
+            bot (commands.Bot): The Discord bot.
         """
 
         self.bot = bot
@@ -253,7 +253,7 @@ class DDO(commands.Cog):
                 embed.set_footer(text="Please report any formatting issues to my owner!")
                 await ctx.send(embed=embed)
 
-    @commands.command(name='lfms', help='Returns a list of active LFMS for the specified server.\nValid servers include'
+    @commands.command(name='lfms', help='Returns a list of active LFMs for the specified server.\nValid servers include'
                       ' Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis, and Wayfinder'
                       '\nInformation is populated from \'DDO Audit\' every 20 seconds.')
     async def ddo_lfms(self, ctx, server='Khyber'):
@@ -300,7 +300,7 @@ class DDO(commands.Cog):
                            f'**Current Quests on {server}:** {", ".join(quests)}\n'
                            f'**Current Groups on {server}:** {", ".join(groups)}\n')
 
-    @commands.command(name='flfms', help='Returns a filtered list of active LFMS for the specified server.\n'
+    @commands.command(name='flfms', help='Returns a filtered list of active LFMs for the specified server.\n'
                       'Optional filters include: LFM Type: (Solo, Quest, Raid), Difficulty: (Casual, Normal, Hard, '
                       'Elite, Reaper), and Level: (1-30).\nYou MUST supply a server.\n'
                       'Valid servers include Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis, '
@@ -407,7 +407,7 @@ class DDO(commands.Cog):
                 # if the query fails 5 times in a row, delay querying the API for an hour
                 if self.reconnect_tries % 5 == 0:
                     await self.bot.alert(cog='DDO', meth='query_ddo_audit', details='Failed to Query DDOAudit',
-                                         sleep_time=f'{min(int(self.reconnect_tries / 5), 6)} Hours')
+                                         sleep_time=f'{min(int(self.reconnect_tries / 5), 6)} Hour(s)')
                     await sleep(3600 * min(int(self.reconnect_tries / 5), 6))
 
     @query_ddo_audit.before_loop
@@ -568,7 +568,7 @@ def setup(bot):
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (DreamBot): The bot the cog should be added to.
+        bot (commands.Bot): The bot the cog should be added to.
 
     Returns:
         None.

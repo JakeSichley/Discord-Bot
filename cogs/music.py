@@ -98,7 +98,7 @@ class Player(wavelink.Player):
     Custom wavelink Player class.
 
     Attributes:
-        bot (DreamBot): The Discord bot.
+        bot (commands.Bot): The Discord bot.
         guild_id (int): The guild ID the player is connected to.
         node (wavelink.node.Node): The node the player belongs to.
         volume (int): The players volume.
@@ -364,7 +364,7 @@ class InteractiveController(menus.Menu):
 
     async def send_initial_message(self, ctx: commands.Context, channel: discord.TextChannel) -> discord.Message:
         """
-        Check to make sure the reaction added meets our criteria.
+        Sends the initial menu message.
 
         Parameters:
             ctx (commands.Context): The context to send the initial message with.
@@ -613,7 +613,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         The constructor for the Track class.
 
         Parameters:
-            bot (DreamBot): The Discord bot.
+            bot (commands.Bot): The Discord bot.
         """
 
         self.bot = bot
@@ -1417,7 +1417,7 @@ def setup(bot):
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (DreamBot): The bot the cog should be added to.
+        bot (commands.Bot): The bot the cog should be added to.
 
     Returns:
         None.

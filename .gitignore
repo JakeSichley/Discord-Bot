@@ -136,3 +136,6 @@ Resources/Raw Resources
 tests.py
 BotDatabase
 cogs/test.py
+cogs/yoink.py
+cogs/bestbuy.py
+cogs/eric.mp3

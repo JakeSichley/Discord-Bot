@@ -1,6 +1,6 @@
 from discord.ext import commands
 from discord import Embed, HTTPException
-import aiosqlite
+from utils import execute_query, retrieve_query, exists_query
 
 
 def check_memecoin_channel():
@@ -33,7 +33,7 @@ class MemeCoin(commands.Cog):
         The constructor for the MemeCoin class.
 
         Parameters:
-            bot (DreamBot): The Discord bot class.
+            bot (commands.Bot): The Discord bot.
         """
 
         self.bot = bot
@@ -63,7 +63,8 @@ class MemeCoin(commands.Cog):
 
         if str(payload.emoji) == '✅':
             # if the user is NOT in the database, create their record with a value of 1
-            if not (await check_for_user(self.bot.DATABASE_NAME, author_id)):
+            if not (await exists_query(self.bot.DATABASE_NAME, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
+                                       (author_id,))):
                 query = 'INSERT INTO MEMECOIN (USER_ID, COINS) VALUES (?, ?)'
                 values = (author_id, 1)
             # otherwise, increment their record
@@ -72,7 +73,8 @@ class MemeCoin(commands.Cog):
                 values = (author_id,)
         elif str(payload.emoji) == '❌':
             # if the user is NOT in the database, create their record with a value of -1
-            if not (await check_for_user(self.bot.DATABASE_NAME, author_id)):
+            if not (await exists_query(self.bot.DATABASE_NAME, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
+                                       (author_id,))):
                 query = 'INSERT INTO MEMECOIN (USER_ID, COINS) VALUES (?, ?)'
                 values = (author_id, -1)
             # otherwise, decrement their record
@@ -81,7 +83,7 @@ class MemeCoin(commands.Cog):
                 values = (author_id,)
 
         if query is not None:
-            await execute_query(self.bot.DATABASE_NAME, query, values, 'MemeCoin Reaction_Add Database Transaction')
+            await execute_query(self.bot.DATABASE_NAME, query, values)
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload):
@@ -107,15 +109,16 @@ class MemeCoin(commands.Cog):
 
         # Don't create a record on a reaction removal. Increment or decrement an existing record where appropriate
         if str(payload.emoji) == '✅':
-            if await check_for_user(self.bot.DATABASE_NAME, author_id):
+            if await exists_query(self.bot.DATABASE_NAME, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
+                                  (author_id,)):
                 query = 'UPDATE MEMECOIN SET COINS=COINS-1 WHERE USER_ID=?'
         elif str(payload.emoji) == '❌':
-            if await check_for_user(self.bot.DATABASE_NAME, author_id):
+            if await exists_query(self.bot.DATABASE_NAME, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
+                                  (author_id,)):
                 query = 'UPDATE MEMECOIN SET COINS=COINS+1 WHERE USER_ID=?'
 
         if query is not None:
-            await execute_query(self.bot.DATABASE_NAME, query, (author_id,),
-                                'MemeCoin Reaction_Remove Database Transaction')
+            await execute_query(self.bot.DATABASE_NAME, query, (author_id,))
 
     @check_memecoin_channel()
     @commands.command(name='coins', help='Checks you how many of those sweet, sweet Meme Coins you own!')
@@ -137,9 +140,10 @@ class MemeCoin(commands.Cog):
             None.
         """
 
-        if (await check_for_user(self.bot.DATABASE_NAME, ctx.author.id)) == 1:
+        if await exists_query(self.bot.DATABASE_NAME, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
+                              (ctx.author.id,)):
             result = await retrieve_query(self.bot.DATABASE_NAME, 'SELECT COINS FROM MEMECOIN WHERE USER_ID=?',
-                                          (ctx.author.id,), 'MemeCoin Coins Retrieval Database')
+                                          (ctx.author.id,))
             if result is not None:
                 await ctx.send(f'{ctx.author.mention}, you have {result[0][0]} Meme Coin(s)!')
             else:
@@ -179,8 +183,7 @@ class MemeCoin(commands.Cog):
         embed.add_field(name='\u200B', value='\u200B', inline=True)
         embed.set_footer(text="Please report any issues to my owner!")
 
-        result = await retrieve_query(self.bot.DATABASE_NAME, 'SELECT * FROM MEMECOIN', (),
-                                      'MemeCoin Leaderboard Retrieval Database')
+        result = await retrieve_query(self.bot.DATABASE_NAME, 'SELECT * FROM MEMECOIN', ())
 
         if len(result) > 0:
             top_scores = sorted(result, key=lambda x: x[1], reverse=True)
@@ -250,82 +253,12 @@ async def check_coin_requirements(bot, payload, memecoin_channel):
     return message_author.id
 
 
-async def check_for_user(database_name, user_id):
-    """
-    A method that checks whether or not a user exists in the Meme Coin database table.
-
-    Parameters:
-        database_name (str): The name of the database.
-        user_id (int): The id of the user.
-
-    Returns:
-        (boolean): Whether or not the user exists in the table.
-    """
-
-    try:
-        async with aiosqlite.connect(database_name) as db:
-            async with db.execute('SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)', (user_id,)) as cursor:
-                return (await cursor.fetchone())[0] == 1
-
-    except aiosqlite.Error as e:
-        print(f'MemeCoin Existence Error: {e}')
-        return False
-
-
-async def execute_query(database_name, query, values, instigator='Default MemeCoin'):
-    """
-    A method that executes an sqlite3 statement.
-    Note: Use retrieve_query() for 'SELECT' statements.
-
-    Parameters:
-        database_name (str): The name of the database.
-        query (str): The statement to execute.
-        values (tuple): The values to insert into the query.
-        instigator (str): The invocation context of the query. Default: 'Default MemeCoin'.
-
-    Returns:
-        None.
-    """
-
-    try:
-        async with aiosqlite.connect(database_name) as db:
-            await db.execute(query, values)
-            await db.commit()
-
-    except aiosqlite.Error as e:
-        print(f'{instigator} Error: {e}')
-
-
-async def retrieve_query(database_name, query, values, instigator='Default MemeCoin'):
-    """
-    A method that returns the result of an sqlite3 'SELECT' statement.
-    Note: Use execute_query() for non-'SELECT' statements.
-
-    Parameters:
-        database_name (str): The name of the database.
-        query (str): The statement to execute.
-        values (tuple): The values to insert into the query.
-        instigator (str): The invocation context of the query. Default: 'Default MemeCoin'.
-
-    Returns:
-        (list): A list of sqlite3 row objects. Can be empty.
-    """
-
-    try:
-        async with aiosqlite.connect(database_name) as db:
-            async with db.execute(query, values) as cursor:
-                return await cursor.fetchall()
-
-    except aiosqlite.Error as e:
-        print(f'{instigator} Error: {e}')
-
-
 def setup(bot):
     """
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (DreamBot): The bot the cog should be added to.
+        bot (commands.Bot): The bot the cog should be added to.
 
     Returns:
         None.

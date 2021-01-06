@@ -1,10 +1,10 @@
 # Discord-Bot (DreamBot)
-A Python-based bot for Discord utilizing [Rapptz's Discord Wrapper](https://github.com/Rapptz/discord.py)
+A Python-based bot for Discord utilizing [Rapptz's Discord Wrapper](https://github.com/Rapptz/discord.py).
 
 #### Versions
 **Python**: 3.8.1
 
-**discord.py**: 1.4.0
+**discord.py**: 1.5.1
 
 # Overview
 This bot is designed for personal use in Discord servers that I somehow have power in.
@@ -33,7 +33,8 @@ The `MemeCoin` cog contains methods related to the fictitious currency created f
 or revoke 'Meme Coins' at will by reacting to a message with a :heavy_check_mark: or :x: respectively.
 
 ## Moderation
-The `Moderation` cog contains methods related to the moderation of a Discord server.
+The `Moderation` cog contains methods related to the moderation of a Discord server. Supports advanced logging, such as 
+message edit and deletion events.
 
 ## Utility
 The `Utility` cog contains various unrelated methods, such as the current time in a specified timezone, an invite to the
@@ -47,3 +48,11 @@ implementation.
 
 ## Images
 The `Images` cog implements a number of image manipulation commands supported by Pillow.
+
+## Reactions
+The `Reactions` cog implements the concept of 'Reaction Roles'. Users can react to specified messages to receive 
+corresponding roles within the guild.
+
+## Voice Roles
+The `VoiceRoles` cog implements the concept of 'Voice Roles'. Users will automatically be assigned a specified role when
+they join a channel and subsequently have the role revoked when leaving.

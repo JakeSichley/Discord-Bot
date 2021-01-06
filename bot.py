@@ -1,14 +1,12 @@
 import discord
 import logging
 import aiosqlite
-from os import getenv
+from os import getenv, getcwd, listdir
 from sys import version
 from dotenv import load_dotenv
 from discord.ext.commands import ExtensionError, Bot, when_mentioned_or
 from datetime import datetime
 from asyncio import sleep
-
-# todo: implement subclassed help command to remove docstrings from help commands
 
 print(f'Current Python Version: {version}')
 print(f'Current Discord Version: {discord.__version__}')
@@ -20,9 +18,12 @@ OWNER = int(getenv('OWNER_ID'))
 PREFIX = getenv('PREFIX')
 DATABASE = getenv('DATABASE')
 
-# load extensions (filename)
-initial_extensions = ('admin', 'ddo', 'memecoin', 'utility', 'exceptions', 'moderation', 'music', 'images',)
-# unused extensions: None
+# explicitly disabled cogs
+disabled_cogs = ()
+
+# specify intents (members requires explicit opt-in via dev portal)
+intents = discord.Intents(guilds=True, members=True, bans=True, emojis=True, voice_states=True, messages=True,
+                          reactions=True)
 
 
 class DreamBot(Bot):
@@ -51,17 +52,20 @@ class DreamBot(Bot):
             None.
         """
 
-        super().__init__(command_prefix=get_prefix, case_insensitive=True, owner_id=OWNER, max_messages=None)
+        super().__init__(command_prefix=get_prefix, case_insensitive=True, owner_id=OWNER, max_messages=None,
+                         intents=intents)
         self.prefixes = {}
         self.initialized = False
-        self.uptime = 0
+        self.uptime = datetime.now()
 
-        # load our default cogs
-        for cog in initial_extensions:
-            try:
-                self.load_extension('cogs.' + cog)
-            except ExtensionError as e:
-                print(e)
+        # load our cogs
+        for cog in listdir(getcwd() + '\cogs'):
+            # only load python files that we haven't explicitly disabled
+            if cog.endswith('.py') and cog[:-3] not in disabled_cogs:
+                try:
+                    self.load_extension(f'cogs.{cog[:-3]}')
+                except ExtensionError as e:
+                    print(e)
 
     async def on_ready(self):
         """
@@ -81,7 +85,6 @@ class DreamBot(Bot):
             await self.change_presence(status=discord.Status.online, activity=discord.Activity(name='My Spaghetti Code',
                                        type=discord.ActivityType.watching))
             await self.retrieve_prefixes()
-            self.uptime = datetime.now()
             self.initialized = True
 
         print('READY')
