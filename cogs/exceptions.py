@@ -40,6 +40,9 @@ class Exceptions(commands.Cog):
             None.
         """
 
+        print('Ignoring exception in command {}:'.format(ctx.command), file=stderr)
+        print_exception(type(error), error, error.__traceback__, file=stderr)
+
         # Prevent any commands with local handlers being handled
         if hasattr(ctx.command, 'on_error'):
             return
@@ -65,13 +68,6 @@ class Exceptions(commands.Cog):
             except HTTPException as e:
                 print(f'Commands Error Handler Error: (NoPrivateMessage) {e}')
 
-        # Check where the command came from
-        elif isinstance(error, commands.BadArgument):
-            # Check if the command being invoked is 'tag list'
-            if ctx.command.qualified_name == 'tag list':
-                await ctx.send('I could not find that member. Please try again.')
-                return
-
         # Using the permissions tuple allows us to handle multiple errors of similar types
         # Errors where the user does not have the authority to execute the command
         elif isinstance(error, permissions):
@@ -85,6 +81,14 @@ class Exceptions(commands.Cog):
             else:
                 await ctx.send(f'{ctx.message.author.mention}, please wait {int(error.retry_after)} seconds '
                                f'before calling this command again!')
+            return
+
+        # Calling a command without the required role
+        elif isinstance(error, commands.MissingRole):
+            if ctx.author.id == self.bot.owner_id:
+                await ctx.reinvoke()
+            else:
+                await ctx.send(f'{ctx.message.author.mention}, you do not have the required role to use this command!')
             return
 
         # Calling a command currently at max concurrency
@@ -108,7 +112,7 @@ class Exceptions(commands.Cog):
         print_exception(type(error), error, error.__traceback__, file=stderr)
 
 
-def setup(bot):
+def setup(bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

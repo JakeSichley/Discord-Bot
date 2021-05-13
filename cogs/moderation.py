@@ -1,5 +1,5 @@
 from discord.ext import commands, menus
-from utils import execute_query, retrieve_query, exists_query
+from utils import execute_query, retrieve_query, exists_query, DefaultMemberConverter
 from enum import Enum
 from typing import List
 from asyncio import Condition
@@ -55,7 +55,58 @@ class Moderation(commands.Cog):
         else:
             def purge_check(message):
                 return message.author.id == user.id
+
             await ctx.channel.purge(limit=limit + 1, check=purge_check)
+
+    @commands.has_guild_permissions(manage_roles=True)
+    @commands.bot_has_guild_permissions(manage_roles=True)
+    @commands.command(name='bulkadd', help='Adds a specified role to a large number of users at once.')
+    async def bulk_add_roles(self, ctx: commands.Context, role: discord.Role, *members: DefaultMemberConverter):
+        """
+        A method to bulk add a role to members.
+        Uses a special converter that attempts to remove whitespace errors and defaults to returning the member's name
+            if conversion fails.
+
+        Checks:
+            has_permissions(manage_roles): Whether or not the invoking user can manage roles.
+            bot_has_permissions(manage_roles): Whether or not the bot can manage roles.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            role (discord.Role): The role to add to the members.
+            *members (discord.Member): A variadic argument representing the members to add the role to.
+
+        Returns:
+            None.
+        """
+
+        bot_role = ctx.me.top_role
+        invoker_role = ctx.author.top_role
+
+        if not all((bot_role, invoker_role, role)):
+            await ctx.send("Couldn't retrieve top roles for myself or you. Please try the command again.")
+            return
+        if role >= bot_role or role >= invoker_role:
+            await ctx.send('You specified a role equal to or higher than mine or your top role.')
+            return
+
+        success, failed = [], []
+        for member in members:
+            try:
+                # noinspection PyUnresolvedReferences
+                await member.add_roles(role, reason=f'Bulk Added by {str(ctx.author)}')
+                success.append(str(member))
+            except discord.HTTPException:
+                failed.append(str(member))
+            # since we used a special converter that returns the member's name (as a str) if conversation fails,
+            # type 'str' won't have an add_roles method
+            except AttributeError:
+                failed.append(str(member))
+
+        await ctx.send(f'Successfully added the role to the following members:\n'
+                       f'```{", ".join(success) if success else "None"}```\n'
+                       f'Failed to add the role to the following members:\n'
+                       f'```{", ".join(failed) if failed else "None"}```')
 
     @commands.has_guild_permissions(manage_guild=True)
     @commands.command(name='getdefaultrole', aliases=['gdr'],
@@ -729,7 +780,7 @@ async def log_to_channel(bot: commands.Bot, action: Enum, bits: int, channel: in
                 pass
 
 
-def setup(bot):
+def setup(bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

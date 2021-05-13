@@ -580,7 +580,7 @@ class ReactionRoles(commands.Cog):
 # todo: improve reaction remove/add checks
 
 
-def setup(bot):
+def setup(bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

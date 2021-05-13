@@ -130,6 +130,7 @@ dmypy.json
 *.txt
 */Raw Resources
 Resources/Raw Resources
+cogs/disabled/*
 .idea/misc.xml
 .idea/modules.xml
 .idea/inspectionProfiles/profiles_settings.xml
@@ -139,3 +140,5 @@ cogs/test.py
 cogs/yoink.py
 cogs/bestbuy.py
 cogs/eric.mp3
+firebase-auth.json
+cogs/jess.mp3

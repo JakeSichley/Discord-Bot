@@ -2,8 +2,9 @@ import aiosqlite
 import discord
 import datetime
 import pytz
-from typing import List, Sequence, Any, Iterator, Tuple
-from discord.ext.commands import IDConverter, BadArgument
+import re
+from typing import List, Sequence, Any, Iterator, Tuple, Optional, Union
+from discord.ext.commands import IDConverter, BadArgument, MemberConverter, MemberNotFound
 
 
 async def execute_query(database_name: str, query: str, values: tuple) -> None:
@@ -115,17 +116,17 @@ def localize_time(time: datetime.datetime) -> str:
 
 class GuildConverter(IDConverter):
     """
-    Converts to a discord.Guild
+    Converts an argument to a discord.Guild object.
 
     All lookups are via the local guild.
 
     The lookup strategy is as follows (in order):
 
     1. Lookup by ID.
-    4. Lookup by name
+    2. Lookup by name
     """
 
-    async def convert(self, ctx, argument):
+    async def convert(self, ctx, argument) -> Optional[discord.Guild]:
         """
         Attempts to convert the argument into a discord.Guild object.
 
@@ -155,6 +156,46 @@ class GuildConverter(IDConverter):
         return result
 
 
+class DefaultMemberConverter(MemberConverter):
+    """
+    Converts an argument to a discord.Member object.
+
+    All lookups are via the local guild. If in a DM context, then the lookup is done by the global cache.
+
+    The lookup strategy is as follows (in order):
+
+    1. Lookup by ID.
+    2. Lookup by mention.
+    3. Lookup by name#discriminator
+    4. Lookup by name
+    5. Lookup by nickname
+
+    When processing a bulk-batch of members via a variadic method, this converter attempts to fix whitespace errors to
+    help lookup via name#discriminator. If the member conversion still fails, this function returns the original
+    parameter, rather than raising a MemberNotFound exception. This ensures the remaining members are still processed,
+    rather than the command failing.
+    """
+
+    async def convert(self, ctx, argument) -> Union[discord.Member, str]:
+        """
+        Attempts to convert the argument into a discord.Member object.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            argument (str): The arg to be converted.
+
+        Returns:
+            (Union[discord.Member, str]): The resulting discord.Member. If conversion fails, returns the argument.
+        """
+
+        argument = re.sub(r'\s+#', '#', argument)
+
+        try:
+            return await super().convert(ctx, argument)
+        except MemberNotFound:
+            return argument
+
+
 def pairs(sequence: Sequence[Any]) -> Iterator[Tuple[Any, Any]]:
     """
     Generator that yields pairs of items in a sequence
@@ -170,7 +211,5 @@ def pairs(sequence: Sequence[Any]) -> Iterator[Tuple[Any, Any]]:
     """
 
     i = iter(sequence)
-    prev = next(i)
     for item in i:
-        yield prev, item
-        prev = next(i)
+        yield item, next(i)

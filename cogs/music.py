@@ -1412,7 +1412,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         player.queue = new_queue
 
 
-def setup(bot):
+def setup(bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

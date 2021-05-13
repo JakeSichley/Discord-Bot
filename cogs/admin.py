@@ -350,7 +350,7 @@ class Admin(commands.Cog):
                 await ctx.send(f'```py\n{value}{ret}\n```')
 
 
-def setup(bot):
+def setup(bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

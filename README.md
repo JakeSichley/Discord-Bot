@@ -4,13 +4,15 @@ A Python-based bot for Discord utilizing [Rapptz's Discord Wrapper](https://gith
 #### Versions
 **Python**: 3.8.1
 
-**discord.py**: 1.5.1
+**discord.py**: 1.6.0
 
 # Overview
 This bot is designed for personal use in Discord servers that I somehow have power in.
 
 I originally created this bot in order to learn how to create a bot in Python - though it actually has _some_ useful functionalities
 now.
+
+DreamBot currently serves the CSU Fullerton League of Legends club and several Twitch streamer community Discords.
 
 # Cogs
 Each cog contains specialized methods the bot can perform.
@@ -27,6 +29,12 @@ Thanks to [DDO Audit](https://www.playeraudit.com/), LFM data is also available!
 
 ## Exceptions
 The `Exceptions` cog provides centralized handling for any errors that may arise during execution of the bot.
+
+## Firestore
+The `Firestore` cog utilizes Google's Firestore database to provide message logging.
+
+## Giveway
+The `Giveaway` cog provides basic giveaway support.
 
 ## MemeCoin
 The `MemeCoin` cog contains methods related to the fictitious currency created for the Guild's 'Memes' channel. Users can award 
@@ -52,6 +60,9 @@ The `Images` cog implements a number of image manipulation commands supported by
 ## Reactions
 The `Reactions` cog implements the concept of 'Reaction Roles'. Users can react to specified messages to receive 
 corresponding roles within the guild.
+
+## Twitch
+The `Twitch` cog builds a Twitch chatbot into the main Discord bot, and allows for execution of Twitch commands from Discord.
 
 ## Voice Roles
 The `VoiceRoles` cog implements the concept of 'Voice Roles'. Users will automatically be assigned a specified role when

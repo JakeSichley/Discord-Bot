@@ -253,7 +253,7 @@ async def check_coin_requirements(bot, payload, memecoin_channel):
     return message_author.id
 
 
-def setup(bot):
+def setup(bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

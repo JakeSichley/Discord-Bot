@@ -19,7 +19,7 @@ PREFIX = getenv('PREFIX')
 DATABASE = getenv('DATABASE')
 
 # explicitly disabled cogs
-disabled_cogs = ()
+disabled_cogs = ('ddo', 'memecoin', 'test', 'music', 'twitch', 'firestore',)
 
 # specify intents (members requires explicit opt-in via dev portal)
 intents = discord.Intents(guilds=True, members=True, bans=True, emojis=True, voice_states=True, messages=True,
@@ -59,7 +59,7 @@ class DreamBot(Bot):
         self.uptime = datetime.now()
 
         # load our cogs
-        for cog in listdir(getcwd() + '\cogs'):
+        for cog in listdir(getcwd() + '\\cogs'):
             # only load python files that we haven't explicitly disabled
             if cog.endswith('.py') and cog[:-3] not in disabled_cogs:
                 try:

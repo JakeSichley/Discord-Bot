@@ -158,10 +158,12 @@ class Utility(commands.Cog):
         """
 
         time = datetime.datetime.now() - self.bot.uptime
+        days = time.days % 7
+        weeks = int(time.days / 7)
         hours, remainder = divmod(time.seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
         await ctx.send(f'Bot Epoch: {self.bot.uptime.strftime("%I:%M %p on %A, %B %d, %Y")}'
-                       f'\nBot Uptime: {time.days} Days, {hours} Hours, {minutes} Minutes, {seconds} Seconds')
+                       f'\nBot Uptime: {weeks} Weeks, {days} Days, {hours} Hours, {minutes} Minutes, {seconds} Seconds')
 
     @commands.command(name='userinfo', aliases=['ui'],
                       help='Generates an embed detailing information about the specified user')
@@ -216,7 +218,7 @@ async def readable_flags(flags: PublicUserFlags) -> str:
         return 'None'
 
 
-def setup(bot):
+def setup(bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

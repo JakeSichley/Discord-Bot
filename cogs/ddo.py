@@ -191,7 +191,7 @@ class DDO(commands.Cog):
 
                 # If there are not valid list indexes, return an error
                 if first_index == -1 or last_index == -1:
-                    await ctx.send(f'ERROR: Enchantments table was found, but no could not find valid enchantments.')
+                    await ctx.send(f'ERROR: Enchantments table was found, but could not find valid enchantments.')
                     return
 
                 # Substring the main enchantments element from the above indexes
@@ -563,7 +563,7 @@ def build_embed(raid: dict, name: str, bot_name: str, bot_avatar: str) -> Embed:
     return embed
 
 
-def setup(bot):
+def setup(bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
