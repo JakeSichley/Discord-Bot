@@ -11,7 +11,7 @@ from random import shuffle
 # https://github.com/TwitchIO/TwitchIO/issues/130
 
 class Twitch(discord_commands.Cog):
-    def __init__(self, bot: discord_commands.Bot):
+    def __init__(self, bot: discord_commands.Bot) -> None:
         self.discord_bot = bot
         self.bot = twitch_commands.Bot(irc_token=getenv('TWITCH_TOKEN'), client_id=getenv('TWITCH_ID'),
                                        nick=getenv('TWITCH_NICK'), prefix=getenv('PREFIX'),
@@ -73,8 +73,8 @@ class Twitch(discord_commands.Cog):
             await ctx.send('No users are eligible for the giveaway.')
 
     @discord_commands.has_role('Community Stream')
-    @discord_commands.command(name='twitchgiveaway')
-    async def discord_command(self, ctx: discord_commands.Context, interval: int, remove=False):
+    @discord_commands.command(name='twitchgiveaway', aliases=['tg'])
+    async def discord_command(self, ctx: discord_commands.Context, interval: int, remove=True):
         """
         A discord_commands.Command to invoke the method `twitch_giveaway` in the designated Twitch channel.
 
@@ -124,7 +124,7 @@ class Twitch(discord_commands.Cog):
         print('Completed Unload for Cog: Twitch')
 
 
-def setup(bot):
+def setup(bot: discord_commands.Bot):
     """
     A setup function that allows the cog to be treated as an extension.
 

@@ -8,7 +8,7 @@ from datetime import datetime
 
 
 class Firestore(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         """
         The constructor for the Moderation class.
 
@@ -90,7 +90,7 @@ class Firestore(commands.Cog):
         })
 
 
-def setup(bot) -> None:
+def setup(bot: commands.Bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

@@ -6,7 +6,7 @@ from sys import version
 from dotenv import load_dotenv
 from discord.ext.commands import ExtensionError, Bot, when_mentioned_or
 from datetime import datetime
-from asyncio import sleep
+from typing import List
 
 print(f'Current Python Version: {version}')
 print(f'Current Discord Version: {discord.__version__}')
@@ -42,13 +42,15 @@ class DreamBot(Bot):
 
     DATABASE_NAME = DATABASE
     DEFAULT_PREFIX = PREFIX
-    ALERTS_CHANNEL = 742210950681067540
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         The constructor for the DreamBot class.
 
         Parameters:
+            None.
+
+        Returns:
             None.
         """
 
@@ -89,7 +91,7 @@ class DreamBot(Bot):
 
         print('READY')
 
-    async def on_message(self, message):
+    async def on_message(self, message: discord.Message) -> None:
         """
         A Client.event() method that is called when a discord.Message is created and sent.
 
@@ -108,7 +110,7 @@ class DreamBot(Bot):
 
         await self.process_commands(message)
 
-    async def retrieve_prefixes(self):
+    async def retrieve_prefixes(self) -> None:
         """
         A method that creates a quick-reference dict for guilds and their respective prefixes.
 
@@ -128,7 +130,7 @@ class DreamBot(Bot):
         except aiosqlite.Error as e:
             print(f'Retrieve Prefixes Error: {e}')
 
-    def run(self):
+    def run(self) -> None:
         """
         A blocking method that handles event loop initialization.
         Note: Must be the last method called.
@@ -142,37 +144,8 @@ class DreamBot(Bot):
 
         super().run(TOKEN)
 
-    async def alert(self, **kwargs: dict) -> None:
-        """
-        A bot-wide method that allows alerts to be documented in the alerts channel for immediate notifications.
 
-        Parameters:
-            kwargs (dict): A dictionary of kwargs to build the alert with (Expected: {cog, meth, details}).
-
-        Returns:
-            None.
-        """
-
-        alert_string = f'**Alert Raised in Cog:** {kwargs.pop("cog")}' \
-                       f'\n**Method:** {kwargs.pop("meth")}' \
-                       f'\n**Time:** {datetime.now().strftime("%I:%M %p on %A, %B %d, %Y")}' \
-                       f'\n\n**Details:** {kwargs.pop("details")}\n'
-        alert_string += '\n'.join(f'**{key}:** {item}' for key, item in kwargs.items())
-
-        alert_channel: discord.TextChannel = self.get_channel(self.ALERTS_CHANNEL)
-
-        for _ in range(5):
-            try:
-                await alert_channel.send(alert_string)
-                return
-            except discord.HTTPException:
-                await sleep(15)
-
-        print('FAILED TO SEND ALERT')
-        print(alert_string)
-
-
-async def get_prefix(bot, message):
+async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:
     """
     A method that retrieves the prefix the bot should look for in a specified message.
 
@@ -181,7 +154,7 @@ async def get_prefix(bot, message):
         message (discord.Message): The message to retrieve the prefix for.
 
     Returns:
-        (iterable): An iterable of valid prefix(es), including when the bot is mentioned.
+        (List[str]): An iterable of valid prefix(es), including when the bot is mentioned.
     """
 
     if message.guild is not None and message.guild.id in bot.prefixes:
@@ -190,5 +163,6 @@ async def get_prefix(bot, message):
 
 
 # Run the bot
-dream_bot = DreamBot()
-dream_bot.run()
+if __name__ == '__main__':
+    dream_bot = DreamBot()
+    dream_bot.run()

@@ -14,7 +14,7 @@ class Moderation(commands.Cog):
         bot (commands.Bot): The Discord bot class.
     """
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         """
         The constructor for the Moderation class.
 
@@ -28,7 +28,7 @@ class Moderation(commands.Cog):
     @commands.bot_has_permissions(manage_messages=True, read_message_history=True)
     @commands.command(name='purge', help='Purges n+1 messages from the current channel. If a user is supplied, the bot '
                                          'will purge any message from that user in the last n messages.')
-    async def purge(self, ctx, limit: int = 0, user: discord.Member = None):
+    async def purge(self, ctx: commands.Context, limit: int = 0, user: discord.Member = None):
         """
         A method to purge messages from a channel.
         Should a user ID be supplied, any messages from that user in the last (limit) messages will be deleted.
@@ -177,6 +177,7 @@ class Moderation(commands.Cog):
                 await ctx.send('Cannot set a default role higher than or equal to the bot\'s or your highest role.')
                 return
             else:
+                # noinspection SqlResolve
                 await execute_query(self.bot.DATABASE_NAME,
                                     'INSERT INTO DEFAULT_ROLES (GUILD_ID, ROLE_ID) VALUES (?, ?) ON CONFLICT(GUILD_ID) '
                                     'DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID', (ctx.guild.id, role.id))
@@ -214,7 +215,7 @@ class Moderation(commands.Cog):
             role = member.guild.get_role(role[0][0])
 
             try:
-                await member.add_roles(role, reason='Default Role Assignment', atomic=True)
+                await member.add_roles(role, reason='Default Role Assignment')
             except discord.Forbidden:
                 await log_to_channel(self.bot, LoggingActions.ACTION_FAILED, logging[0][1], logging[0][0],
                                      'Default Role Error (Forbidden). Default Role has been cleared.')
@@ -671,7 +672,7 @@ class ActionBitMenu(menus.Menu):
             None.
         """
 
-        await self.stop('Discarded Audit Actions Changes.')
+        await self.stop()
 
     async def update_embed(self) -> None:
         """
@@ -702,7 +703,7 @@ class ActionBitMenu(menus.Menu):
             self.condition.notify()
 
         if timed_out:
-            await self.stop('Discarded Audit Actions Changes.')
+            await self.stop()
 
     async def stop(self, message: str = 'Discarded Audit Actions Changes.') -> None:
         """
@@ -780,7 +781,7 @@ async def log_to_channel(bot: commands.Bot, action: Enum, bits: int, channel: in
                 pass
 
 
-def setup(bot) -> None:
+def setup(bot: commands.Bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

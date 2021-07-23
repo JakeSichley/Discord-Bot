@@ -1,10 +1,12 @@
+import discord
 from discord.ext import commands
 from discord import Embed, HTTPException
 from utils import execute_query, retrieve_query, exists_query
+from typing import Optional
 
 
 def check_memecoin_channel():
-    def predicate(ctx):
+    def predicate(ctx: commands.Context):
         """
         A commands.check decorator that ensures MemeCoin commands are only executed in the proper channel.
 
@@ -28,7 +30,7 @@ class MemeCoin(commands.Cog):
         channel (int: discord.TextChannel) The id of the channel where MemeCoin can be used.
     """
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         """
         The constructor for the MemeCoin class.
 
@@ -40,7 +42,7 @@ class MemeCoin(commands.Cog):
         self.channel = 636356259255287808
 
     @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload):
+    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent) -> None:
         """
         A listener method that is called whenever a reaction is added.
         'raw' events fire regardless of whether or not a message is cached.
@@ -86,7 +88,7 @@ class MemeCoin(commands.Cog):
             await execute_query(self.bot.DATABASE_NAME, query, values)
 
     @commands.Cog.listener()
-    async def on_raw_reaction_remove(self, payload):
+    async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent) -> None:
         """
         A listener method that is called whenever a reaction is removed.
         'raw' events fire regardless of whether or not a message is cached.
@@ -122,7 +124,7 @@ class MemeCoin(commands.Cog):
 
     @check_memecoin_channel()
     @commands.command(name='coins', help='Checks you how many of those sweet, sweet Meme Coins you own!')
-    async def coins(self, ctx):
+    async def coins(self, ctx: commands.Context) -> None:
         """
         A method that outputs the number of Meme Coins a user currently owns.
 
@@ -156,7 +158,7 @@ class MemeCoin(commands.Cog):
     @check_memecoin_channel()
     @commands.command(name='leaderboard', help='Displays a list of highest rollers in Meme Coin Town!',
                       aliases=['leaderboards'])
-    async def leaderboard(self, ctx):
+    async def leaderboard(self, ctx: commands.Context) -> None:
         """
         A method that outputs an embed, detailing the top and bottom Meme Coin owners.
 
@@ -178,9 +180,9 @@ class MemeCoin(commands.Cog):
         embed = Embed(title="Meme Coin Leaderboards",
                       description="Whose Meme Coins stash reigns supreme?!\n", color=0xffff00)
         embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
-        embed.add_field(name='\u200B', value='\u200B', inline=True)
-        embed.add_field(name='\u200B', value='\u200B', inline=True)
-        embed.add_field(name='\u200B', value='\u200B', inline=True)
+        embed.add_field(name='\u200B', value='\u200B')
+        embed.add_field(name='\u200B', value='\u200B')
+        embed.add_field(name='\u200B', value='\u200B')
         embed.set_footer(text="Please report any issues to my owner!")
 
         result = await retrieve_query(self.bot.DATABASE_NAME, 'SELECT * FROM MEMECOIN', ())
@@ -198,8 +200,8 @@ class MemeCoin(commands.Cog):
             most = formatted_scores[:5]
             least = (formatted_scores[::-1])[:5]
 
-            embed.add_field(name='Most Coins', value='\n'.join(most), inline=True)
-            embed.add_field(name='Least Coins', value='\n'.join(least), inline=True)
+            embed.add_field(name='Most Coins', value='\n'.join(most))
+            embed.add_field(name='Least Coins', value='\n'.join(least))
         else:
             embed.add_field(name='No Current Meme Coin Owners!',
                             value='Please give or revoke Meme Coin to construct leaderboards!')
@@ -207,7 +209,8 @@ class MemeCoin(commands.Cog):
         await ctx.send(embed=embed)
 
 
-async def check_coin_requirements(bot, payload, memecoin_channel):
+async def check_coin_requirements(bot: commands.Bot, payload: discord.RawReactionActionEvent,
+                                  memecoin_channel: int) -> Optional[int]:
     """
     A method that checks whether or not an event is eligible for Meme Coins.
     Returns -1 if requirements are not met.
@@ -253,7 +256,7 @@ async def check_coin_requirements(bot, payload, memecoin_channel):
     return message_author.id
 
 
-def setup(bot) -> None:
+def setup(bot: commands.Bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

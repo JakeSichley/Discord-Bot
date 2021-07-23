@@ -1,7 +1,8 @@
 from discord.ext import commands
 from asyncio import TimeoutError
 from utils import execute_query, retrieve_query, GuildConverter, cleanup
-from typing import Union, Optional
+from typing import Union, Optional, List, Tuple
+from math import ceil
 import discord
 
 
@@ -21,7 +22,7 @@ class ReactionRoles(commands.Cog):
         bot (commands.Bot): The Discord bot.
     """
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         """
         The constructor for the ReactionRoles class.
 
@@ -109,7 +110,7 @@ class ReactionRoles(commands.Cog):
         # check to make sure the message is from this guild (full message link check)
         if message.guild.id != ctx.guild.id:
             await ctx.send("That message doesn't belong to this guild.")
-            raise commands.UserInputError
+            return
 
         # reaction role setup should have the base message. Check role properties now.
         # if the user passed in a role at the start, check the hierarchy
@@ -178,6 +179,7 @@ class ReactionRoles(commands.Cog):
             return await cleanup(cleanup_messages, ctx.channel)
 
         # we should have all pieces for a reaction role now
+        # noinspection SqlResolve
         await execute_query(self.bot.DATABASE_NAME,
                             'INSERT INTO REACTION_ROLES (GUILD_ID, CHANNEL_ID, MESSAGE_ID, REACTION, ROLE_ID) '
                             'VALUES (?, ?, ?, ?, ?) '
@@ -237,53 +239,76 @@ class ReactionRoles(commands.Cog):
                 pass
 
         # check to make sure the message is from this guild (full message link check)
+
+        # ~~~~ DEBUG ~~~~~ #
         if message.guild.id != ctx.guild.id:
             await ctx.send("That message doesn't belong to this guild.")
-            raise commands.UserInputError
+            # return
+
+        # ~~~~ DEBUG ~~~~~ #
 
         # once we have a message id, proceed with deletion confirmation
         if roles := await retrieve_query(self.bot.DATABASE_NAME,
                                          'SELECT REACTION, ROLE_ID, CHANNEL_ID FROM REACTION_ROLES '
                                          'WHERE MESSAGE_ID=?', (message.id,)):
-            # give the user a display of potential options
-            details = f'Reaction Roles for Message: <https://discordapp.com/channels/' \
-                      f'{ctx.guild.id}/{roles[0][2]}/{message.id}>\n'
+            # roles contain reactions, roles
+            # build embed
 
-            for pair in roles:
-                role_name = ctx.guild.get_role(pair[1])
-                details += ('\t' * 2) + f'{pair[0]} {role_name if role_name else "Invalid Role"}\n'
+            data = [(reaction, ctx.guild.get_role(role)) for reaction, role, _, in roles]
+            reaction_role_pagination = ReactionRolePagination(ctx, data)
 
-            details += '\nReact to this message with the reaction you would like to remove!'
+            await reaction_role_pagination.start(message)
+            cleanup_messages.append(reaction_role_pagination.message)
 
-            # add the details message to the cleanup list
-            breakdown = await ctx.send(details)
-            cleanup_messages.append(breakdown)
-
-            # build a list of reactions and add all of them to the breakdown message
-            reactions = [x[0] for x in roles]
-            for reaction in reactions:
-                try:
-                    await breakdown.add_reaction(reaction)
-                except discord.DiscordException:
-                    pass
-
-            # make sure the reaction is added to the correct message and the reaction is added by our author
             def reaction_check(pl: discord.RawReactionActionEvent):
-                if pl.event_type == 'REACTION_REMOVE':
+                return pl.message_id == reaction_role_pagination.message.id and \
+                       pl.member == ctx.author and \
+                       str(pl.emoji) in reaction_role_pagination.active_reactions
+
+            while reaction_role_pagination.active:
+                try:
+                    payload = await self.bot.wait_for('raw_reaction_add', timeout=30.0, check=reaction_check)
+
+                    if str(payload.emoji) == '\u23f9\ufe0f':
+                        raise TimeoutError
+                    elif str(payload.emoji) == '\u23ee\ufe0f':
+                        await reaction_role_pagination.adjust_page(-1)
+                    elif str(payload.emoji) == '\u23ed\ufe0f':
+                        await reaction_role_pagination.adjust_page(1)
+                    else:
+                        index = ReactionRolePagination.EMOJI_TO_INT[str(payload.emoji)] - 1
+                        to_remove = data[index]
+                        reaction_role_pagination.active = False
+
+                except (commands.BadArgument, TimeoutError):
+                    reaction_role_pagination.active = False
+                    await ctx.send('Aborting reaction role removal.')
+                    await cleanup(cleanup_messages, ctx.channel)
                     return
-                return pl.message_id == breakdown.id and pl.member == ctx.author
 
             try:
-                # confirm that the user wants to remove the reaction role from the specified message
+                # noinspection PyUnboundLocalVariable
+                confirmation = await ctx.send(f'Please confirm that you want to remove the role `{to_remove[1]}` '
+                                              f'paired with the reaction `{to_remove[0]}` by reacting to this message.')
+                cleanup_messages.append(confirmation)
+                await confirmation.add_reaction('\u2705')
+                await confirmation.add_reaction('\u274c')
+
+                def reaction_check(pl: discord.RawReactionActionEvent):
+                    return pl.message_id == confirmation.id and \
+                           pl.member == ctx.author and \
+                           str(pl.emoji) in ['\u2705', '\u274c']
+
+                # confirm that the user wants to remove the reaction role
                 payload = await self.bot.wait_for('raw_reaction_add', timeout=30.0, check=reaction_check)
 
-                if str(payload.emoji) in reactions:
+                if str(payload.emoji) == '\u2705':
                     await execute_query(self.bot.DATABASE_NAME,
                                         'DELETE FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
-                                        (message.id, str(payload.emoji)))
+                                        (message.id, str(to_remove[0])))
                     # try to remove the deleted reaction
                     try:
-                        await message.remove_reaction(payload.emoji, ctx.me)
+                        await message.clear_reaction(to_remove[0])
                     except discord.HTTPException:
                         pass
 
@@ -349,7 +374,7 @@ class ReactionRoles(commands.Cog):
         # check to make sure the message is from this guild (full message link check)
         if message.guild.id != ctx.guild.id:
             await ctx.send("That message doesn't belong to this guild.")
-            raise commands.UserInputError
+            return
 
         # once we have a message id, proceed with deletion confirmation
         if roles := await retrieve_query(self.bot.DATABASE_NAME,
@@ -492,9 +517,13 @@ class ReactionRoles(commands.Cog):
         # invoke the proper sub-method based on our source type
         if isinstance(source, discord.Message):
             # check to make sure the message is from this guild (full message link check)
+
+            # ~~~~ DEBUG ~~~~~ #
             if source.guild.id != ctx.guild.id:
                 await ctx.send("That message doesn't belong to this guild.")
-                raise commands.UserInputError
+                # return
+            # ~~~~ DEBUG ~~~~~ #
+
             breakdown = await message_selection(source.id)
             await ctx.send(breakdown) if breakdown else await ctx.send('No Reaction Roles for the specified message.')
         elif isinstance(source, discord.TextChannel):
@@ -576,11 +605,11 @@ class ReactionRoles(commands.Cog):
                     except discord.HTTPException:
                         pass
 
-# todo: add note about raw ids only working in the same channel
-# todo: improve reaction remove/add checks
+
+# todo: add pagination for reactions - not all reactions can be added by the bot (removal)
 
 
-def setup(bot) -> None:
+def setup(bot: commands.Bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -593,3 +622,108 @@ def setup(bot) -> None:
 
     bot.add_cog(ReactionRoles(bot))
     print('Completed Setup for Cog: Reactions')
+
+
+class ReactionRolePagination:
+    """
+    A commands.Bot subclass that contains the main bot implementation.
+
+    Constants:
+        PAGE_SIZE (int): The number of entries to display per page.
+        EMOJI_TO_INT (dict): Pairs numbered key-cap emojis to their respective integers.
+
+    Attributes:
+        ctx (commands.Context): The invocation context.
+        data (List[Tuple[str, discord.Role]]): The reaction (str) and Role data for the requested source.
+        message (discord.Message): The message containing the reaction role pagination embed.
+        page (int): The current page.
+        max_pages (int): The maximum number of pages.
+        active_reactions (List[str]): A list of valid reactions based on the current page.
+        active (bool): Whether or not pagination has started and is active.
+    """
+
+    PAGE_SIZE = 6
+    EMOJI_TO_INT = {
+        u'1\ufe0f\u20e3': 1,
+        u'2\ufe0f\u20e3': 2,
+        u'3\ufe0f\u20e3': 3,
+        u'4\ufe0f\u20e3': 4,
+        u'5\ufe0f\u20e3': 5,
+        u'6\ufe0f\u20e3': 6
+    }
+
+    def __init__(self, ctx: commands.Context, data: List[Tuple[str, discord.Role]]) -> None:
+        """
+        The constructor for the ReactionRolePagination class.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            data (List[Tuple[str, discord.Role]]): The reaction (str) and Role data for the requested source.
+
+        Returns:
+            None.
+        """
+
+        self.ctx = ctx
+        self.data = data
+        self.message = None
+        self.embed = None
+        self.page = 0
+        self.max_pages = ceil(len(data) / ReactionRolePagination.PAGE_SIZE) - 1
+        self.active_reactions = None
+        self.active = False
+
+    async def start(self, message: discord.Message):
+        embed = discord.Embed(title=f'\U0001f6e0\ufe0f Reaction Roles for Message ID: {message.id} \U0001f6e0\ufe0f',
+                              url=message.jump_url, color=0x69d7f2,
+                              description="React with the corresponding reaction to remove a reaction role.")
+        embed.set_footer(text='Please report any issues to my owner!')
+        self.embed = embed
+        await self._paginate()
+
+    async def adjust_page(self, offset: int):
+        starting_page = self.page
+
+        self.page += offset
+
+        if self.page < 0:
+            self.page = self.max_pages
+
+        if self.page > self.max_pages:
+            self.page = 0
+
+        if self.page != starting_page:
+            await self._paginate()
+
+    async def _paginate(self):
+        self.embed.clear_fields()
+        start = self.page * ReactionRolePagination.PAGE_SIZE
+        end = start + ReactionRolePagination.PAGE_SIZE
+
+        for i, data in enumerate(self.data[start:end]):
+            self.embed.add_field(name=f'{i + 1}\ufe0f\u20e3 {data[1].name if data[1] else "N/A"}', value=data[0],
+                                 inline=False)
+
+        await self.refresh_embed()
+
+    async def refresh_embed(self):
+        if not self.message:
+            self.message = await self.ctx.send(embed=self.embed)
+        else:
+            await self.message.edit(embed=self.embed)
+
+        self.active = True
+
+        await self._update_reactions()
+
+    async def _update_reactions(self):
+        await self.message.clear_reactions()
+
+        digit_reactions = [f'{i + 1}\ufe0f\u20e3' for i in range(len(self.embed.fields))]
+        self.active_reactions = ['\u23ee\ufe0f'] + digit_reactions + ['\u23f9\ufe0f', '\u23ed\ufe0f']
+
+        for reaction in self.active_reactions:
+            await self.message.add_reaction(reaction)
+
+    # todo: document code
+    # todo: cleanup reaction_remove and document

@@ -12,7 +12,7 @@ class Exceptions(commands.Cog):
         bot (commands.Bot): The Discord bot.
     """
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         """
         The constructor for the Exceptions class.
 
@@ -112,7 +112,7 @@ class Exceptions(commands.Cog):
         print_exception(type(error), error, error.__traceback__, file=stderr)
 
 
-def setup(bot) -> None:
+def setup(bot: commands.Bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

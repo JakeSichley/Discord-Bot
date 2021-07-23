@@ -1,9 +1,13 @@
 from discord.ext import commands
+from discord import TextChannel, HTTPException, Message
 from asyncio import TimeoutError
 from io import StringIO
 from contextlib import redirect_stdout
 from textwrap import indent
 from traceback import format_exc
+from utils import localize_time, pairs
+from re import finditer
+from typing import Union
 import aiosqlite
 
 
@@ -16,7 +20,7 @@ class Admin(commands.Cog):
         _last_result (str): The value (if any) of the last exec command.
     """
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         """
         The constructor for the Admin class.
 
@@ -27,7 +31,7 @@ class Admin(commands.Cog):
         self.bot = bot
         self._last_result = None
 
-    async def cog_check(self, ctx):
+    async def cog_check(self, ctx: commands.Context) -> bool:
         """
         A method that registers a cog-wide check.
         Requires the invoking user to be the bot's owner.
@@ -42,7 +46,7 @@ class Admin(commands.Cog):
         return await self.bot.is_owner(ctx.author)
 
     @commands.command(name='adminhelp', aliases=['ahelp'], hidden=True)
-    async def admin_help_command(self, ctx):
+    async def admin_help_command(self, ctx: commands.Context) -> None:
         """
         A command to generate help information for the Admin cog.
         The native help command will not generate information for the Admin cog, since all commands are hidden.
@@ -73,7 +77,7 @@ class Admin(commands.Cog):
         await ctx.send(help_string)
 
     @commands.command(name='reload', aliases=['load'], hidden=True)
-    async def reload(self, ctx, module):
+    async def reload(self, ctx: commands.Context, module: str) -> None:
         """
         A command to reload a module.
         If the reload fails, the previous state of module is maintained.
@@ -101,7 +105,7 @@ class Admin(commands.Cog):
             await ctx.send(f'Loaded Module: `{module}`')
 
     @commands.command(name='unload', hidden=True)
-    async def unload(self, ctx, module):
+    async def unload(self, ctx: commands.Context, module: str) -> None:
         """
         A command to unload a module.
 
@@ -126,7 +130,7 @@ class Admin(commands.Cog):
             await ctx.send(f'Could Not Unload Module: `{module}`')
 
     @commands.command(name='logout', aliases=['shutdown'], hidden=True)
-    async def logout(self, ctx):
+    async def logout(self, ctx: commands.Context) -> None:
         """
         A command to stop (close/logout) the bot.
         The command must be confirmed to complete the logout.
@@ -159,7 +163,7 @@ class Admin(commands.Cog):
             await self.bot.logout()
 
     @commands.command(name='eval', hidden=True)
-    async def _eval(self, ctx, _ev: str):
+    async def _eval(self, ctx: commands.Context, _ev: str) -> None:
         """
         A command to evaluate a python statement.
         Should the evaluation encounter an exception, the output will be the exception details.
@@ -187,7 +191,7 @@ class Admin(commands.Cog):
         await ctx.send(output)
 
     @commands.command(name='sql', hidden=True)
-    async def sql(self, ctx, *, query: str):
+    async def sql(self, ctx: commands.Context, *, query: str) -> None:
         """
         A command to execute a sqlite3 statement.
         If the statement type is 'SELECT', successful executions will send the result.
@@ -224,7 +228,7 @@ class Admin(commands.Cog):
             print(f'Admin SQL Command Error: {e}')
 
     @commands.command(name='reloadprefixes', aliases=['rp'], hidden=True)
-    async def reload_prefixes(self, ctx):
+    async def reload_prefixes(self, ctx: commands.Context) -> None:
         """
         A command to reload the bot's store prefixes.
         Prefixes are normally reloaded when explicitly changed.
@@ -259,7 +263,7 @@ class Admin(commands.Cog):
             print(f'Reload Prefixes Error: {e}')
 
     @commands.command(name='resetcooldown', aliases=['rc'], hidden=True)
-    async def reset_cooldown(self, ctx, command):
+    async def reset_cooldown(self, ctx: commands.Context, command: str) -> None:
         """
         A command to reset the cooldown of a command.
 
@@ -281,7 +285,7 @@ class Admin(commands.Cog):
         await ctx.send(f'Reset cooldown of Command: `{command}`')
 
     @commands.command(name='exec', aliases=['execute'], pass_context=True, hidden=True)
-    async def _exec(self, ctx, *, body: str):
+    async def _exec(self, ctx: commands.Context, *, body: str) -> None:
         """
         A command to execute a Python code block and output the result, if any.
 
@@ -349,8 +353,166 @@ class Admin(commands.Cog):
                 self._last_result = ret
                 await ctx.send(f'```py\n{value}{ret}\n```')
 
+    @commands.command(name='archive', hidden=True)
+    async def archive(self, ctx: commands.Context, target: int) -> None:
+        """
+        Archives a channel as efficiently as possible. Places messages without attachments, files, or embeds into a
+        buffer and sends the buffer when the message character limit is exceeded.
 
-def setup(bot) -> None:
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            target (int): The beginning channel id (archive this channel).
+
+        Returns:
+            None.
+        """
+
+        target = self.bot.get_channel(target)
+
+        # try to create the new archive channel
+        category = await ctx.guild.create_category(name=target.name)
+
+        if isinstance(target, TextChannel):
+            channel_list = [target]
+        else:
+            channel_list = target.channels
+
+        # if the original or the new destination is unavailable, stop the process
+        if target is None or category is None:
+            await ctx.send('Could not fetch one or more channels.')
+
+        # otherwise, begin the archive process
+        else:
+            for base_channel in [channel for channel in channel_list if isinstance(channel, TextChannel)]:
+                # reset buffer after each channel
+                buffer = ''
+                channel = await category.create_text_channel(name=base_channel.name)
+                async with channel.typing():
+                    async for message in base_channel.history(limit=None, oldest_first=True):
+                        # for each message, check to see if there's attachments or embeds
+                        attachments = None
+                        embeds = None
+
+                        # check for attachments and if any, try to convert them to files for sending
+                        if len(message.attachments) > 0:
+                            try:
+                                attachments = [await attachment.to_file() for attachment in message.attachments
+                                               if attachment.size <= 8000000]
+                                bad_attachments = [f'`<Bad File: {attachment.filename} | File Size: {attachment.size}>`'
+                                                   for attachment in message.attachments if attachment.size > 8000000]
+
+                                if bad_attachments:
+                                    if message.content:
+                                        message.content += '\n'
+                                    message.content += '\n'.join(bad_attachments)
+
+                            except HTTPException:
+                                pass
+
+                        # check for embeds and if any, save the first one (shouldn't have multiple embeds)
+                        if len(message.embeds) > 0:
+                            try:
+                                embeds = ([embed for embed in message.embeds])[0]
+                            except HTTPException:
+                                pass
+
+                        # case 1: attachments or embeds with a non-empty buffer
+                        if (attachments or embeds) and buffer != '':
+                            # forcible send the existing buffer
+                            await try_to_send_buffer(channel, buffer, True)
+
+                            # new buffer contents are the contents of the current message
+                            buffer = f'\n\n**{message.author} - {localize_time(message.created_at)}**\n'
+                            buffer += message.content
+
+                            # if the current message contents exceed the limit, send the maximum first portion
+                            #   and save the remaining portion
+                            if len(buffer) > 2000:
+                                buffer = await try_to_send_buffer(channel, buffer)
+
+                            # send the remaining portion of the buffer, attachments or embeds, and clear the buffer
+                            await channel.send(content=buffer, embed=embeds, files=attachments)
+                            buffer = ''
+
+                        # case 2: attachments or embeds with an empty buffer
+                        elif attachments or embeds:
+                            # since the buffer is empty, new buffer contents are the contents of the current message
+                            buffer = f'\n\n**{message.author} - {localize_time(message.created_at)}**\n'
+                            buffer += message.content
+
+                            # if the current message contents don't exceed the limit, send everything
+                            if len(buffer) <= 2000:
+                                await channel.send(content=buffer, embed=embeds, files=attachments)
+                            # otherwise, break up the buffer where appropriate, the send everything
+                            else:
+                                buffer = await try_to_send_buffer(channel, buffer)
+                                await channel.send(content=buffer, embed=embeds, files=attachments)
+
+                            # reset the buffer
+                            buffer = ''
+
+                        # case 3: no attachments or embeds and a non-empty buffer
+                        else:
+                            # add the current message contents to the buffer
+                            buffer += f'\n\n**{message.author} - {localize_time(message.created_at)}**\n'
+                            buffer += message.content
+
+                            # if the buffer exceeds the maximum length, try to send the buffer (and preserve the extra)
+                            if len(buffer) > 2000:
+                                buffer = await try_to_send_buffer(channel, buffer)
+
+                    # once finished processing all messages, forcibly send the entire buffer
+                    if buffer != '':
+                        await try_to_send_buffer(channel, buffer, True)
+
+
+async def try_to_send_buffer(channel: TextChannel, buffer: str, force: bool = False) -> Union[Message, str]:
+    """
+    Parses a string buffer and either sends or returns the buffer in an optimal break point.
+
+    Parameters:
+        channel (discord.TextChannel): The channel to send the buffer to.
+        buffer (str): The contents of the buffer.
+        force (bool): Whether to forcible the send the remaining buffer contents or return them. Default: False.
+
+    Returns:
+        (Union[Message, str]): Returns a discord.Message object if the entire buffer was sent. Returns a str if
+            the second half of the buffer was not sent.
+    """
+
+    # if the buffer is within our limit, no special calculations are needed
+    if len(buffer) <= 2000:
+        return await channel.send(buffer)
+
+    # default break index to 1800
+    break_index = 1800
+
+    # starting from the last character in the maximum buffer length, look for a nice character to break on
+    for index, character in reversed(list(enumerate(buffer[:2000]))):
+        if character in ('\n', '.', '!', '?'):
+            break_index = index + 1
+            break
+
+    # check for code blocks
+    if code_backticks := [m.start() for m in finditer('```', buffer)]:
+        # generate pairs of code blocks to check
+        # this prevents breaking a code block and causing weird formatting
+        for start, end in pairs(code_backticks):
+            if start < break_index < end:
+                break_index = start
+                break
+
+    # once all checks are performed, send the first portion of the buffer
+    await channel.send(str(buffer[:break_index]))
+
+    # depending on parameters, either send or return the remaining portion of the buffer
+    if force:
+        return await channel.send(str(buffer[break_index:]))
+    else:
+        return str(buffer[break_index:])
+
+
+def setup(bot: commands.Bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

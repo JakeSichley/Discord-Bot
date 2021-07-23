@@ -142,3 +142,4 @@ cogs/bestbuy.py
 cogs/eric.mp3
 firebase-auth.json
 cogs/jess.mp3
+*.ttf

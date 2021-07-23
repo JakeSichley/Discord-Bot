@@ -12,7 +12,7 @@ class Giveaway(commands.Cog):
         bot (commands.Bot): The Discord bot class.
     """
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         """
         The constructor for the Giveaway class.
 
@@ -37,6 +37,7 @@ class Giveaway(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send_help('giveaway')
 
+    # todo: document method
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True, read_message_history=True)
     @giveaway.command(name='start', help='Begins the process of hosting a giveaway.')
@@ -117,7 +118,7 @@ class Giveaway(commands.Cog):
                     await message.remove_reaction('🎉', winner)
 
 
-def setup(bot) -> None:
+def setup(bot: commands.Bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

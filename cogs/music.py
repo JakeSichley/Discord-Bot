@@ -135,6 +135,7 @@ class Player(wavelink.Player):
         self.queue = asyncio.Queue()
         self.controller = None
 
+        # https://github.com/felix-hilden/tekore/issues/245#issuecomment-792137357
         conf = (getenv('SPOTIFY_ID'), getenv('SPOTIFY_SECRET'))
         token = tk.request_client_token(*conf[:2])
         self.spotify = tk.Spotify(token, asynchronous=True)
@@ -417,7 +418,7 @@ class InteractiveController(menus.Menu):
     @menus.button(emoji='\u23F9')
     async def stop_command(self, payload: discord.RawReactionActionEvent) -> None:
         """
-        The menu's stop button. Invokes the sop command.
+        The menu's stop button. Invokes the stop command.
 
         Parameters:
             payload (discord.RawReactionActionEvent): The reaction event's details.
@@ -553,16 +554,16 @@ class PaginatorSource(menus.ListPageSource):
     Player queue paginator class.
 
     Attributes:
-        entries (list[str]): A sequence (list) of Track titles.
+        entries (List[str]): A sequence (list) of Track titles.
         per_page (Optional[int]): The number of entries to display per page.
     """
 
-    def __init__(self, entries, *, per_page=8):
+    def __init__(self, entries, *, per_page=8) -> None:
         """
         The constructor for the Track class.
 
         Parameters:
-            entries (list[str]): A sequence (list) of Track titles.
+            entries (List[str]): A sequence (list) of Track titles.
             per_page (Optional[int]): The number of entries to display per page.
         """
 
@@ -573,7 +574,7 @@ class PaginatorSource(menus.ListPageSource):
         A method that formats a specified page.
 
         Parameters:
-            menu (menus.Menu): A sequence (list) of Track titles.
+            menu (menus.Menu): The menu containing the page
             page (Page[entries]): The page containing the entries to display.
 
         Returns:
@@ -608,7 +609,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         bot (commands.Bot): The Discord bot class.
     """
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         """
         The constructor for the Track class.
 
@@ -642,6 +643,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             for node in previous.values():
                 await node.destroy()
 
+        # noinspection HttpUrlsUsage
         nodes = {'MAIN': {'host': '127.0.0.50',
                           'port': 2333,
                           'rest_uri': 'http://127.0.0.50:2333',
@@ -1412,7 +1414,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         player.queue = new_queue
 
 
-def setup(bot) -> None:
+def setup(bot: commands.Bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

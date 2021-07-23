@@ -14,7 +14,7 @@ class Utility(commands.Cog):
         bot (commands.Bot): The Discord bot class.
     """
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         """
         The constructor for the UtilityFunctions class.
 
@@ -26,7 +26,7 @@ class Utility(commands.Cog):
 
     @commands.command(name='time', help='Responds with the current time. Can be supplied with a timezone.\nFor a full '
                       'list of supported timezones, see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones')
-    async def current_time(self, ctx, timezone='UTC') -> None:
+    async def current_time(self, ctx: commands.Context, timezone: str = 'UTC') -> None:
         """
         A method to output the current time in a specified timezone.
 
@@ -49,7 +49,7 @@ class Utility(commands.Cog):
 
     @commands.command(name='devserver', help='Responds with an invite link to the development server. Useful for '
                       'getting assistance with a bug, or requesting a new feature!')
-    async def dev_server(self, ctx) -> None:
+    async def dev_server(self, ctx: commands.Context) -> None:
         """
         A method to output a link to the DreamBot development server.
 
@@ -70,7 +70,7 @@ class Utility(commands.Cog):
     @commands.has_permissions(administrator=True)
     @commands.guild_only()
     @commands.command(name='setprefix', help='Sets the bot\'s prefix for this guild. Administrator use only.')
-    async def set_prefix(self, ctx, pre) -> None:
+    async def set_prefix(self, ctx: commands.Context, pre: str) -> None:
         """
         A method to change the command prefix for a guild. Only usable by a guild's administrators.
 
@@ -111,7 +111,7 @@ class Utility(commands.Cog):
 
     @commands.guild_only()
     @commands.command(name='getprefix', aliases=['prefix'], help='Gets the bot\'s prefix for this guild.')
-    async def get_prefix(self, ctx) -> None:
+    async def get_prefix(self, ctx: commands.Context) -> None:
         """
         A method that outputs the command prefix for a guild.
 
@@ -143,7 +143,7 @@ class Utility(commands.Cog):
             print(f'Set Prefix SQLite Error: {e}')
 
     @commands.command(name='uptime', help='Returns current bot uptime.')
-    async def uptime(self, ctx) -> None:
+    async def uptime(self, ctx: commands.Context) -> None:
         """
         A method that outputs the uptime of the bot.
 
@@ -167,7 +167,7 @@ class Utility(commands.Cog):
 
     @commands.command(name='userinfo', aliases=['ui'],
                       help='Generates an embed detailing information about the specified user')
-    async def user_info(self, ctx, user: Member) -> None:
+    async def user_info(self, ctx: commands.Context, user: Member) -> None:
         """
         A method that outputs user information.
 
@@ -198,6 +198,24 @@ class Utility(commands.Cog):
 
         await ctx.send(embed=embed)
 
+    @commands.command(name='unicodeemoji', aliases=['ue', 'eu'])
+    async def unicode_emoji(self, ctx: commands.Context, emoji: str):
+        """
+        A method to convert emojis to their respective unicode string.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            emoji (str): The emoji to encode.
+
+        Output:
+            The unicode string representing the emoji.
+
+        Returns:
+            None.
+        """
+
+        await ctx.send(f"`{emoji.encode('unicode-escape').decode('ASCII')}`")
+
 
 async def readable_flags(flags: PublicUserFlags) -> str:
     """
@@ -218,7 +236,7 @@ async def readable_flags(flags: PublicUserFlags) -> str:
         return 'None'
 
 
-def setup(bot) -> None:
+def setup(bot: commands.Bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

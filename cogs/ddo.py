@@ -34,7 +34,7 @@ class DDO(commands.Cog):
     DIFFICULTIES = ('Casual', 'Normal', 'Hard', 'Elite', 'Reaper')
     LEX_ID = 91995622093123584
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         """
         The constructor for the Moderation class.
 
@@ -50,7 +50,7 @@ class DDO(commands.Cog):
         self.check_for_valid_raids.start()
 
     @commands.command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')
-    async def roll(self, ctx, *, pattern) -> None:
+    async def roll(self, ctx: commands.Context, *, pattern: str) -> None:
         """
         A method to simulate the rolling of dice.
 
@@ -131,7 +131,7 @@ class DDO(commands.Cog):
 
     @commands.command(name='ddoitem', help='Pulls basic information about an item in Dungeons & Dragons Online '
                       'from the wiki')
-    async def ddo_item(self, ctx, *, item) -> None:
+    async def ddo_item(self, ctx: commands.Context, *, item: str) -> None:
         """
         A method that outputs an embed detailing the properties of an item on the DDOWiki.
 
@@ -256,7 +256,7 @@ class DDO(commands.Cog):
     @commands.command(name='lfms', help='Returns a list of active LFMs for the specified server.\nValid servers include'
                       ' Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis, and Wayfinder'
                       '\nInformation is populated from \'DDO Audit\' every 20 seconds.')
-    async def ddo_lfms(self, ctx, server='Khyber'):
+    async def ddo_lfms(self, ctx: commands.Context, server: str = 'Khyber') -> None:
         """
         A method that outputs a list of all active groups on a server.
 
@@ -305,7 +305,7 @@ class DDO(commands.Cog):
                       'Elite, Reaper), and Level: (1-30).\nYou MUST supply a server.\n'
                       'Valid servers include Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis, '
                       'Wayfinder, and Hardcore.\nInformation is populated from \'DDO Audit\' every 30 seconds.')
-    async def ddo_filter_lfms(self, ctx, *args):
+    async def ddo_filter_lfms(self, ctx: commands.Context, *args: str) -> None:
         """
         A method that outputs a list of all active groups on a server that match the specified filters.
 
@@ -406,8 +406,6 @@ class DDO(commands.Cog):
 
                 # if the query fails 5 times in a row, delay querying the API for an hour
                 if self.reconnect_tries % 5 == 0:
-                    await self.bot.alert(cog='DDO', meth='query_ddo_audit', details='Failed to Query DDOAudit',
-                                         sleep_time=f'{min(int(self.reconnect_tries / 5), 6)} Hour(s)')
                     await sleep(3600 * min(int(self.reconnect_tries / 5), 6))
 
     @query_ddo_audit.before_loop
@@ -563,7 +561,7 @@ def build_embed(raid: dict, name: str, bot_name: str, bot_avatar: str) -> Embed:
     return embed
 
 
-def setup(bot) -> None:
+def setup(bot: commands.Bot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
