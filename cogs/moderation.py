@@ -1,3 +1,5 @@
+import re
+
 from discord.ext import commands, menus
 from utils import execute_query, retrieve_query, exists_query, DefaultMemberConverter
 from enum import Enum
@@ -53,6 +55,7 @@ class Moderation(commands.Cog):
         if user is None:
             await ctx.channel.purge(limit=limit + 1)
         else:
+            # noinspection PyMissingOrEmptyDocstring
             def purge_check(message):
                 return message.author.id == user.id
 
@@ -61,7 +64,7 @@ class Moderation(commands.Cog):
     @commands.has_guild_permissions(manage_roles=True)
     @commands.bot_has_guild_permissions(manage_roles=True)
     @commands.command(name='bulkadd', help='Adds a specified role to a large number of users at once.')
-    async def bulk_add_roles(self, ctx: commands.Context, role: discord.Role, *members: DefaultMemberConverter):
+    async def bulk_add_roles(self, ctx: commands.Context, role: discord.Role, *members: str):
         """
         A method to bulk add a role to members.
         Uses a special converter that attempts to remove whitespace errors and defaults to returning the member's name
@@ -80,7 +83,7 @@ class Moderation(commands.Cog):
             None.
         """
 
-        bot_role = ctx.me.top_role
+        """bot_role = ctx.me.top_role
         invoker_role = ctx.author.top_role
 
         if not all((bot_role, invoker_role, role)):
@@ -88,25 +91,79 @@ class Moderation(commands.Cog):
             return
         if role >= bot_role or role >= invoker_role:
             await ctx.send('You specified a role equal to or higher than mine or your top role.')
-            return
+            return"""
 
-        success, failed = [], []
-        for member in members:
+        csuflol = self.bot.get_guild(183469430380953601)
+
+        mention_regex = re.compile(r'<@!?([0-9]+)>$')
+        id_regex = re.compile(r'([0-9]{15,21})$')
+
+        mentions = list(filter(mention_regex.match, members))
+        ids = list(filter(id_regex.match, members))
+        resolved = []
+
+        raws = [x for x in members if (x not in mentions and x not in ids)]
+        unresolved_raws = []
+
+        for arg in raws:
+            if len(arg) > 5 and arg[-5] == '#':
+                username, _, discriminator = arg.rpartition('#')
+                if found := discord.utils.get(csuflol.members, name=username, discriminator=discriminator):
+                    resolved.append(found)
+                else:
+                    unresolved_raws.append(arg)
+            else:
+                if found := discord.utils.find(lambda m: m.name == arg or m.nick == arg, csuflol.members):
+                    resolved.append(found)
+                else:
+                    unresolved_raws.append(arg)
+
+        from discord.ext.commands import IDConverter, BadArgument, MemberConverter, MemberNotFound
+
+        _members = resolved + [await MemberConverter().convert(ctx, arg) for arg in mentions + ids]
+
+        """
+        Denote different regex match cases
+        iterate through parameters and attempt to match
+            should match fail, append next parameter and attempt to match
+                should match fail, check next parameter for isolated match
+                    should match fail, repeat appending parameters
+                    should match succeed, discard previous parameter
+                        edge case where next parameter weakly matches (ex: nickname) and prematurely discards
+                    
+        trim excess (>1) (white)spaces from params
+            investigate how newlines, tabs interact with variadic parameters
+                if significant, potentially convert all whitespace to spaces
+        """
+
+        success, failed = [], unresolved_raws
+
+        for member in _members:
+            if isinstance(member, discord.Member):
+                success.append(str(member))
+            else:
+                failed.append(str(member))
+
+        """for member in _members:
             try:
                 # noinspection PyUnresolvedReferences
-                await member.add_roles(role, reason=f'Bulk Added by {str(ctx.author)}')
+                # await member.add_roles(role, reason=f'Bulk Added by {str(ctx.author)}')
                 success.append(str(member))
             except discord.HTTPException:
                 failed.append(str(member))
             # since we used a special converter that returns the member's name (as a str) if conversation fails,
             # type 'str' won't have an add_roles method
             except AttributeError:
-                failed.append(str(member))
+                failed.append(str(member))"""
 
-        await ctx.send(f'Successfully added the role to the following members:\n'
-                       f'```{", ".join(success) if success else "None"}```\n'
-                       f'Failed to add the role to the following members:\n'
-                       f'```{", ".join(failed) if failed else "None"}```')
+        response = f'Successfully added the role to the following members:\n'\
+                   f'```{", ".join(success) if success else "None"}```'
+
+        if failed:
+            response += f'\nFailed to add the role to the following members:\n'\
+                        f'```{", ".join(failed) if failed else "None"}```'
+
+        await ctx.send(response)
 
     @commands.has_guild_permissions(manage_guild=True)
     @commands.command(name='getdefaultrole', aliases=['gdr'],
