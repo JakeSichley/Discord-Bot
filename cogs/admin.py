@@ -123,6 +123,11 @@ class Admin(commands.Cog):
             None.
         """
 
+        if module == 'admin':
+            ctx.command = self.bot.get_command('reload')
+            await ctx.reinvoke()
+            return
+
         try:
             self.bot.unload_extension('cogs.' + module)
             await ctx.send(f'Unloaded Module: `{module}`')
