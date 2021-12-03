@@ -2,7 +2,7 @@ from discord.ext import commands
 from asyncio import TimeoutError
 from utils import exists_query, execute_query, retrieve_query, cleanup
 from asyncio import sleep
-from typing import List
+from typing import List, Tuple, Optional
 import discord
 
 
@@ -83,36 +83,14 @@ class VoiceRoles(commands.Cog):
             return
 
         if not channel:
-            cleanup_messages.append(await ctx.send('Please specify the voice channel you want to set up Voice Roles for'
-                                                   '!\nYou can right click on a channel and send either the Channel ID '
-                                                   'or you can also send the quoted name ("My Voice Channel")!'))
+            cleanup_messages, channel = await prompt_user_for_voice_channel(self.bot, ctx)
 
-            def message_check(m):
-                return m.author == ctx.author
-
-            # wrap the entire operation in a try -> break this with timeout
-            try:
-                # give the user multiple attempts to pass a valid argument
-                while True:
-                    # wait for them to respond
-                    response = await self.bot.wait_for('message', timeout=30.0, check=message_check)
-                    # try to convert their response to a VoiceChannel object
-                    try:
-                        channel = await commands.VoiceChannelConverter().convert(ctx, response.content)
-                        raise UserInputReceived
-                    except (commands.CommandError, commands.BadArgument):
-                        cleanup_messages.append(await ctx.send("I wasn't able to extract a channel from your response."
-                                                               " Please try again!"))
-            except TimeoutError:
-                await ctx.send("Didn't receive a response in time. You can restart the command whenever you're ready!")
-                return await cleanup(cleanup_messages, ctx.channel)
-            except UserInputReceived:
-                pass
-
-        # check to make sure the channel is from this guild (convert should fail, but just to be safe)
-        if channel.guild.id != ctx.guild.id:
-            await ctx.send("That channel doesn't belong to this guild.")
-            raise commands.UserInputError
+            if not channel:
+                await cleanup(cleanup_messages, ctx.channel)
+                return
+            elif channel.guild.id != ctx.guild.id:
+                await ctx.send("That channel doesn't belong to this guild.")
+                return
 
         # voice role setup should have the base channel. Check role properties now.
         # if the user passed in a role at the start, check the hierarchy
@@ -122,39 +100,15 @@ class VoiceRoles(commands.Cog):
             role = None
 
         if not role:
-            cleanup_messages.append(await ctx.send('Please specify the role you want to set up Reaction Roles for!'
-                                                   '\nYou can send the Role Name, Role ID, or even mention the Role!'))
+            messages, role = await prompt_user_for_role(self.bot, ctx, bot_role, invoker_role)
+            cleanup_messages.extend(messages)
 
-            def message_check(m):
-                return m.author == ctx.author
-
-            # wrap the entire operation in a try -> break this with timeout
-            try:
-                # give the user multiple attempts to pass a valid argument
-                while True:
-                    # wait for them to respond
-                    response = await self.bot.wait_for('message', timeout=30.0, check=message_check)
-                    # try to convert their response to a role object
-                    try:
-                        role = await commands.RoleConverter().convert(ctx, response.content)
-                        if role >= bot_role or role >= invoker_role or role.is_default():
-                            raise commands.UserInputError
-                        else:
-                            raise UserInputReceived
-                    except commands.BadArgument:
-                        cleanup_messages.append(await ctx.send("I wasn't able to extract a role from your response."
-                                                               " Please try again!"))
-                    except commands.UserInputError:
-                        cleanup_messages.append(await ctx.send("You cannot specify a role higher than or equal to mine"
-                                                               " or your top role! Please specify another role!"))
-                    except commands.CommandError:
-                        cleanup_messages.append(await ctx.send("I wasn't able to extract a role from your response."
-                                                               " Please try again!"))
-            except TimeoutError:
-                await ctx.send("Didn't receive a response in time. You can restart the command whenever you're ready!")
-                return await cleanup(cleanup_messages, ctx.channel)
-            except UserInputReceived:
-                pass
+            if not role:
+                await cleanup(cleanup_messages, ctx.channel)
+                return
+            elif role.guild.id != role.guild.id:
+                await ctx.send("That role doesn't belong to this guild.")
+                return
 
         # we should have all pieces for a reaction role now
         # perform an EXISTS query first since pi doesn't support ON_CONFLICT
@@ -164,7 +118,7 @@ class VoiceRoles(commands.Cog):
                                 (role.id, channel.id))
         else:
             await execute_query(self.bot.DATABASE_NAME, 'INSERT INTO VOICE_ROLES (GUILD_ID, CHANNEL_ID, ROLE_ID) '
-                                'VALUES (?, ?, ?)',
+                                                        'VALUES (?, ?, ?)',
                                 (channel.guild.id, channel.id, role.id))
 
         await ctx.send(f"Awesome! Whenever a user joins **{channel.name}**, I'll assign them the **{role.name}** role!")
@@ -188,39 +142,15 @@ class VoiceRoles(commands.Cog):
             None.
         """
 
-        cleanup_messages = []
-
         if not channel:
-            cleanup_messages.append(await ctx.send('Please specify the channel you want to remove a Voice Role for'
-                                                   '!\nYou can right click on a channel and send either the Channel ID '
-                                                   'or you can also send the quoted name ("My Voice Channel")!'))
+            cleanup_messages, channel = await prompt_user_for_voice_channel(self.bot, ctx)
 
-            def message_check(m):
-                return m.author == ctx.author
-
-            # wrap the entire operation in a try -> break this with timeout
-            try:
-                # give the user multiple attempts to pass a valid argument
-                while True:
-                    # wait for them to respond
-                    response = await self.bot.wait_for('message', timeout=30.0, check=message_check)
-                    # try to convert their response to a VoiceChannel object
-                    try:
-                        channel = await commands.VoiceChannelConverter().convert(ctx, response.content)
-                        raise UserInputReceived
-                    except (commands.CommandError, commands.BadArgument):
-                        cleanup_messages.append(await ctx.send("I wasn't able to extract a channel from your response."
-                                                               " Please try again!"))
-            except TimeoutError:
-                await ctx.send("Didn't receive a response in time. You can restart the command whenever you're ready!")
-                return await cleanup(cleanup_messages, ctx.channel)
-            except UserInputReceived:
-                pass
-
-        # check to make sure the channel is from this guild (convert should fail, but just to be safe)
-        if channel.guild.id != ctx.guild.id:
-            await ctx.send("That channel doesn't belong to this guild.")
-            raise commands.UserInputError
+            if not channel:
+                await cleanup(cleanup_messages, ctx.channel)
+                return
+            elif channel.guild.id != ctx.guild.id:
+                await ctx.send("That channel doesn't belong to this guild.")
+                return
 
         # once we have a channel id, proceed with deletion confirmation
         if role := await retrieve_query(self.bot.DATABASE_NAME,
@@ -240,8 +170,6 @@ class VoiceRoles(commands.Cog):
         else:
             await ctx.send('Could not find any voice roles associated with the specified channel.')
 
-        await cleanup(cleanup_messages, ctx.channel)
-
     @commands.has_permissions(manage_roles=True)
     @voice_role.command(name='check', help='Checks a channel for an existing voice role.')
     async def check_voice_role(self, ctx: commands.Context, channel: discord.VoiceChannel = None) -> None:
@@ -256,39 +184,15 @@ class VoiceRoles(commands.Cog):
             None.
         """
 
-        cleanup_messages = []
-
         if not channel:
-            cleanup_messages.append(await ctx.send('Please specify the channel you want to remove a Voice Role for'
-                                                   '!\nYou can right click on a channel and send either the Channel ID '
-                                                   'or you can also send the quoted name ("My Voice Channel")!'))
+            cleanup_messages, channel = await prompt_user_for_voice_channel(self.bot, ctx)
 
-            def message_check(m):
-                return m.author == ctx.author
-
-            # wrap the entire operation in a try -> break this with timeout
-            try:
-                # give the user multiple attempts to pass a valid argument
-                while True:
-                    # wait for them to respond
-                    response = await self.bot.wait_for('message', timeout=30.0, check=message_check)
-                    # try to convert their response to a VoiceChannel object
-                    try:
-                        channel = await commands.VoiceChannelConverter().convert(ctx, response.content)
-                        raise UserInputReceived
-                    except (commands.CommandError, commands.BadArgument):
-                        cleanup_messages.append(await ctx.send("I wasn't able to extract a channel from your response."
-                                                               " Please try again!"))
-            except TimeoutError:
-                await ctx.send("Didn't receive a response in time. You can restart the command whenever you're ready!")
-                return await cleanup(cleanup_messages, ctx.channel)
-            except UserInputReceived:
-                pass
-
-        # check to make sure the channel is from this guild (convert should fail, but just to be safe)
-        if channel.guild.id != ctx.guild.id:
-            await ctx.send("That channel doesn't belong to this guild.")
-            raise commands.UserInputError
+            if not channel:
+                await cleanup(cleanup_messages, ctx.channel)
+                return
+            elif channel.guild.id != ctx.guild.id:
+                await ctx.send("That channel doesn't belong to this guild.")
+                return
 
         # once we have a channel id, check to see if a role exists
         if role := await retrieve_query(self.bot.DATABASE_NAME,
@@ -304,8 +208,6 @@ class VoiceRoles(commands.Cog):
         else:
             await ctx.send('Could not find any voice roles associated with the specified channel.')
 
-        await cleanup(cleanup_messages, ctx.channel)
-
     # noinspection PyUnusedLocal
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState,
@@ -314,7 +216,6 @@ class VoiceRoles(commands.Cog):
         A listener method that is called whenever a VoiceState is modified.
 
         Parameters:
-            Parameters:
             member (discord.Member): The member whose voice state was updated.
             before (discord.VoiceState): Not used.
             after (discord.VoiceState): The updated voice state for the member.
@@ -328,14 +229,6 @@ class VoiceRoles(commands.Cog):
 
         if member.bot:
             return
-
-        """
-        internal structure that stores members and voice states (channel, id, something)
-        after x seconds, count occurrences of member
-            if count > 1, do nothing
-            else, proceed with role update
-        remove occurrence
-        """
 
         self.recently_changed.append(member.id)
         await sleep(3)
@@ -383,6 +276,106 @@ class VoiceRoles(commands.Cog):
                                                   reason=f'Reaction Roles [DISCONNECT]')
                     except discord.HTTPException:
                         pass
+
+
+async def prompt_user_for_voice_channel(
+        bot: commands.Bot, ctx: commands.Context
+) -> Tuple[List[discord.Message], Optional[discord.VoiceChannel]]:
+    """
+    A method to fetch a discord.VoiceChannel from a user.
+
+    Parameters:
+        bot (commands.Bot): The discord bot.
+        ctx (commands.Context): The invocation context.
+
+    Output:
+        Command State Information.
+
+    Returns:
+        Tuple[List[discord.Message], Optional[discord.VoiceChannel]]
+    """
+
+    sent_messages = [
+        await ctx.send('Please specify the channel you want to remove a Voice Role for!\nYou can right click on a '
+                       'channel and send either the Channel ID or you can also send the quoted name '
+                       '("My Voice Channel")!')
+    ]
+
+    # noinspection PyMissingOrEmptyDocstring
+    def message_check(m):
+        return m.author == ctx.author
+
+    # wrap the entire operation in a try -> break this with timeout
+    try:
+        # give the user multiple attempts to pass a valid argument
+        while True:
+            # wait for them to respond
+            response = await bot.wait_for('message', timeout=30.0, check=message_check)
+            # try to convert their response to a VoiceChannel object
+            try:
+                channel = await commands.VoiceChannelConverter().convert(ctx, response.content)
+                return sent_messages, channel
+            except (commands.CommandError, commands.BadArgument):
+                sent_messages.append(
+                    await ctx.send("I wasn't able to extract a channel from your response. Please try again!")
+                )
+    except TimeoutError:
+        await ctx.send("Didn't receive a response in time. You can restart the command whenever you're ready!")
+        return sent_messages, None
+
+
+async def prompt_user_for_role(
+        bot: commands.Bot, ctx: commands.Context, bot_role: discord.Role, author_role: discord.Role
+) -> Tuple[List[discord.Message], Optional[discord.Role]]:
+    """
+    A method to fetch a discord.Role from a user.
+
+    Parameters:
+        bot (commands.Bot): The discord bot.
+        ctx (commands.Context): The invocation context.
+        bot_role (commands.Role): The bot's role in the invocation server.
+        author_role (commands.Role): The author's role in the invocation server.
+
+    Output:
+        Command State Information.
+
+    Returns:
+        Tuple[List[discord.Message], Optional[discord.Role]]
+    """
+    sent_messages = [
+        await ctx.send('Please specify the role you want to set up Reaction Roles for!'
+                       '\nYou can send the Role Name, Role ID, or even mention the Role!')
+    ]
+
+    # noinspection PyMissingOrEmptyDocstring
+    def message_check(m):
+        return m.author == ctx.author
+
+    # wrap the entire operation in a try -> break this with timeout
+    try:
+        # give the user multiple attempts to pass a valid argument
+        while True:
+            # wait for them to respond
+            response = await bot.wait_for('message', timeout=30.0, check=message_check)
+            # try to convert their response to a role object
+            try:
+                role = await commands.RoleConverter().convert(ctx, response.content)
+                if role >= bot_role or role >= author_role or role.is_default():
+                    raise commands.UserInputError
+                else:
+                    return sent_messages, role
+            except commands.BadArgument:
+                sent_messages.append(await ctx.send("I wasn't able to extract a role from your response. "
+                                                    "Please try again!"))
+            except commands.UserInputError:
+                sent_messages.append(await ctx.send("You cannot specify a role higher than or equal to mine "
+                                                    "or your top role! Please specify another role!"))
+            except commands.CommandError:
+                sent_messages.append(await ctx.send("I wasn't able to extract a role from your response. "
+                                                    "Please try again!"))
+    except TimeoutError:
+        await ctx.send("Didn't receive a response in time. You can restart the command whenever you're ready!")
+        return sent_messages, None
 
 
 def setup(bot: commands.Bot) -> None:
