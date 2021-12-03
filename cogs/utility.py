@@ -1,6 +1,10 @@
+import discord
 from discord.ext import commands
 from discord import Member, Embed, PublicUserFlags
 from utils import localize_time
+from imageutils import fetch_from_cdn
+from typing import Optional, Union
+from re import findall
 import datetime
 import pytz
 import aiosqlite
@@ -198,6 +202,38 @@ class Utility(commands.Cog):
 
         await ctx.send(embed=embed)
 
+    @commands.guild_only()
+    @commands.command(name='sync')
+    async def sync_permissions(self, ctx: commands.Context):
+        """
+        A method that re-syncs permissions with the channel's parent category.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+
+        Output:
+            Command state information.
+
+        Returns:
+            None.
+        """
+
+        if not ctx.channel.category:
+            # await ctx.send('This channel does not belong to a category.')
+            return
+        if ctx.channel.permissions_synced:
+            # await ctx.send('Permissions for this channel are already synced')
+            return
+
+        author_can_edit = ctx.channel.category.permissions_for(ctx.author).manage_channels
+
+        if not author_can_edit:
+            # await ctx.send('You do not have permission to sync this channel.')
+            return
+
+        await ctx.channel.edit(sync_permissions=True)
+        await ctx.send('Successfully synced permissions.')
+
     @commands.command(name='unicodeemoji', aliases=['ue', 'eu'])
     async def unicode_emoji(self, ctx: commands.Context, emoji: str):
         """
@@ -215,6 +251,128 @@ class Utility(commands.Cog):
         """
 
         await ctx.send(f"`{emoji.encode('unicode-escape').decode('ASCII')}`")
+
+    @commands.has_guild_permissions(manage_emojis=True)
+    @commands.bot_has_guild_permissions(manage_emojis=True)
+    @commands.command(name='raw_yoink', aliases=['rawyoink'], help='Yoinks an emoji based on it\'s id.')
+    async def raw_yoink_emoji(self, ctx: commands.Context,  source: int, name: Optional[str] = None,
+                              animated: Optional[bool] = False) -> None:
+        """
+        A method to "yoink" an emoji. Retrieves the emoji as an asset and uploads it to the current guild.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            source (Optional[discord.Message]): The message to extract emojis from.
+            animated (Optional[bool]): Whether or not the emoji is animated.
+            name (Optional[str]): The name of the emoji.
+
+        Output:
+            Command state information.
+
+        Returns:
+            None.
+        """
+
+        name = name if name else str(source)
+
+        try:
+            extension = 'gif' if animated else 'png'
+            emoji_asset = await fetch_from_cdn(f'https://cdn.discordapp.com/emojis/{source}.{extension}?size=96')
+        except discord.HTTPException as e:
+            await ctx.send(f'**{name}** failed with `{e.text}`')
+            return
+
+        try:
+            await ctx.guild.create_custom_emoji(name=name, image=emoji_asset, reason=f'Yoink\'d by {ctx.author}')
+        except discord.HTTPException as e:
+            await ctx.send(f'**{name}** failed with `{e.text}`')
+            return
+
+        await ctx.send(f'Successfully yoink\'d the following emoji:\n```{name}```')
+
+    @commands.has_guild_permissions(manage_emojis=True)
+    @commands.bot_has_guild_permissions(manage_emojis=True)
+    @commands.command(name='yoink', help='Yoinks emojis from the specified message.')
+    async def yoink_emoji(self, ctx: commands.Context, source: Optional[discord.Message] = None) -> None:
+        """
+        A method to "yoink" an emoji. Retrieves the emoji as an asset and uploads it to the current guild.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            source (Optional[discord.Message]): The message to extract emojis from.
+
+        Output:
+            Command state information.
+
+        Returns:
+            None.
+        """
+
+        if not source:
+            try:
+                source = ctx.message.reference.resolved
+            except AttributeError:
+                raise commands.MessageNotFound(source)
+
+        if not isinstance(source, discord.Message):
+            raise commands.MessageNotFound(source)
+
+        emojis = findall(r'<(?P<animated>a?):(?P<name>[a-zA-Z0-9_]{2,32}):(?P<id>[0-9]{18,22})>', source.content)
+
+        if not emojis:
+            await ctx.send('Failed to extract any emojis from the specified message.')
+            return
+
+        guild_emoji_names = [x.name for x in ctx.guild.emojis]
+        guild_emoji_ids = [x.id for x in ctx.guild.emojis]
+
+        unique_emojis = []
+        non_unique_emoji = []
+
+        for emoji in emojis:
+            if int(emoji[2]) in guild_emoji_ids:
+                non_unique_emoji.append(f'_{emoji[1]}_ failed with `AlreadyAdded`')
+            elif emoji[1] in guild_emoji_names:
+                non_unique_emoji.append(f'_{emoji[1]}_ failed with `DuplicateName`')
+            else:
+                unique_emojis.append(emoji)
+
+        if not unique_emojis:
+            await ctx.send(f'No unique emojis found. The potential emoji are either from this server or have the '
+                           f'same name as an existing emoji.\n\n**Failure Reasons:**\n{", ".join(non_unique_emoji)}')
+            return
+
+        if ctx.guild.emoji_limit < len(ctx.guild.emojis) + len(unique_emojis):
+            await ctx.send(f'You do not have enough emoji slots to upload all of these emojis. '
+                           f'You have {ctx.guild.emoji_limit - len(ctx.guild.emojis)} remaining slots.')
+            return
+
+        success, failed = [], []
+
+        for emoji in unique_emojis:
+            try:
+                extension = 'gif' if emoji[0] else 'png'
+                emoji_asset = await fetch_from_cdn(f'https://cdn.discordapp.com/emojis/{emoji[2]}.{extension}?size=96')
+            except discord.HTTPException as e:
+                failed.append(f'**{emoji[1]}** failed with `{e.text}`')
+                continue
+
+            try:
+                await ctx.guild.create_custom_emoji(name=emoji[1], image=emoji_asset, reason=f'Yoink\'d by {ctx.author}')
+            except discord.HTTPException as e:
+                failed.append(f'**{emoji[1]}** failed with `{e.text}`')
+                continue
+
+            success.append(emoji[1])
+
+        response = f'Successfully yoink\'d the following emoji:\n' \
+                   f'```{", ".join(success) if success else "None"}```'
+
+        if failed:
+            response += f'\nFailed to yoink the following emoji:\n' \
+                        f'```{", ".join(failed) if failed else "None"}```'
+
+        await ctx.send(response)
 
 
 async def readable_flags(flags: PublicUserFlags) -> str:
