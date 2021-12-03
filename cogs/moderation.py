@@ -3,9 +3,12 @@ import re
 from discord.ext import commands, menus
 from utils import execute_query, retrieve_query, exists_query, DefaultMemberConverter
 from enum import Enum
-from typing import List
+from typing import List, Union
 from asyncio import Condition
 import discord
+
+CHANNEL_OBJECT = Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]
+PERMISSIONS_PARENT = Union[discord.Role, discord.Member]
 
 
 class Moderation(commands.Cog):
@@ -156,11 +159,11 @@ class Moderation(commands.Cog):
             except AttributeError:
                 failed.append(str(member))"""
 
-        response = f'Successfully added the role to the following members:\n'\
+        response = f'Successfully added the role to the following members:\n' \
                    f'```{", ".join(success) if success else "None"}```'
 
         if failed:
-            response += f'\nFailed to add the role to the following members:\n'\
+            response += f'\nFailed to add the role to the following members:\n' \
                         f'```{", ".join(failed) if failed else "None"}```'
 
         await ctx.send(response)
@@ -191,6 +194,25 @@ class Moderation(commands.Cog):
             await ctx.send(f'The default role for the server is **{role.name}**')
         else:
             await ctx.send(f'There is no default role set for the server.')
+
+    @commands.has_guild_permissions(manage_channels=True)
+    @commands.bot_has_guild_permissions(manage_channels=True)
+    @commands.command(name='duplicate_permissions', aliases=['dp'])
+    async def duplicate_channel_permissions(self, ctx: commands.Context, base_channel: CHANNEL_OBJECT,
+                                            base_permission_owner: PERMISSIONS_PARENT, target_channel: CHANNEL_OBJECT,
+                                            target_permission_owner: PERMISSIONS_PARENT) -> None:
+        try:
+            base_overwrites = base_channel.overwrites[base_permission_owner]
+        except KeyError:
+            await ctx.send("Overwrites object was not found")
+            return
+
+        try:
+            await target_channel.set_permissions(target_permission_owner, overwrite=base_overwrites)
+            await ctx.send(f"**{base_channel.name}**[`{base_permission_owner}`] --> "
+                           f"**{target_channel.name}**[`{target_permission_owner}`]")
+        except Exception as e:
+            await ctx.send(f"Failed to duplicate overwrites ({e})")
 
     @commands.cooldown(1, 600, commands.BucketType.guild)
     @commands.has_guild_permissions(manage_guild=True, manage_roles=True)
