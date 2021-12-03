@@ -37,14 +37,13 @@ class Giveaway(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send_help('giveaway')
 
-    # todo: document method
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True, read_message_history=True)
     @giveaway.command(name='start', help='Begins the process of hosting a giveaway.')
-    async def start_giveaway(self, ctx, channel: discord.TextChannel, title, prize, end_date: int, image = None):
+    async def start_giveaway(self, ctx, channel: discord.TextChannel, title: str, prize: str, end_date: int,
+                             image: str = None):
         """
-        A method to purge messages from a channel.
-        Should a user ID be supplied, any messages from that user in the last (limit) messages will be deleted.
+        A method to start a giveaway.
 
         Checks:
             has_permissions(manage_messages): Whether or not the invoking user can manage messages.
@@ -53,8 +52,7 @@ class Giveaway(commands.Cog):
 
         Parameters:
             ctx (commands.Context): The invocation context.
-            limit (int): The number of messages to purge. Default: 0.
-            user (discord.User): The User to delete messages from. Default: None.
+            channel (discord.TextChannel):
 
         Output:
             None.

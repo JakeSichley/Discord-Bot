@@ -11,7 +11,7 @@ from discord.ext.commands import MissingRequiredArgument, BadArgument
 from typing import List, Tuple
 
 
-async def get_from_cdn(url: str) -> bytes:
+async def fetch_from_cdn(url: str) -> bytes:
     """
     A method that downloads an image from a url.
 
@@ -56,7 +56,7 @@ async def extract_image_as_bytes(message: discord.Message, url: str) -> BytesIO:
     elif url and search(r'.(webp|jpeg|jpg|png|bmp)', url):
         # if the user provided an embed, refresh to allow discord time to update the message
         buffer = BytesIO()
-        data = await get_from_cdn(url)
+        data = await fetch_from_cdn(url)
         buffer.write(data)
         buffer.seek(0)
         if buffer.getbuffer().nbytes >= 8000000:

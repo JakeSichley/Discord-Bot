@@ -19,7 +19,7 @@ PREFIX = getenv('PREFIX')
 DATABASE = getenv('DATABASE')
 
 # explicitly disabled cogs
-disabled_cogs = ('ddo', 'memecoin', 'test', 'music', 'twitch', 'firestore',)
+disabled_cogs = ('memecoin', 'test', 'music', 'twitch', 'firestore',)
 
 # specify intents (members requires explicit opt-in via dev portal)
 intents = discord.Intents(guilds=True, members=True, bans=True, emojis=True, voice_states=True, messages=True,
@@ -162,7 +162,15 @@ async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:
     return when_mentioned_or(PREFIX)(bot, message)
 
 
-# Run the bot
-if __name__ == '__main__':
+def main() -> None:
+    """
+    Driver method.
+    """
+
     dream_bot = DreamBot()
     dream_bot.run()
+
+
+# Run the bot
+if __name__ == '__main__':
+    main()

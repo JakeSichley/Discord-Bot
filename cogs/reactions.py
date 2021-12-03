@@ -239,13 +239,9 @@ class ReactionRoles(commands.Cog):
                 pass
 
         # check to make sure the message is from this guild (full message link check)
-
-        # ~~~~ DEBUG ~~~~~ #
         if message.guild.id != ctx.guild.id:
             await ctx.send("That message doesn't belong to this guild.")
-            # return
-
-        # ~~~~ DEBUG ~~~~~ #
+            return
 
         # once we have a message id, proceed with deletion confirmation
         if roles := await retrieve_query(self.bot.DATABASE_NAME,
@@ -514,16 +510,13 @@ class ReactionRoles(commands.Cog):
             else:
                 return None
 
+        if source.guild.id != ctx.guild.id:
+            await ctx.send("That message doesn't belong to this guild.")
+            return
+
         # invoke the proper sub-method based on our source type
         if isinstance(source, discord.Message):
             # check to make sure the message is from this guild (full message link check)
-
-            # ~~~~ DEBUG ~~~~~ #
-            if source.guild.id != ctx.guild.id:
-                await ctx.send("That message doesn't belong to this guild.")
-                # return
-            # ~~~~ DEBUG ~~~~~ #
-
             breakdown = await message_selection(source.id)
             await ctx.send(breakdown) if breakdown else await ctx.send('No Reaction Roles for the specified message.')
         elif isinstance(source, discord.TextChannel):
@@ -604,9 +597,6 @@ class ReactionRoles(commands.Cog):
                         await member.remove_roles(role, reason=f'Reaction Roles [MESSAGE ID: {payload.message_id}]')
                     except discord.HTTPException:
                         pass
-
-
-# todo: add pagination for reactions - not all reactions can be added by the bot (removal)
 
 
 def setup(bot: commands.Bot) -> None:

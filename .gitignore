@@ -143,3 +143,5 @@ cogs/eric.mp3
 firebase-auth.json
 cogs/jess.mp3
 *.ttf
+*.mp3
+*.json
