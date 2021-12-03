@@ -40,6 +40,11 @@ class Exceptions(commands.Cog):
             None.
         """
 
+        ignored = (commands.CommandNotFound, commands.UserInputError)
+
+        if isinstance(error, ignored):
+            return
+
         print('Ignoring exception in command {}:'.format(ctx.command), file=stderr)
         print_exception(type(error), error, error.__traceback__, file=stderr)
 
@@ -47,17 +52,14 @@ class Exceptions(commands.Cog):
         if hasattr(ctx.command, 'on_error'):
             return
 
-        ignored = (commands.CommandNotFound, commands.UserInputError)
         permissions = (commands.NotOwner, commands.MissingPermissions)
         # Allows us to check for original exceptions raised and sent to CommandInvokeError
         # If nothing is found, keep the exception passed in
         error = getattr(error, 'original', error)
 
         # Anything in ignored will return without any additional handling
-        if isinstance(error, ignored):
-            return
 
-        elif isinstance(error, commands.DisabledCommand):
+        if isinstance(error, commands.DisabledCommand):
             await ctx.send(f'{ctx.command} has been disabled.')
             return
 
