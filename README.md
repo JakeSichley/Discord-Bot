@@ -33,9 +33,6 @@ The `Exceptions` cog provides centralized handling for any errors that may arise
 ## Firestore
 The `Firestore` cog utilizes Google's Firestore database to provide message logging.
 
-## Giveway
-The `Giveaway` cog provides basic giveaway support.
-
 ## MemeCoin
 The `MemeCoin` cog contains methods related to the fictitious currency created for the Guild's 'Memes' channel. Users can award 
 or revoke 'Meme Coins' at will by reacting to a message with a :heavy_check_mark: or :x: respectively.
