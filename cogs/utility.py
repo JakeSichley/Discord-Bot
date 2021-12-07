@@ -1,10 +1,11 @@
 import discord
 from discord.ext import commands
 from discord import Member, Embed, PublicUserFlags
-from utils import localize_time
+from utils import localize_time, MessageOrMessageReplyConverter
 from imageutils import fetch_from_cdn
-from typing import Optional, Union
+from typing import Optional
 from re import findall
+from inspect import Parameter
 import datetime
 import pytz
 import aiosqlite
@@ -293,7 +294,7 @@ class Utility(commands.Cog):
     @commands.has_guild_permissions(manage_emojis=True)
     @commands.bot_has_guild_permissions(manage_emojis=True)
     @commands.command(name='yoink', help='Yoinks emojis from the specified message.')
-    async def yoink_emoji(self, ctx: commands.Context, source: Optional[discord.Message] = None) -> None:
+    async def yoink_emoji(self, ctx: commands.Context, source: Optional[MessageOrMessageReplyConverter]) -> None:
         """
         A method to "yoink" an emoji. Retrieves the emoji as an asset and uploads it to the current guild.
 
@@ -308,14 +309,8 @@ class Utility(commands.Cog):
             None.
         """
 
-        if not source:
-            try:
-                source = ctx.message.reference.resolved
-            except AttributeError:
-                raise commands.MessageNotFound(source)
-
         if not isinstance(source, discord.Message):
-            raise commands.MessageNotFound(source)
+            raise commands.MissingRequiredArgument(Parameter('message_source', Parameter.POSITIONAL_ONLY))
 
         emojis = findall(r'<(?P<animated>a?):(?P<name>[a-zA-Z0-9_]{2,32}):(?P<id>[0-9]{18,22})>', source.content)
 

@@ -1,10 +1,10 @@
+from typing import List, Sequence, Any, Iterator, Tuple, Optional, Union
+from discord.ext import commands
 import aiosqlite
 import discord
 import datetime
 import pytz
 import re
-from typing import List, Sequence, Any, Iterator, Tuple, Optional, Union
-from discord.ext.commands import IDConverter, BadArgument, MemberConverter, MemberNotFound
 
 
 async def execute_query(database_name: str, query: str, values: tuple) -> None:
@@ -26,8 +26,9 @@ async def execute_query(database_name: str, query: str, values: tuple) -> None:
             await db.execute(query, values)
             await db.commit()
 
-    except aiosqlite.Error as e:
-        print(f'{query} Error: {e}')
+    except aiosqlite.Error as error:
+        print(f'aiosqlite execute error\n{query=}\n{error=}')
+        raise error
 
 
 async def retrieve_query(database_name: str, query: str, values: tuple) -> List[tuple]:
@@ -49,8 +50,9 @@ async def retrieve_query(database_name: str, query: str, values: tuple) -> List[
             async with db.execute(query, values) as cursor:
                 return await cursor.fetchall()
 
-    except aiosqlite.Error as e:
-        print(f'{query} Error: {e}')
+    except aiosqlite.Error as error:
+        print(f'aiosqlite retrieve error\n{query=}\n{error=}')
+        raise error
 
 
 async def exists_query(database_name: str, query: str, values: tuple) -> bool:
@@ -71,9 +73,9 @@ async def exists_query(database_name: str, query: str, values: tuple) -> bool:
             async with await db.execute(query, values) as cursor:
                 return (await cursor.fetchone())[0] == 1
 
-    except aiosqlite.Error as e:
-        print(f'{query} Error: {e}')
-        return False
+    except aiosqlite.Error as error:
+        print(f'aiosqlite exists error\n{query=}\n{error=}')
+        raise error
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.TextChannel) -> None:
@@ -114,7 +116,7 @@ def localize_time(time: datetime.datetime) -> str:
     return offset_time.strftime('%I:%M %p on %A, %B %d, %Y')
 
 
-class GuildConverter(IDConverter):
+class GuildConverter(commands.IDConverter):
     """
     Converts an argument to a discord.Guild object.
 
@@ -151,12 +153,12 @@ class GuildConverter(IDConverter):
                 result = ctx.guild
 
         if not isinstance(result, discord.Guild):
-            raise BadArgument('Guild "{}" not found.'.format(argument))
+            raise commands.BadArgument('Guild "{}" not found.'.format(argument))
 
         return result
 
 
-class DefaultMemberConverter(MemberConverter):
+class DefaultMemberConverter(commands.MemberConverter):
     """
     Converts an argument to a discord.Member object.
 
@@ -176,7 +178,7 @@ class DefaultMemberConverter(MemberConverter):
     rather than the command failing.
     """
 
-    async def convert(self, ctx, argument) -> Union[discord.Member, str]:
+    async def convert(self, ctx: commands.Context, argument: Any) -> Union[discord.Member, str]:
         """
         Attempts to convert the argument into a discord.Member object.
 
@@ -192,7 +194,7 @@ class DefaultMemberConverter(MemberConverter):
 
         try:
             return await super().convert(ctx, argument)
-        except MemberNotFound:
+        except commands.MemberNotFound:
             return argument
 
 
@@ -213,3 +215,40 @@ def pairs(sequence: Sequence[Any]) -> Iterator[Tuple[Any, Any]]:
     i = iter(sequence)
     for item in i:
         yield item, next(i)
+
+
+class MessageOrMessageReplyConverter(commands.Converter):
+    """
+    Attempts to convert a ctx.message.reply object to a discord.Message argument.
+    """
+
+    async def convert(self, ctx: commands.Context, argument: Any) -> Optional[discord.Message]:
+        """
+        Attempts to convert the argument into a discord.Message object.
+        If the argument is already of type discord.Message, the argument is not modified.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            argument (Any): The arg to be converted.
+
+        Returns:
+            (Optional[discord.Message]): The resulting discord.Message.
+        """
+
+        if isinstance(argument, discord.Message):
+            return argument
+
+        try:
+            return await commands.MessageConverter().convert(ctx, argument)
+        except commands.CommandError:
+            pass
+
+        try:
+            message = ctx.message.reference.resolved
+        except AttributeError:
+            raise commands.BadArgument(f'{argument} does not reference a message.')
+
+        if isinstance(message, discord.Message):
+            return message
+        else:
+            raise commands.BadArgument(f'{argument} references an invalid or deleted message.')
