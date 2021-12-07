@@ -46,7 +46,7 @@ class DreamBot(Bot):
         self.disabled_cogs = options.pop('disabled_cogs', [])
 
         # git optionals
-        self.git = options.pop('git')
+        self.git = options.pop('git', None)
 
         # load our cogs
         for cog in listdir(getcwd() + '\\cogs'):

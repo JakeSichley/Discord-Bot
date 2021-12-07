@@ -1,7 +1,8 @@
 from discord.ext import commands
 from discord import Member, Embed, PublicUserFlags
-from utils import localize_time, MessageOrMessageReplyConverter
-from imageutils import fetch_from_cdn
+from utils.utils import localize_time
+from utils.converters import MessageOrMessageReplyConverter
+from utils.image_utils import fetch_from_cdn
 from typing import Optional
 from re import findall
 from inspect import Parameter

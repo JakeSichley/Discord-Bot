@@ -1,5 +1,3 @@
-import discord
-import PIL.ImageOps
 from aiohttp import ClientSession
 from PIL import Image, ImageDraw, ImageFont
 from textwrap import wrap
@@ -9,6 +7,8 @@ from concurrent.futures import ThreadPoolExecutor
 from re import search
 from discord.ext.commands import MissingRequiredArgument, BadArgument
 from typing import List, Tuple
+import discord
+import PIL.ImageOps
 
 
 async def fetch_from_cdn(url: str) -> bytes:

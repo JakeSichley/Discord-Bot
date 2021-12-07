@@ -1,25 +1,10 @@
 from discord.ext import commands
 from discord import Embed, HTTPException
-from utils import execute_query, retrieve_query, exists_query
+from utils.database_utils import execute_query, retrieve_query, exists_query
+from utils.checks import check_memecoin_channel
 from typing import Optional
 from dreambot import DreamBot
 import discord
-
-
-def check_memecoin_channel():
-    def predicate(ctx: commands.Context):
-        """
-        A commands.check decorator that ensures MemeCoin commands are only executed in the proper channel.
-
-        Parameters:
-            ctx (commands.Context): The invocation context.
-
-        Returns:
-            (boolean): Whether or not the invocation channel is the authorized MemeCoin channel.
-        """
-
-        return ctx.message.channel.id == 636356259255287808
-    return commands.check(predicate)
 
 
 class MemeCoin(commands.Cog):

@@ -1,5 +1,5 @@
 from discord.ext import commands
-from imageutils import NoImage, BufferSizeExceeded, extract_image_as_bytes, invert_object, title_card_generator
+from utils.image_utils import NoImage, BufferSizeExceeded, extract_image_as_bytes, invert_object, title_card_generator
 from dreambot import DreamBot
 import discord
 

@@ -1,6 +1,8 @@
 from discord.ext import commands
 from asyncio import TimeoutError
-from utils import execute_query, retrieve_query, GuildConverter, cleanup
+from utils.database_utils import execute_query, retrieve_query
+from utils.converters import GuildConverter
+from utils.utils import cleanup
 from typing import Union, Optional, List, Tuple
 from math import ceil
 from dreambot import DreamBot

@@ -13,7 +13,8 @@ def main() -> None:
 
     print(f'Current Python Version: {version}')
     print(f'Current Discord Version: {discord.__version__}')
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(levelname)s:%(name)s: %(message)s', datefmt='%I:%M %p on %A, %B %d, %Y')
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(levelname)s:%(name)s: %(message)s',
+                        datefmt='%I:%M %p on %A, %B %d, %Y')
 
     load_dotenv()
 

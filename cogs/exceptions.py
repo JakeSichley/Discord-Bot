@@ -41,24 +41,19 @@ class Exceptions(commands.Cog):
             None.
         """
 
-        ignored = (commands.CommandNotFound, commands.UserInputError)
-
-        if isinstance(error, ignored):
-            return
-
-        print('Ignoring exception in command {}:'.format(ctx.command), file=stderr)
-        print_exception(type(error), error, error.__traceback__, file=stderr)
-
-        # Prevent any commands with local handlers being handled
         if hasattr(ctx.command, 'on_error'):
             return
+
+        ignored = (commands.CommandNotFound, commands.UserInputError, commands.CheckFailure)
+
+        if not isinstance(error, ignored):
+            print('Ignoring exception in command {}:'.format(ctx.command), file=stderr)
+            print_exception(type(error), error, error.__traceback__, file=stderr)
 
         permissions = (commands.NotOwner, commands.MissingPermissions)
         # Allows us to check for original exceptions raised and sent to CommandInvokeError
         # If nothing is found, keep the exception passed in
         error = getattr(error, 'original', error)
-
-        # Anything in ignored will return without any additional handling
 
         if isinstance(error, commands.DisabledCommand):
             await ctx.send(f'{ctx.command} has been disabled.')
@@ -86,6 +81,12 @@ class Exceptions(commands.Cog):
                                f'before calling this command again!')
             return
 
+        # Check failure
+        elif isinstance(error, commands.CheckFailure):
+            await ctx.send(f'One or more checks failed during the invocation of command: '
+                           f'`{ctx.command.qualified_name}`.')
+            return
+
         # Calling a command without the required role
         elif isinstance(error, commands.MissingRole):
             if ctx.author.id == self.bot.owner_id:
@@ -109,10 +110,6 @@ class Exceptions(commands.Cog):
         # Reloading an extension that currently has errors
         elif isinstance(error, commands.ExtensionError):
             await ctx.send(f'```py\n{"".join(format_exception(type(error), error, error.__traceback__))}```')
-
-        # All other errors not returned come here. Print the default traceback
-        print('Ignoring exception in command {}:'.format(ctx.command), file=stderr)
-        print_exception(type(error), error, error.__traceback__, file=stderr)
 
 
 def setup(bot: DreamBot) -> None:

@@ -1,6 +1,7 @@
 from discord.ext import commands
 from asyncio import TimeoutError
-from utils import exists_query, execute_query, retrieve_query, cleanup
+from utils.database_utils import exists_query, execute_query, retrieve_query
+from utils.utils import cleanup
 from asyncio import sleep
 from typing import List, Tuple, Optional
 from dreambot import DreamBot

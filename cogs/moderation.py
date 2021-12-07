@@ -1,5 +1,5 @@
 from discord.ext import commands, menus
-from utils import execute_query, retrieve_query, exists_query, DefaultMemberConverter
+from utils.database_utils import execute_query, retrieve_query, exists_query
 from enum import Enum
 from typing import List, Union
 from asyncio import Condition
