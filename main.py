@@ -35,6 +35,16 @@ def main() -> None:
     except AttributeError:
         pass
 
+    # git optionals
+    git_options = {
+        'git_user': getenv('GITHUB_USER'),
+        'git_repo': getenv('GITHUB_REPO'),
+        'git_token': getenv('GITHUB_TOKEN')
+    }
+
+    if all(git_options.values()):
+        options['git'] = git_options
+
     # specify intents (members requires explicit opt-in via dev portal)
     intents = discord.Intents(guilds=True, members=True, bans=True, emojis=True, voice_states=True, messages=True,
                               reactions=True)

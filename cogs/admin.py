@@ -6,7 +6,7 @@ from textwrap import indent
 from traceback import format_exc
 from utils import localize_time, pairs
 from re import finditer
-from typing import Union
+from typing import Union, Optional
 from dreambot import DreamBot
 import aiosqlite
 
@@ -348,6 +348,25 @@ class Admin(commands.Cog):
                 self._last_result = ret
                 await ctx.send(f'```py\n{value}{ret}\n```')
 
+    @commands.group(name='git')
+    async def git(self, ctx: commands.Context) -> None:
+        """
+        Parent command that handles git related commands.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+
+        Returns:
+            None.
+        """
+
+        if ctx.invoked_subcommand is None:
+            await ctx.send_help('git')
+
+    @git.command(name='pull', hidden=True)
+    async def git_pull(self, ctx: commands.Context, branch: Optional[str]):
+        pass
+
     @commands.command(name='archive', hidden=True)
     async def archive(self, ctx: commands.Context, target: int) -> None:
         """
@@ -506,6 +525,21 @@ async def try_to_send_buffer(channel: TextChannel, buffer: str, force: bool = Fa
     else:
         return str(buffer[break_index:])
 
+
+def ensure_git_credentials():
+    def predicate(ctx: commands.Context):
+        """
+        A commands.check decorator that git commands are able to properly execute.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+
+        Returns:
+            (boolean): Whether or not the bot was initialized with git credentials.
+        """
+
+        return not ctx.bot.git
+    return commands.check(predicate)
 
 def setup(bot: DreamBot) -> None:
     """
