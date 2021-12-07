@@ -3,6 +3,7 @@ from asyncio import TimeoutError
 from utils import execute_query, retrieve_query, GuildConverter, cleanup
 from typing import Union, Optional, List, Tuple
 from math import ceil
+from dreambot import DreamBot
 import discord
 
 
@@ -19,15 +20,15 @@ class ReactionRoles(commands.Cog):
     A Cogs class that implements reaction roles.
 
     Attributes:
-        bot (commands.Bot): The Discord bot.
+        bot (DreamBot): The Discord bot.
     """
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: DreamBot) -> None:
         """
         The constructor for the ReactionRoles class.
 
         Parameters:
-            bot (commands.Bot): The Discord bot.
+            bot (DreamBot): The Discord bot.
         """
 
         self.bot = bot
@@ -180,7 +181,7 @@ class ReactionRoles(commands.Cog):
 
         # we should have all pieces for a reaction role now
         # noinspection SqlResolve
-        await execute_query(self.bot.DATABASE_NAME,
+        await execute_query(self.bot.database,
                             'INSERT INTO REACTION_ROLES (GUILD_ID, CHANNEL_ID, MESSAGE_ID, REACTION, ROLE_ID) '
                             'VALUES (?, ?, ?, ?, ?) '
                             'ON CONFLICT(MESSAGE_ID, REACTION) DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID',
@@ -244,7 +245,7 @@ class ReactionRoles(commands.Cog):
             return
 
         # once we have a message id, proceed with deletion confirmation
-        if roles := await retrieve_query(self.bot.DATABASE_NAME,
+        if roles := await retrieve_query(self.bot.database,
                                          'SELECT REACTION, ROLE_ID, CHANNEL_ID FROM REACTION_ROLES '
                                          'WHERE MESSAGE_ID=?', (message.id,)):
             # roles contain reactions, roles
@@ -299,7 +300,7 @@ class ReactionRoles(commands.Cog):
                 payload = await self.bot.wait_for('raw_reaction_add', timeout=30.0, check=reaction_check)
 
                 if str(payload.emoji) == '\u2705':
-                    await execute_query(self.bot.DATABASE_NAME,
+                    await execute_query(self.bot.database,
                                         'DELETE FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
                                         (message.id, str(to_remove[0])))
                     # try to remove the deleted reaction
@@ -373,7 +374,7 @@ class ReactionRoles(commands.Cog):
             return
 
         # once we have a message id, proceed with deletion confirmation
-        if roles := await retrieve_query(self.bot.DATABASE_NAME,
+        if roles := await retrieve_query(self.bot.database,
                                          'SELECT REACTION, ROLE_ID, CHANNEL_ID FROM REACTION_ROLES '
                                          'WHERE MESSAGE_ID=?', (message.id,)):
             response = await ctx.send(f'Are you sure want to remove **{len(roles)}** reaction roles from '
@@ -394,7 +395,7 @@ class ReactionRoles(commands.Cog):
                 payload = await self.bot.wait_for('raw_reaction_add', timeout=30.0, check=reaction_check)
 
                 if str(payload.emoji) == '✅':
-                    await execute_query(self.bot.DATABASE_NAME,
+                    await execute_query(self.bot.database,
                                         'DELETE FROM REACTION_ROLES WHERE MESSAGE_ID=?', (message.id,))
                     # try to remove the respective reactions
                     for reaction in message.reactions:
@@ -447,7 +448,7 @@ class ReactionRoles(commands.Cog):
                 details (Optional[str]): Details about the reaction roles of the message if possible. Could be None.
             """
 
-            if roles := await retrieve_query(self.bot.DATABASE_NAME,
+            if roles := await retrieve_query(self.bot.database,
                                              'SELECT REACTION, ROLE_ID, CHANNEL_ID FROM REACTION_ROLES '
                                              'WHERE MESSAGE_ID=?', (message_id,)):
                 details = ('\t' * indent_level) + f'Reaction Roles for **Message:** <https://discordapp.com/channels/' \
@@ -473,7 +474,7 @@ class ReactionRoles(commands.Cog):
                 details (Optional[str]): Details about the reaction roles of the channel if possible. Could be None.
             """
 
-            if messages := await retrieve_query(self.bot.DATABASE_NAME,
+            if messages := await retrieve_query(self.bot.database,
                                                 'SELECT DISTINCT MESSAGE_ID FROM REACTION_ROLES WHERE CHANNEL_ID=?',
                                                 (channel_id,)):
                 details = ('\t' * indent_level) + f'Reaction Roles for **Channel:** <#{channel_id}>\n'
@@ -497,7 +498,7 @@ class ReactionRoles(commands.Cog):
                 details (Optional[str]): Details about the reaction roles of the guild if possible. Could be None.
             """
 
-            if channels := await retrieve_query(self.bot.DATABASE_NAME,
+            if channels := await retrieve_query(self.bot.database,
                                                 'SELECT DISTINCT CHANNEL_ID FROM REACTION_ROLES WHERE GUILD_ID=?',
                                                 (guild_id,)):
                 details = f'Reaction Roles for **Guild: {ctx.guild.name}**\n'
@@ -552,7 +553,7 @@ class ReactionRoles(commands.Cog):
         if payload.user_id == self.bot.user.id:
             return
 
-        if role_id := await retrieve_query(self.bot.DATABASE_NAME,
+        if role_id := await retrieve_query(self.bot.database,
                                            'SELECT ROLE_ID FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
                                            (payload.message_id, str(payload.emoji))):
             # if there's a role for the given message + reaction, attempt to fetch the guild
@@ -583,7 +584,7 @@ class ReactionRoles(commands.Cog):
         if payload.user_id == self.bot.user.id:
             return
 
-        if role_id := await retrieve_query(self.bot.DATABASE_NAME,
+        if role_id := await retrieve_query(self.bot.database,
                                            'SELECT ROLE_ID FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
                                            (payload.message_id, str(payload.emoji))):
             # if there's a role for the given message + reaction, attempt to fetch the guild
@@ -599,12 +600,12 @@ class ReactionRoles(commands.Cog):
                         pass
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (commands.Bot): The bot the cog should be added to.
+        bot (DreamBot): The bot the cog should be added to.
 
     Returns:
         None.
@@ -616,7 +617,7 @@ def setup(bot: commands.Bot) -> None:
 
 class ReactionRolePagination:
     """
-    A commands.Bot subclass that contains the main bot implementation.
+    A DreamBot subclass that contains the main bot implementation.
 
     Constants:
         PAGE_SIZE (int): The number of entries to display per page.

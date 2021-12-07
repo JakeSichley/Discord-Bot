@@ -1,6 +1,7 @@
-import discord
 from discord.ext import commands
 from imageutils import NoImage, BufferSizeExceeded, extract_image_as_bytes, invert_object, title_card_generator
+from dreambot import DreamBot
+import discord
 
 
 class Images(commands.Cog):
@@ -8,15 +9,15 @@ class Images(commands.Cog):
     A Cogs class that invokes ImageUtils methods.
 
     Attributes:
-        bot (commands.Bot): The Discord bot class.
+        bot (DreamBot): The Discord bot class.
     """
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: DreamBot) -> None:
         """
         The constructor for the MemeCoin class.
 
         Parameters:
-            bot (commands.Bot): The Discord bot.
+            bot (DreamBot): The Discord bot.
         """
 
         self.bot = bot
@@ -91,12 +92,12 @@ class Images(commands.Cog):
                 return
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (commands.Bot): The bot the cog should be added to.
+        bot (DreamBot): The bot the cog should be added to.
 
     Returns:
         None.

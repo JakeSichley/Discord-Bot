@@ -1,17 +1,17 @@
-import asyncio
-
-import twitchio
 from discord.ext import commands as discord_commands
 from twitchio.ext import commands as twitch_commands
 from os import getenv
 from time import time
 from random import shuffle
-
+from dreambot import DreamBot
+import asyncio
+import twitchio
 
 # https://github.com/TwitchIO/TwitchIO/issues/130
 
+
 class Twitch(discord_commands.Cog):
-    def __init__(self, bot: discord_commands.Bot) -> None:
+    def __init__(self, bot: DreamBot) -> None:
         self.discord_bot = bot
         self.bot = twitch_commands.Bot(irc_token=getenv('TWITCH_TOKEN'), client_id=getenv('TWITCH_ID'),
                                        nick=getenv('TWITCH_NICK'), prefix=getenv('PREFIX'),
@@ -124,12 +124,12 @@ class Twitch(discord_commands.Cog):
         print('Completed Unload for Cog: Twitch')
 
 
-def setup(bot: discord_commands.Bot):
+def setup(bot: DreamBot):
     """
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (commands.Bot): The bot the cog should be added to.
+        bot (DreamBot): The bot the cog should be added to.
 
     Returns:
         None.

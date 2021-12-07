@@ -1,11 +1,11 @@
-import re
-
 from discord.ext import commands, menus
 from utils import execute_query, retrieve_query, exists_query, DefaultMemberConverter
 from enum import Enum
 from typing import List, Union
 from asyncio import Condition
+from dreambot import DreamBot
 import discord
+import re
 
 CHANNEL_OBJECT = Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]
 PERMISSIONS_PARENT = Union[discord.Role, discord.Member]
@@ -16,15 +16,15 @@ class Moderation(commands.Cog):
     A Cogs class that contains commands for moderating a guild.
 
     Attributes:
-        bot (commands.Bot): The Discord bot class.
+        bot (DreamBot): The Discord bot class.
     """
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: DreamBot) -> None:
         """
         The constructor for the Moderation class.
 
         Parameters:
-            bot (commands.Bot): The Discord bot.
+            bot (DreamBot): The Discord bot.
         """
 
         self.bot = bot
@@ -188,7 +188,7 @@ class Moderation(commands.Cog):
             None.
         """
 
-        if role := (await retrieve_query(self.bot.DATABASE_NAME, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+        if role := (await retrieve_query(self.bot.database, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                                          (ctx.guild.id,))):
             role = ctx.guild.get_role(role[0][0])
             await ctx.send(f'The default role for the server is **{role.name}**')
@@ -246,7 +246,7 @@ class Moderation(commands.Cog):
         invoker_role = ctx.author.top_role
 
         if not role:
-            await execute_query(self.bot.DATABASE_NAME, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?', (ctx.guild.id,))
+            await execute_query(self.bot.database, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?', (ctx.guild.id,))
             await ctx.send('Cleared the default role for the guild.')
             return
         # ensure all roles are fetched
@@ -257,7 +257,7 @@ class Moderation(commands.Cog):
                 return
             else:
                 # noinspection SqlResolve
-                await execute_query(self.bot.DATABASE_NAME,
+                await execute_query(self.bot.database,
                                     'INSERT INTO DEFAULT_ROLES (GUILD_ID, ROLE_ID) VALUES (?, ?) ON CONFLICT(GUILD_ID) '
                                     'DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID', (ctx.guild.id, role.id))
                 await ctx.send(f'Updated the default role to **{role.name}**')
@@ -282,14 +282,14 @@ class Moderation(commands.Cog):
         """
 
         # retrieve logging information
-        if logging := (await retrieve_query(self.bot.DATABASE_NAME,
+        if logging := (await retrieve_query(self.bot.database,
                                             'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
                                             (member.guild.id,))):
             await log_to_channel(self.bot, LoggingActions.USER_JOINED, logging[0][1], logging[0][0],
                                  f'**{str(member)}** joined the guild.')
 
         # retrieve role information
-        if role := (await retrieve_query(self.bot.DATABASE_NAME, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+        if role := (await retrieve_query(self.bot.database, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                                          (member.guild.id,))):
             role = member.guild.get_role(role[0][0])
 
@@ -298,12 +298,12 @@ class Moderation(commands.Cog):
             except discord.Forbidden:
                 await log_to_channel(self.bot, LoggingActions.ACTION_FAILED, logging[0][1], logging[0][0],
                                      'Default Role Error (Forbidden). Default Role has been cleared.')
-                await execute_query(self.bot.DATABASE_NAME, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+                await execute_query(self.bot.database, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                                     (member.guild.id,))
             except discord.HTTPException:
                 await log_to_channel(self.bot, LoggingActions.ACTION_FAILED, logging[0][1], logging[0][0],
                                      'Default Role Error (Generic Exception). Default Role has been cleared.')
-                await execute_query(self.bot.DATABASE_NAME, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+                await execute_query(self.bot.database, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                                     (member.guild.id,))
 
     @commands.Cog.listener()
@@ -322,7 +322,7 @@ class Moderation(commands.Cog):
         """
 
         # retrieve logging information
-        if logging := (await retrieve_query(self.bot.DATABASE_NAME,
+        if logging := (await retrieve_query(self.bot.database,
                                             'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
                                             (member.guild.id,))):
             await log_to_channel(self.bot, LoggingActions.USER_LEFT, logging[0][1], logging[0][0],
@@ -345,7 +345,7 @@ class Moderation(commands.Cog):
         """
 
         # retrieve logging information
-        if logging := (await retrieve_query(self.bot.DATABASE_NAME,
+        if logging := (await retrieve_query(self.bot.database,
                                             'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
                                             (guild.id,))):
             await log_to_channel(self.bot, LoggingActions.USER_BANNED, logging[0][1], logging[0][0],
@@ -368,7 +368,7 @@ class Moderation(commands.Cog):
         """
 
         # retrieve logging information
-        if logging := (await retrieve_query(self.bot.DATABASE_NAME,
+        if logging := (await retrieve_query(self.bot.database,
                                             'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
                                             (guild.id,))):
             await log_to_channel(self.bot, LoggingActions.USER_UNBANNED, logging[0][1], logging[0][0],
@@ -404,7 +404,7 @@ class Moderation(commands.Cog):
             None.
         """
 
-        if logging := (await retrieve_query(self.bot.DATABASE_NAME,
+        if logging := (await retrieve_query(self.bot.database,
                                             'SELECT BITS FROM LOGGING WHERE GUILD_ID=?',
                                             (ctx.guild.id,))):
             await ctx.send(embed=build_actions_embed(LoggingActions.all_actions((logging[0][0]))))
@@ -433,7 +433,7 @@ class Moderation(commands.Cog):
             None.
         """
 
-        if logging := (await retrieve_query(self.bot.DATABASE_NAME,
+        if logging := (await retrieve_query(self.bot.database,
                                             'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
                                             (ctx.guild.id,))):
             bits = int(logging[0][1])
@@ -471,14 +471,14 @@ class Moderation(commands.Cog):
         """
 
         # perform an EXISTS query first since pi doesn't support ON_CONFLICT
-        if (await exists_query(self.bot.DATABASE_NAME, 'SELECT EXISTS(SELECT 1 FROM LOGGING WHERE GUILD_ID=?)',
+        if (await exists_query(self.bot.database, 'SELECT EXISTS(SELECT 1 FROM LOGGING WHERE GUILD_ID=?)',
                                (ctx.guild.id,))):
-            await execute_query(self.bot.DATABASE_NAME,
+            await execute_query(self.bot.database,
                                 'UPDATE LOGGING SET CHANNEL_ID=? WHERE GUILD_ID=?',
                                 (channel.id, ctx.guild.id))
             await ctx.send(f'Updated the logging channel to {channel.mention}.')
         else:
-            await execute_query(self.bot.DATABASE_NAME,
+            await execute_query(self.bot.database,
                                 'INSERT INTO LOGGING (GUILD_ID, CHANNEL_ID, BITS) VALUES (?, ?, ?)',
                                 (ctx.guild.id, channel.id, 0))
             await ctx.send(f'Set the logging channel to {channel.mention}.')
@@ -511,8 +511,8 @@ class LoggingActions(Enum):
 
         return list(map(lambda c: c.name, cls))
 
-    @classmethod
-    def has_action(cls, action: Enum, action_bits: int) -> bool:
+    @staticmethod
+    def has_action(action: Enum, action_bits: int) -> bool:
         """
         A class method for checking whether or not an action flag is enabled.
 
@@ -526,8 +526,8 @@ class LoggingActions(Enum):
 
         return bool(action.value & action_bits)
 
-    @classmethod
-    def all_actions(cls, action_bits: int) -> [Enum]:
+    @staticmethod
+    def all_actions(action_bits: int) -> [Enum]:
         """
         A class method for parsing action bits, returning all enabled actions.
 
@@ -540,8 +540,8 @@ class LoggingActions(Enum):
 
         return [action.name for action in LoggingActions if action.value & action_bits]
 
-    @classmethod
-    def add_actions_to_bits(cls, actions: [Enum], action_bits: int = 0) -> int:
+    @staticmethod
+    def add_actions_to_bits(actions: [Enum], action_bits: int = 0) -> int:
         """
          A class method for constructing the action bits for the specified actions.
 
@@ -558,8 +558,8 @@ class LoggingActions(Enum):
 
         return action_bits
 
-    @classmethod
-    def remove_actions_from_bits(cls, actions: [Enum], action_bits: int) -> int:
+    @staticmethod
+    def remove_actions_from_bits(actions: [Enum], action_bits: int) -> int:
         """
          A class method for removing the action bits for the specified actions.
 
@@ -735,7 +735,7 @@ class ActionBitMenu(menus.Menu):
             None.
         """
 
-        await execute_query(self.bot.DATABASE_NAME, 'UPDATE LOGGING SET BITS=? WHERE GUILD_ID=?',
+        await execute_query(self.bot.database, 'UPDATE LOGGING SET BITS=? WHERE GUILD_ID=?',
                             (self.bits, self.ctx.guild.id))
         await self.stop('Updated Audit Actions.')
 
@@ -860,12 +860,12 @@ async def log_to_channel(bot: commands.Bot, action: Enum, bits: int, channel: in
                 pass
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (commands.Bot): The bot the cog should be added to.
+        bot (DreamBot): The bot the cog should be added to.
 
     Returns:
         None.

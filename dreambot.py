@@ -1,49 +1,25 @@
-import discord
-import logging
-import aiosqlite
-from os import getenv, getcwd, listdir
-from sys import version
-from dotenv import load_dotenv
+from os import getcwd, listdir
 from discord.ext.commands import ExtensionError, Bot, when_mentioned_or
 from datetime import datetime
-from typing import List
-
-print(f'Current Python Version: {version}')
-print(f'Current Discord Version: {discord.__version__}')
-logging.basicConfig(level=logging.INFO)
-
-load_dotenv()
-TOKEN = getenv('DISCORD_TOKEN')
-OWNER = int(getenv('OWNER_ID'))
-PREFIX = getenv('PREFIX')
-DATABASE = getenv('DATABASE')
-
-# explicitly disabled cogs
-disabled_cogs = ('memecoin', 'test', 'music', 'twitch', 'firestore',)
-
-# specify intents (members requires explicit opt-in via dev portal)
-intents = discord.Intents(guilds=True, members=True, bans=True, emojis=True, voice_states=True, messages=True,
-                          reactions=True)
+from typing import Iterable, List
+import discord
+import aiosqlite
 
 
 class DreamBot(Bot):
     """
     A commands.Bot subclass that contains the main bot implementation.
 
-    Constants:
-        DATABASE_NAME (str): The name of the database the bot uses.
-        DEFAULT_PREFIX (str): The default prefix to use if a guild has not specified one.
-
     Attributes:
         prefixes (dict): A quick reference for accessing a guild's specified prefix.
         initialized (boolean): Whether or not the bot has performed initialization steps.
         uptime (datetime.datetime): The time the bot was initialized.
+        database (str): The name of the database the bot uses.
+        default_prefix (str): The default prefix to use if a guild has not specified one.
     """
 
-    DATABASE_NAME = DATABASE
-    DEFAULT_PREFIX = PREFIX
-
-    def __init__(self) -> None:
+    def __init__(self, intents: discord.Intents, database: str, prefix: str, owner: int,
+                 disabled_cogs: Iterable[str] = None) -> None:
         """
         The constructor for the DreamBot class.
 
@@ -54,20 +30,24 @@ class DreamBot(Bot):
             None.
         """
 
-        super().__init__(command_prefix=get_prefix, case_insensitive=True, owner_id=OWNER, max_messages=None,
+        super().__init__(command_prefix=get_prefix, case_insensitive=True, owner_id=owner, max_messages=None,
                          intents=intents)
+        self.wavelink = None
         self.prefixes = {}
         self.initialized = False
         self.uptime = datetime.now()
+        self.database = database
+        self.default_prefix = prefix
 
-        # load our cogs
-        for cog in listdir(getcwd() + '\\cogs'):
-            # only load python files that we haven't explicitly disabled
-            if cog.endswith('.py') and cog[:-3] not in disabled_cogs:
-                try:
-                    self.load_extension(f'cogs.{cog[:-3]}')
-                except ExtensionError as e:
-                    print(e)
+        if disabled_cogs:
+            # load our cogs
+            for cog in listdir(getcwd() + '\\cogs'):
+                # only load python files that we haven't explicitly disabled
+                if cog.endswith('.py') and cog[:-3] not in disabled_cogs:
+                    try:
+                        self.load_extension(f'cogs.{cog[:-3]}')
+                    except ExtensionError as e:
+                        print(e)
 
     async def on_ready(self):
         """
@@ -122,7 +102,7 @@ class DreamBot(Bot):
         """
 
         try:
-            async with aiosqlite.connect(self.DATABASE_NAME) as db:
+            async with aiosqlite.connect(self.database) as db:
                 async with db.execute("SELECT * FROM Prefixes") as cursor:
                     async for guild, prefix in cursor:
                         self.prefixes[int(guild)] = prefix
@@ -130,7 +110,7 @@ class DreamBot(Bot):
         except aiosqlite.Error as e:
             print(f'Retrieve Prefixes Error: {e}')
 
-    def run(self) -> None:
+    def run(self, token: str) -> None:
         """
         A blocking method that handles event loop initialization.
         Note: Must be the last method called.
@@ -142,7 +122,7 @@ class DreamBot(Bot):
             None.
         """
 
-        super().run(TOKEN)
+        super().run(token)
 
 
 async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:
@@ -159,18 +139,4 @@ async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:
 
     if message.guild is not None and message.guild.id in bot.prefixes:
         return when_mentioned_or(bot.prefixes[message.guild.id])(bot, message)
-    return when_mentioned_or(PREFIX)(bot, message)
-
-
-def main() -> None:
-    """
-    Driver method.
-    """
-
-    dream_bot = DreamBot()
-    dream_bot.run()
-
-
-# Run the bot
-if __name__ == '__main__':
-    main()
+    return when_mentioned_or(bot.default_prefix)(bot, message)

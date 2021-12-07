@@ -3,15 +3,8 @@ from asyncio import TimeoutError
 from utils import exists_query, execute_query, retrieve_query, cleanup
 from asyncio import sleep
 from typing import List, Tuple, Optional
+from dreambot import DreamBot
 import discord
-
-
-class UserInputReceived(Exception):
-    """
-    Error raised when a user supplies valid input. Used as a double break.
-    """
-
-    pass
 
 
 class VoiceRoles(commands.Cog):
@@ -19,16 +12,16 @@ class VoiceRoles(commands.Cog):
     A Cogs class that implements voice roles.
 
     Attributes:
-        bot (commands.Bot): The Discord bot.
+        bot (DreamBot): The Discord bot.
         recently_changed (List[int]): A list of member id's that have recently had their voice state modified.
     """
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: DreamBot) -> None:
         """
         The constructor for the ReactionRoles class.
 
         Parameters:
-            bot (commands.Bot): The Discord bot.
+            bot (DreamBot): The Discord bot.
         """
 
         self.bot = bot
@@ -112,13 +105,13 @@ class VoiceRoles(commands.Cog):
 
         # we should have all pieces for a reaction role now
         # perform an EXISTS query first since pi doesn't support ON_CONFLICT
-        if (await exists_query(self.bot.DATABASE_NAME, 'SELECT EXISTS(SELECT 1 FROM VOICE_ROLES WHERE CHANNEL_ID=?)',
+        if (await exists_query(self.bot.database, 'SELECT EXISTS(SELECT 1 FROM VOICE_ROLES WHERE CHANNEL_ID=?)',
                                (channel.id,))):
-            await execute_query(self.bot.DATABASE_NAME, 'UPDATE VOICE_ROLES SET ROLE_ID=? WHERE CHANNEL_ID=?',
+            await execute_query(self.bot.database, 'UPDATE VOICE_ROLES SET ROLE_ID=? WHERE CHANNEL_ID=?',
                                 (role.id, channel.id))
         else:
-            await execute_query(self.bot.DATABASE_NAME, 'INSERT INTO VOICE_ROLES (GUILD_ID, CHANNEL_ID, ROLE_ID) '
-                                                        'VALUES (?, ?, ?)',
+            await execute_query(self.bot.database, 'INSERT INTO VOICE_ROLES (GUILD_ID, CHANNEL_ID, ROLE_ID) '
+                                                   'VALUES (?, ?, ?)',
                                 (channel.guild.id, channel.id, role.id))
 
         await ctx.send(f"Awesome! Whenever a user joins **{channel.name}**, I'll assign them the **{role.name}** role!")
@@ -153,7 +146,7 @@ class VoiceRoles(commands.Cog):
                 return
 
         # once we have a channel id, proceed with deletion confirmation
-        if role := await retrieve_query(self.bot.DATABASE_NAME,
+        if role := await retrieve_query(self.bot.database,
                                         'SELECT ROLE_ID FROM VOICE_ROLES WHERE CHANNEL_ID=?',
                                         (channel.id,)):
             role = ctx.guild.get_role(role[0])
@@ -163,7 +156,7 @@ class VoiceRoles(commands.Cog):
             else:
                 await ctx.send(f'Deleted the voice role **{role.name}** from channel **{channel.name}**.')
 
-            await execute_query(self.bot.DATABASE_NAME,
+            await execute_query(self.bot.database,
                                 'DELETE FROM VOICE_ROLES WHERE CHANNEL_ID=?',
                                 (channel.id,))
 
@@ -195,7 +188,7 @@ class VoiceRoles(commands.Cog):
                 return
 
         # once we have a channel id, check to see if a role exists
-        if role := await retrieve_query(self.bot.DATABASE_NAME,
+        if role := await retrieve_query(self.bot.database,
                                         'SELECT ROLE_ID FROM VOICE_ROLES WHERE CHANNEL_ID=?',
                                         (channel.id,)):
             role = ctx.guild.get_role(role[0])
@@ -238,7 +231,7 @@ class VoiceRoles(commands.Cog):
         else:
             self.recently_changed.remove(member.id)
 
-        if data := await retrieve_query(self.bot.DATABASE_NAME,
+        if data := await retrieve_query(self.bot.database,
                                         'SELECT CHANNEL_ID, ROLE_ID FROM VOICE_ROLES WHERE GUILD_ID=?',
                                         (member.guild.id,)):
             # if there's a roles for the given guild, update according
@@ -279,13 +272,13 @@ class VoiceRoles(commands.Cog):
 
 
 async def prompt_user_for_voice_channel(
-        bot: commands.Bot, ctx: commands.Context
+        bot: DreamBot, ctx: commands.Context
 ) -> Tuple[List[discord.Message], Optional[discord.VoiceChannel]]:
     """
     A method to fetch a discord.VoiceChannel from a user.
 
     Parameters:
-        bot (commands.Bot): The discord bot.
+        bot (DreamBot): The discord bot.
         ctx (commands.Context): The invocation context.
 
     Output:
@@ -325,13 +318,13 @@ async def prompt_user_for_voice_channel(
 
 
 async def prompt_user_for_role(
-        bot: commands.Bot, ctx: commands.Context, bot_role: discord.Role, author_role: discord.Role
+        bot: DreamBot, ctx: commands.Context, bot_role: discord.Role, author_role: discord.Role
 ) -> Tuple[List[discord.Message], Optional[discord.Role]]:
     """
     A method to fetch a discord.Role from a user.
 
     Parameters:
-        bot (commands.Bot): The discord bot.
+        bot (DreamBot): The discord bot.
         ctx (commands.Context): The invocation context.
         bot_role (commands.Role): The bot's role in the invocation server.
         author_role (commands.Role): The author's role in the invocation server.
@@ -378,12 +371,12 @@ async def prompt_user_for_role(
         return sent_messages, None
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (commands.Bot): The bot the cog should be added to.
+        bot (DreamBot): The bot the cog should be added to.
 
     Returns:
         None.

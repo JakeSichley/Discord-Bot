@@ -1,6 +1,5 @@
 from discord.ext import commands
 from discord import TextChannel, HTTPException, Message
-from asyncio import TimeoutError
 from io import StringIO
 from contextlib import redirect_stdout
 from textwrap import indent
@@ -8,6 +7,7 @@ from traceback import format_exc
 from utils import localize_time, pairs
 from re import finditer
 from typing import Union
+from dreambot import DreamBot
 import aiosqlite
 
 
@@ -16,11 +16,11 @@ class Admin(commands.Cog):
     A Cogs class that contains Owner only commands.
 
     Attributes:
-        bot (commands.Bot): The Discord bot.
+        bot (DreamBot): The Discord bot.
         _last_result (str): The value (if any) of the last exec command.
     """
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: DreamBot) -> None:
         """
         The constructor for the Admin class.
 
@@ -154,18 +154,8 @@ class Admin(commands.Cog):
             None.
         """
 
-        await ctx.send('Confirm Logout?')
-
-        def check(message):
-            return message.content.lower() == 'confirm' and message.author.id == self.bot.owner_id
-
-        try:
-            await self.bot.wait_for('message', timeout=10.0, check=check)
-        except TimeoutError:
-            await ctx.send('Logout Aborted.')
-        else:
-            await ctx.send('Logout Confirmed.')
-            await self.bot.logout()
+        await ctx.send('Logging out.')
+        await self.bot.logout()
 
     @commands.command(name='eval', hidden=True)
     async def _eval(self, ctx: commands.Context, _ev: str) -> None:
@@ -219,7 +209,7 @@ class Admin(commands.Cog):
         """
 
         try:
-            async with aiosqlite.connect(self.bot.DATABASE_NAME) as db:
+            async with aiosqlite.connect(self.bot.database) as db:
                 if (query.upper()).startswith('SELECT'):
                     async with db.execute(query) as cursor:
                         await ctx.send(await cursor.fetchall())
@@ -253,7 +243,7 @@ class Admin(commands.Cog):
         """
 
         try:
-            async with aiosqlite.connect(self.bot.DATABASE_NAME) as db:
+            async with aiosqlite.connect(self.bot.database) as db:
                 async with db.execute("SELECT * FROM Prefixes") as cursor:
                     rows = await cursor.fetchall()
                     if not rows:
@@ -517,12 +507,12 @@ async def try_to_send_buffer(channel: TextChannel, buffer: str, force: bool = Fa
         return str(buffer[break_index:])
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (commands.Bot): The bot the cog should be added to.
+        bot (DreamBot): The bot the cog should be added to.
 
     Returns:
         None.

@@ -1,11 +1,11 @@
-from discord import HTTPException, Message, Embed
+from discord import Embed
 from discord.ext import commands, tasks
 from random import seed, shuffle, randrange
 from re import search, findall
 from time import time
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
-from dataclasses import dataclass
+from dreambot import DreamBot
 from asyncio import sleep, wait_for, TimeoutError
 from json.decoder import JSONDecodeError
 
@@ -21,7 +21,7 @@ class DDO(commands.Cog):
         QUERY_INTERVAL (int): How frequently API data from DDOAudit should be queried.
 
     Attributes:
-        bot (commands.Bot): The Discord bot.
+        bot (DreamBot): The Discord bot.
         api_data (dict): The response data from DDOAudit (used for LFMs).
         reconnect_tries (int): The number of consecutive unsuccessful queries to the DDOAudit.
         query_ddo_audit (ext.tasks): Stores the task that queries DDOAudit every 30 seconds.
@@ -32,12 +32,12 @@ class DDO(commands.Cog):
     DIFFICULTIES = ('Casual', 'Normal', 'Hard', 'Elite', 'Reaper')
     QUERY_INTERVAL = 30
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: DreamBot) -> None:
         """
         The constructor for the Moderation class.
 
         Parameters:
-            bot (commands.Bot): The Discord bot.
+            bot (DreamBott): The Discord bot.
         """
 
         self.bot = bot
@@ -461,12 +461,12 @@ class DDO(commands.Cog):
         print('Completed Unload for Cog: DDO')
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (commands.Bot): The bot the cog should be added to.
+        bot (DreamBot): The bot the cog should be added to.
 
     Returns:
         None.

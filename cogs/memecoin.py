@@ -1,8 +1,9 @@
-import discord
 from discord.ext import commands
 from discord import Embed, HTTPException
 from utils import execute_query, retrieve_query, exists_query
 from typing import Optional
+from dreambot import DreamBot
+import discord
 
 
 def check_memecoin_channel():
@@ -26,16 +27,16 @@ class MemeCoin(commands.Cog):
     A Cogs class that implements a fake currency system for memes.
 
     Attributes:
-        bot (commands.Bot): The Discord bot class.
+        bot (DreamBot): The Discord bot class.
         channel (int: discord.TextChannel) The id of the channel where MemeCoin can be used.
     """
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: DreamBot) -> None:
         """
         The constructor for the MemeCoin class.
 
         Parameters:
-            bot (commands.Bot): The Discord bot.
+            bot (DreamBot): The Discord bot.
         """
 
         self.bot = bot
@@ -65,7 +66,7 @@ class MemeCoin(commands.Cog):
 
         if str(payload.emoji) == '✅':
             # if the user is NOT in the database, create their record with a value of 1
-            if not (await exists_query(self.bot.DATABASE_NAME, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
+            if not (await exists_query(self.bot.database, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
                                        (author_id,))):
                 query = 'INSERT INTO MEMECOIN (USER_ID, COINS) VALUES (?, ?)'
                 values = (author_id, 1)
@@ -75,7 +76,7 @@ class MemeCoin(commands.Cog):
                 values = (author_id,)
         elif str(payload.emoji) == '❌':
             # if the user is NOT in the database, create their record with a value of -1
-            if not (await exists_query(self.bot.DATABASE_NAME, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
+            if not (await exists_query(self.bot.database, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
                                        (author_id,))):
                 query = 'INSERT INTO MEMECOIN (USER_ID, COINS) VALUES (?, ?)'
                 values = (author_id, -1)
@@ -85,7 +86,7 @@ class MemeCoin(commands.Cog):
                 values = (author_id,)
 
         if query is not None:
-            await execute_query(self.bot.DATABASE_NAME, query, values)
+            await execute_query(self.bot.database, query, values)
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent) -> None:
@@ -111,16 +112,16 @@ class MemeCoin(commands.Cog):
 
         # Don't create a record on a reaction removal. Increment or decrement an existing record where appropriate
         if str(payload.emoji) == '✅':
-            if await exists_query(self.bot.DATABASE_NAME, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
+            if await exists_query(self.bot.database, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
                                   (author_id,)):
                 query = 'UPDATE MEMECOIN SET COINS=COINS-1 WHERE USER_ID=?'
         elif str(payload.emoji) == '❌':
-            if await exists_query(self.bot.DATABASE_NAME, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
+            if await exists_query(self.bot.database, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
                                   (author_id,)):
                 query = 'UPDATE MEMECOIN SET COINS=COINS+1 WHERE USER_ID=?'
 
         if query is not None:
-            await execute_query(self.bot.DATABASE_NAME, query, (author_id,))
+            await execute_query(self.bot.database, query, (author_id,))
 
     @check_memecoin_channel()
     @commands.command(name='coins', help='Checks you how many of those sweet, sweet Meme Coins you own!')
@@ -142,9 +143,9 @@ class MemeCoin(commands.Cog):
             None.
         """
 
-        if await exists_query(self.bot.DATABASE_NAME, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
+        if await exists_query(self.bot.database, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
                               (ctx.author.id,)):
-            result = await retrieve_query(self.bot.DATABASE_NAME, 'SELECT COINS FROM MEMECOIN WHERE USER_ID=?',
+            result = await retrieve_query(self.bot.database, 'SELECT COINS FROM MEMECOIN WHERE USER_ID=?',
                                           (ctx.author.id,))
             if result is not None:
                 await ctx.send(f'{ctx.author.mention}, you have {result[0][0]} Meme Coin(s)!')
@@ -185,7 +186,7 @@ class MemeCoin(commands.Cog):
         embed.add_field(name='\u200B', value='\u200B')
         embed.set_footer(text="Please report any issues to my owner!")
 
-        result = await retrieve_query(self.bot.DATABASE_NAME, 'SELECT * FROM MEMECOIN', ())
+        result = await retrieve_query(self.bot.database, 'SELECT * FROM MEMECOIN', ())
 
         if len(result) > 0:
             top_scores = sorted(result, key=lambda x: x[1], reverse=True)
@@ -256,12 +257,12 @@ async def check_coin_requirements(bot: commands.Bot, payload: discord.RawReactio
     return message_author.id
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (commands.Bot): The bot the cog should be added to.
+        bot (DreamBot): The bot the cog should be added to.
 
     Returns:
         None.

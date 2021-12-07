@@ -2,6 +2,7 @@ from discord.ext import commands
 from discord import HTTPException
 from sys import stderr
 from traceback import print_exception, format_exception
+from dreambot import DreamBot
 
 
 class Exceptions(commands.Cog):
@@ -9,15 +10,15 @@ class Exceptions(commands.Cog):
     A Cogs class that provides centralized exception handling for the bot.
 
     Attributes:
-        bot (commands.Bot): The Discord bot.
+        bot (DreamBot): The Discord bot.
     """
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: DreamBot) -> None:
         """
         The constructor for the Exceptions class.
 
         Parameters:
-            bot (commands.Bot): The Discord bot.
+            bot (DreamBott): The Discord bot.
         """
 
         self.bot = bot
@@ -114,12 +115,12 @@ class Exceptions(commands.Cog):
         print_exception(type(error), error, error.__traceback__, file=stderr)
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (commands.Bot): The bot the cog should be added to.
+        bot (DreamBot): The bot the cog should be added to.
 
     Returns:
         None.

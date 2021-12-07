@@ -1,4 +1,3 @@
-import discord
 from discord.ext import commands
 from discord import Member, Embed, PublicUserFlags
 from utils import localize_time, MessageOrMessageReplyConverter
@@ -6,9 +5,11 @@ from imageutils import fetch_from_cdn
 from typing import Optional
 from re import findall
 from inspect import Parameter
+from dreambot import DreamBot
 import datetime
 import pytz
 import aiosqlite
+import discord
 
 
 class Utility(commands.Cog):
@@ -16,15 +17,15 @@ class Utility(commands.Cog):
     A Cogs class that contains utility commands for the bot.
 
     Attributes:
-        bot (commands.Bot): The Discord bot class.
+        bot (DreamBot): The Discord bot class.
     """
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: DreamBot) -> None:
         """
         The constructor for the UtilityFunctions class.
 
         Parameters:
-           bot (commands.Bot): The Discord bot.
+           bot (DreamBot): The Discord bot.
         """
 
         self.bot = bot
@@ -97,7 +98,7 @@ class Utility(commands.Cog):
         """
 
         try:
-            async with aiosqlite.connect(self.bot.DATABASE_NAME) as db:
+            async with aiosqlite.connect(self.bot.database) as db:
                 async with db.execute('SELECT EXISTS(SELECT 1 FROM PREFIXES WHERE GUILD_ID=?)',
                                       (ctx.guild.id,)) as cursor:
                     if (await cursor.fetchone())[0] == 1:
@@ -135,11 +136,11 @@ class Utility(commands.Cog):
         """
 
         try:
-            async with aiosqlite.connect(self.bot.DATABASE_NAME) as db:
+            async with aiosqlite.connect(self.bot.database) as db:
                 async with db.execute('SELECT PREFIX FROM PREFIXES WHERE GUILD_ID=?', (ctx.guild.id,)) as cursor:
                     result = await cursor.fetchone()
                     if result is None:
-                        await ctx.send(self.bot.DEFAULT_PREFIX)
+                        await ctx.send(self.bot.default_prefix)
                     else:
                         await ctx.send(f'Prefix: `{result[0]}`')
 
@@ -353,7 +354,9 @@ class Utility(commands.Cog):
                 continue
 
             try:
-                await ctx.guild.create_custom_emoji(name=emoji[1], image=emoji_asset, reason=f'Yoink\'d by {ctx.author}')
+                await ctx.guild.create_custom_emoji(
+                    name=emoji[1], image=emoji_asset, reason=f'Yoink\'d by {ctx.author}'
+                )
             except discord.HTTPException as e:
                 failed.append(f'**{emoji[1]}** failed with `{e.text}`')
                 continue
@@ -389,12 +392,12 @@ async def readable_flags(flags: PublicUserFlags) -> str:
         return 'None'
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (commands.Bot): The bot the cog should be added to.
+        bot (DreamBot): The bot the cog should be added to.
 
     Returns:
         None.
