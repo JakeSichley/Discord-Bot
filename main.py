@@ -13,22 +13,33 @@ def main() -> None:
 
     print(f'Current Python Version: {version}')
     print(f'Current Discord Version: {discord.__version__}')
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(levelname)s:%(name)s: %(message)s', datefmt='%I:%M %p on %A, %B %d, %Y')
 
     load_dotenv()
+
+    # required
     token = getenv('DISCORD_TOKEN')
     owner = int(getenv('OWNER_ID'))
-    prefix = getenv('PREFIX')
+    prefix = getenv('PREFIX', '!')
     database = getenv('DATABASE')
 
+    # optional
+    options = {
+        'status_type': discord.ActivityType(int(getenv('STATUS_TYPE', 1))),
+        'status_text': getenv('STATUS_TEXT')
+    }
+
     # explicitly disabled cogs
-    disabled_cogs = ('memecoin', 'test', 'music', 'twitch', 'firestore',)
+    try:
+        options['disabled_cogs'] = getenv('DISABLED_COGS').split(',')
+    except AttributeError:
+        pass
 
     # specify intents (members requires explicit opt-in via dev portal)
     intents = discord.Intents(guilds=True, members=True, bans=True, emojis=True, voice_states=True, messages=True,
                               reactions=True)
 
-    dream_bot = DreamBot(intents, database, prefix, owner, disabled_cogs)
+    dream_bot = DreamBot(intents, database, prefix, owner, options=options)
     dream_bot.run(token)
 
 

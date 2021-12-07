@@ -154,7 +154,7 @@ class Admin(commands.Cog):
             None.
         """
 
-        await ctx.send('Logging out.')
+        await ctx.send('Logged Out')
         await self.bot.logout()
 
     @commands.command(name='eval', hidden=True)

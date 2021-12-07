@@ -1,9 +1,10 @@
 from os import getcwd, listdir
 from discord.ext.commands import ExtensionError, Bot, when_mentioned_or
 from datetime import datetime
-from typing import Iterable, List
+from typing import Optional, List, Any, Dict
 import discord
 import aiosqlite
+import logging
 
 
 class DreamBot(Bot):
@@ -19,7 +20,7 @@ class DreamBot(Bot):
     """
 
     def __init__(self, intents: discord.Intents, database: str, prefix: str, owner: int,
-                 disabled_cogs: Iterable[str] = None) -> None:
+                 options: Optional[Dict[str, Optional[Any]]]) -> None:
         """
         The constructor for the DreamBot class.
 
@@ -39,15 +40,19 @@ class DreamBot(Bot):
         self.database = database
         self.default_prefix = prefix
 
-        if disabled_cogs:
-            # load our cogs
-            for cog in listdir(getcwd() + '\\cogs'):
-                # only load python files that we haven't explicitly disabled
-                if cog.endswith('.py') and cog[:-3] not in disabled_cogs:
-                    try:
-                        self.load_extension(f'cogs.{cog[:-3]}')
-                    except ExtensionError as e:
-                        print(e)
+        # optionals
+        self._status_type = options.pop('status_type', discord.ActivityType(1))
+        self._status_text = options.pop('status_text', None)
+        self.disabled_cogs = options.pop('disabled_cogs', [])
+
+        # load our cogs
+        for cog in listdir(getcwd() + '\\cogs'):
+            # only load python files that we haven't explicitly disabled
+            if cog.endswith('.py') and cog[:-3] not in self.disabled_cogs:
+                try:
+                    self.load_extension(f'cogs.{cog[:-3]}')
+                except ExtensionError as e:
+                    print(e)
 
     async def on_ready(self):
         """
@@ -64,12 +69,12 @@ class DreamBot(Bot):
         """
 
         if not self.initialized:
-            await self.change_presence(status=discord.Status.online, activity=discord.Activity(name='My Spaghetti Code',
-                                       type=discord.ActivityType.watching))
+            await self.change_presence(status=discord.Status.online, activity=discord.Activity(name=self._status_text,
+                                       type=self._status_type))
             await self.retrieve_prefixes()
             self.initialized = True
 
-        print('READY')
+        logging.log(logging.INFO, 'DreamBot Ready: Prefixes and Presence initialized')
 
     async def on_message(self, message: discord.Message) -> None:
         """
