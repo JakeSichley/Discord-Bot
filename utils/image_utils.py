@@ -1,4 +1,3 @@
-from aiohttp import ClientSession
 from PIL import Image, ImageDraw, ImageFont
 from textwrap import wrap
 from io import BytesIO
@@ -7,31 +6,9 @@ from concurrent.futures import ThreadPoolExecutor
 from re import search
 from discord.ext.commands import MissingRequiredArgument, BadArgument
 from typing import List, Tuple
+from utils.network_utils import network_request, NetworkReturnType
 import discord
 import PIL.ImageOps
-
-
-async def fetch_from_cdn(url: str) -> bytes:
-    """
-    A method that downloads an image from a url.
-
-    Parameters:
-        url (str): The url of the image.
-
-    Returns:
-        (bytes): A bytes object of the downloaded image.
-    """
-
-    async with ClientSession() as session:
-        async with session.get(url) as resp:
-            if resp.status == 200:
-                return await resp.read()
-            elif resp.status == 404:
-                raise discord.NotFound(resp, 'Not Found')
-            elif resp.status == 403:
-                raise discord.Forbidden(resp, 'Forbidden')
-            else:
-                raise discord.HTTPException(resp, 'Failed')
 
 
 async def extract_image_as_bytes(message: discord.Message, url: str) -> BytesIO:
@@ -56,7 +33,7 @@ async def extract_image_as_bytes(message: discord.Message, url: str) -> BytesIO:
     elif url and search(r'.(webp|jpeg|jpg|png|bmp)', url):
         # if the user provided an embed, refresh to allow discord time to update the message
         buffer = BytesIO()
-        data = await fetch_from_cdn(url)
+        data = await network_request(url, return_type=NetworkReturnType.BYTES)
         buffer.write(data)
         buffer.seek(0)
         if buffer.getbuffer().nbytes >= 8000000:

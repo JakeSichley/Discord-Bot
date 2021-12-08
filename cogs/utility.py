@@ -2,7 +2,7 @@ from discord.ext import commands
 from discord import Member, Embed, PublicUserFlags
 from utils.utils import localize_time
 from utils.converters import MessageOrMessageReplyConverter
-from utils.image_utils import fetch_from_cdn
+from utils.network_utils import network_request, NetworkReturnType
 from typing import Optional
 from re import findall
 from inspect import Parameter
@@ -280,7 +280,7 @@ class Utility(commands.Cog):
 
         try:
             extension = 'gif' if animated else 'png'
-            emoji_asset = await fetch_from_cdn(f'https://cdn.discordapp.com/emojis/{source}.{extension}?size=96')
+            emoji_asset = await network_request(f'https://cdn.discordapp.com/emojis/{source}.{extension}?size=96')
         except discord.HTTPException as e:
             await ctx.send(f'**{name}** failed with `{e.text}`')
             return
@@ -349,7 +349,10 @@ class Utility(commands.Cog):
         for emoji in unique_emojis:
             try:
                 extension = 'gif' if emoji[0] else 'png'
-                emoji_asset = await fetch_from_cdn(f'https://cdn.discordapp.com/emojis/{emoji[2]}.{extension}?size=96')
+                emoji_asset = await network_request(
+                    f'https://cdn.discordapp.com/emojis/{emoji[2]}.{extension}?size=96',
+                    return_type=NetworkReturnType.BYTES
+                )
             except discord.HTTPException as e:
                 failed.append(f'**{emoji[1]}** failed with `{e.text}`')
                 continue

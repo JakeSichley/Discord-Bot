@@ -3,6 +3,7 @@ from discord import HTTPException
 from sys import stderr
 from traceback import print_exception, format_exception
 from dreambot import DreamBot
+from aiohttp import ClientResponseError
 
 
 class Exceptions(commands.Cog):
@@ -44,7 +45,10 @@ class Exceptions(commands.Cog):
         if hasattr(ctx.command, 'on_error'):
             return
 
-        ignored = (commands.CommandNotFound, commands.UserInputError, commands.CheckFailure)
+        if isinstance(error, commands.CommandInvokeError):
+            error = error.__cause__
+
+        ignored = (commands.CommandNotFound, commands.UserInputError, commands.CheckFailure, ClientResponseError)
 
         if not isinstance(error, ignored):
             print('Ignoring exception in command {}:'.format(ctx.command), file=stderr)
@@ -56,7 +60,7 @@ class Exceptions(commands.Cog):
         error = getattr(error, 'original', error)
 
         if isinstance(error, commands.DisabledCommand):
-            await ctx.send(f'{ctx.command} has been disabled.')
+            await ctx.send(f'`{ctx.command}` has been disabled.')
             return
 
         elif isinstance(error, commands.NoPrivateMessage):
@@ -79,6 +83,11 @@ class Exceptions(commands.Cog):
             else:
                 await ctx.send(f'{ctx.message.author.mention}, please wait {int(error.retry_after)} seconds '
                                f'before calling this command again!')
+            return
+
+        # External network error
+        elif isinstance(error, ClientResponseError):
+            await ctx.send(f'`{ctx.command}` encountered a network error: `{error.message} ({error.status})`')
             return
 
         # Check failure

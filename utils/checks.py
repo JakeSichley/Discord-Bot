@@ -24,7 +24,7 @@ def check_memecoin_channel() -> Callable:
 
 def ensure_git_credentials() -> Callable:
     """
-    Admin['git'] Group Check.
+    Admin.Git Group Check.
     """
 
     def predicate(ctx: commands.Context) -> bool:
