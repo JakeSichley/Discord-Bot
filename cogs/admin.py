@@ -1,5 +1,5 @@
 from discord.ext import commands
-from discord import TextChannel, HTTPException, Message
+from discord import TextChannel, HTTPException, Message, Embed
 from io import StringIO
 from contextlib import redirect_stdout
 from textwrap import indent
@@ -9,6 +9,7 @@ from re import finditer
 from typing import Union, Optional
 from dreambot import DreamBot
 from utils.checks import ensure_git_credentials
+from utils.network_utils import network_request, NetworkReturnType
 import aiosqlite
 
 
@@ -365,13 +366,47 @@ class Admin(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send_help('git')
 
-    @git.command(name='pull', hidden=True)
+    @git.command(name='pull', aliases=['p'], hidden=True)
     async def git_pull(self, ctx: commands.Context, branch: Optional[str]):
         pass
 
-    @git.command(name='push', hidden=True)
-    async def git_push(self, ctx: commands.Context, branch: Optional[str]):
-        pass
+    @git.command(name='branches', aliases=['branch', 'b'], hidden=True)
+    async def git_branches(self, ctx: commands.Context) -> None:
+        """
+        Fetches a list of branches from the bot's repository.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+
+        Returns:
+            None.
+        """
+
+        headers = {
+            'User-Agent': f"{self.bot.git['git_user']}-{self.bot.git['git_repo']}",
+            'authorization': f"token {self.bot.git['git_token']}"
+        }
+
+        branches_url = f"https://api.github.com/rsepos/{self.bot.git['git_user']}/{self.bot.git['git_repo']}/branches"
+        users_url = f"https://api.github.com/users/{self.bot.git['git_user']}"
+
+        branch_data = await network_request(branches_url, headers=headers, return_type=NetworkReturnType.JSON)
+        user_data = await network_request(
+            users_url, headers=headers, return_type=NetworkReturnType.JSON, raise_errors=False
+        )
+
+        try:
+            thumbnail = user_data['avatar_url']
+        except (KeyError, TypeError):
+            thumbnail = 'https://pbs.twimg.com/profile_images/1414990564408262661/r6YemvF9_400x400.jpg'
+
+        embed = Embed(title=f"Branches for **{self.bot.git['git_repo']}**")
+        embed.set_thumbnail(url=thumbnail)
+        for branch in branch_data:
+            embed.add_field(name=branch['name'], value=branch['commit']['sha'], inline=False)
+        embed.set_footer(text="Please report any issues to my owner!")
+
+        await ctx.send(embed=embed)
 
     @commands.command(name='archive', hidden=True)
     async def archive(self, ctx: commands.Context, target: int) -> None:
