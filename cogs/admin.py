@@ -10,6 +10,7 @@ from typing import Union, Optional
 from dreambot import DreamBot
 from utils.checks import ensure_git_credentials
 from utils.network_utils import network_request, NetworkReturnType
+from datetime import datetime
 import aiosqlite
 
 
@@ -156,7 +157,7 @@ class Admin(commands.Cog):
             None.
         """
 
-        await ctx.send('Logged Out')
+        await ctx.send('Closing Event Loop.')
         await self.bot.logout()
 
     @commands.command(name='eval', hidden=True)
@@ -387,23 +388,35 @@ class Admin(commands.Cog):
             'authorization': f"token {self.bot.git['git_token']}"
         }
 
-        branches_url = f"https://api.github.com/rsepos/{self.bot.git['git_user']}/{self.bot.git['git_repo']}/branches"
+        branches_url = f"https://api.github.com/repos/{self.bot.git['git_user']}/{self.bot.git['git_repo']}/branches"
         users_url = f"https://api.github.com/users/{self.bot.git['git_user']}"
+        commits_url = f"https://api.github.com/repos/{self.bot.git['git_user']}/{self.bot.git['git_repo']}/commits/"
 
         branch_data = await network_request(branches_url, headers=headers, return_type=NetworkReturnType.JSON)
         user_data = await network_request(
             users_url, headers=headers, return_type=NetworkReturnType.JSON, raise_errors=False
         )
+        latest_commit_data = {
+            branch['name']:
+                await network_request(
+                    commits_url + branch['commit']['sha'], headers=headers, return_type=NetworkReturnType.JSON
+                ) for branch in branch_data[-5:]
+        }
 
         try:
             thumbnail = user_data['avatar_url']
         except (KeyError, TypeError):
             thumbnail = 'https://pbs.twimg.com/profile_images/1414990564408262661/r6YemvF9_400x400.jpg'
 
-        embed = Embed(title=f"Branches for **{self.bot.git['git_repo']}**")
+        embed = Embed(title=f"Branches for **{self.bot.git['git_repo']}**", colour=0x58a6ff)
         embed.set_thumbnail(url=thumbnail)
-        for branch in branch_data:
-            embed.add_field(name=branch['name'], value=branch['commit']['sha'], inline=False)
+        for branch, commit in latest_commit_data.items():
+            embed.add_field(
+                name=branch,
+                value=f"{commit['commit']['author']['name']} - "
+                      f"{localize_time(datetime.strptime(commit['commit']['author']['date'], '%Y-%m-%dT%H:%M:%SZ'))}",
+                inline=False
+            )
         embed.set_footer(text="Please report any issues to my owner!")
 
         await ctx.send(embed=embed)
