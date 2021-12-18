@@ -318,6 +318,8 @@ async def prompt_user_for_voice_channel(
         return sent_messages, None
 
 
+# todo: move to utils.prompts
+
 async def prompt_user_for_role(
         bot: DreamBot, ctx: commands.Context, bot_role: discord.Role, author_role: discord.Role
 ) -> Tuple[List[discord.Message], Optional[discord.Role]]:

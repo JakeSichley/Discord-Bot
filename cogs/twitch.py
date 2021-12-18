@@ -11,6 +11,15 @@ import twitchio
 
 
 class Twitch(discord_commands.Cog):
+    """
+    A Cogs class that implements Twitch chatbot functionality, accessible from Discord.
+
+    Attributes:
+        discord_bot (DreamBot): The Discord bot class.
+        bot (twitch_commands.Bot): The Twitch bot.
+        active_chatters (Dict[str, int]): A list of chatters and the time they last chatted.
+    """
+
     def __init__(self, bot: DreamBot) -> None:
         self.discord_bot = bot
         self.bot = twitch_commands.Bot(irc_token=getenv('TWITCH_TOKEN'), client_id=getenv('TWITCH_ID'),

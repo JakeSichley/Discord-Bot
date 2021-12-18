@@ -127,21 +127,14 @@ dmypy.json
 .pyre/
 
 # Project Files
-*.txt
-*/Raw Resources
-Resources/Raw Resources
 cogs/disabled/*
 .idea/misc.xml
 .idea/modules.xml
 .idea/inspectionProfiles/profiles_settings.xml
 tests.py
-BotDatabase
 cogs/test.py
-cogs/yoink.py
-cogs/bestbuy.py
-cogs/eric.mp3
+BotDatabase
 firebase-auth.json
-cogs/jess.mp3
 *.ttf
 *.mp3
 *.json

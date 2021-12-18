@@ -77,7 +77,7 @@ class MemeCoin(commands.Cog):
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent) -> None:
         """
         A listener method that is called whenever a reaction is removed.
-        'raw' events fire regardless of whether or not a message is cached.
+        'raw' events fire regardless of whether a message is cached.
         Requirements listed in check_coin_requirements() must be met to proceed.
         Meme Coin records are stored in the database.
 
@@ -115,7 +115,7 @@ class MemeCoin(commands.Cog):
         A method that outputs the number of Meme Coins a user currently owns.
 
         Checks:
-            check_memecoin_channel(): Whether or not the command is invoked in the proper channel.
+            check_memecoin_channel(): Whether the command is invoked in the proper channel.
 
         Parameters:
             ctx (commands.Context): The invocation context.
@@ -149,8 +149,8 @@ class MemeCoin(commands.Cog):
         A method that outputs an embed, detailing the top and bottom Meme Coin owners.
 
         Checks:
-            cooldown(): Whether or not the command is on cooldown. Can be used (1) time per (5) minutes.
-            check_memecoin_channel(): Whether or not the command is invoked in the proper channel.
+            cooldown(): Whether the command is on cooldown. Can be used (1) time per (5) minutes.
+            check_memecoin_channel(): Whether the command is invoked in the proper channel.
 
         Parameters:
             ctx (commands.Context): The invocation context.
@@ -198,8 +198,9 @@ class MemeCoin(commands.Cog):
 async def check_coin_requirements(bot: commands.Bot, payload: discord.RawReactionActionEvent,
                                   memecoin_channel: int) -> Optional[int]:
     """
-    A method that checks whether or not an event is eligible for Meme Coins.
-    Returns -1 if requirements are not met.
+    A method that checks whether an event is eligible for Meme Coins.
+    Returns None if requirements are not met.
+
     Requirements:
         Check to make sure the message comes from the appropriate channel
         Check to make sure the user adding the reaction isn't a bot

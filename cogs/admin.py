@@ -43,7 +43,7 @@ class Admin(commands.Cog):
             ctx (commands.Context): The invocation context.
 
         Returns:
-            (boolean): Whether or not the invoking user is the bot's owner.
+            (boolean): Whether the invoking user is the bot's owner.
         """
 
         return await self.bot.is_owner(ctx.author)
@@ -55,7 +55,7 @@ class Admin(commands.Cog):
         The native help command will not generate information for the Admin cog, since all commands are hidden.
 
         Checks:
-            is_owner(): Whether or not the invoking user is the bot's owner.
+            is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
             ctx (commands.Context): The invocation context.
@@ -87,7 +87,7 @@ class Admin(commands.Cog):
         If the module is not loaded, attempt to load the module.
 
         Checks:
-            is_owner(): Whether or not the invoking user is the bot's owner.
+            is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
             ctx (commands.Context): The invocation context.
@@ -113,7 +113,7 @@ class Admin(commands.Cog):
         A command to unload a module.
 
         Checks:
-            is_owner(): Whether or not the invoking user is the bot's owner.
+            is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
             ctx (commands.Context): The invocation context.
@@ -144,7 +144,7 @@ class Admin(commands.Cog):
         The command must be confirmed to complete the logout.
 
         Checks:
-            is_owner(): Whether or not the invoking user is the bot's owner.
+            is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
             ctx (commands.Context): The invocation context.
@@ -167,7 +167,7 @@ class Admin(commands.Cog):
         Should the evaluation encounter an exception, the output will be the exception details.
 
         Checks:
-            is_owner(): Whether or not the invoking user is the bot's owner.
+            is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
             ctx (commands.Context): The invocation context.
@@ -196,7 +196,7 @@ class Admin(commands.Cog):
         For other statement types, successful executions will send 'Executed'.
 
         Checks:
-            is_owner(): Whether or not the invoking user is the bot's owner.
+            is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
             ctx (commands.Context): The invocation context.
@@ -232,7 +232,7 @@ class Admin(commands.Cog):
         Prefixes are normally reloaded when explicitly changed.
 
         Checks:
-            is_owner(): Whether or not the invoking user is the bot's owner.
+            is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
             ctx (commands.Context): The invocation context.
@@ -266,7 +266,7 @@ class Admin(commands.Cog):
         A command to reset the cooldown of a command.
 
         Checks:
-            is_owner(): Whether or not the invoking user is the bot's owner.
+            is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
             ctx (commands.Context): The invocation context.
@@ -288,7 +288,7 @@ class Admin(commands.Cog):
         A command to execute a Python code block and output the result, if any.
 
         Checks:
-            is_owner(): Whether or not the invoking user is the bot's owner.
+            is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
             ctx (commands.Context): The invocation context.
@@ -369,6 +369,18 @@ class Admin(commands.Cog):
 
     @git.command(name='pull', aliases=['p'], hidden=True)
     async def git_pull(self, ctx: commands.Context, branch: Optional[str]):
+        """
+        Pulls the latest commit from the specified branch.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            branch (str): The name of the target branch.
+
+        Returns:
+            None.
+        """
+
+        # r'(?:Successfully installed )(.+ ?)+'
         pass
 
     @git.command(name='branches', aliases=['branch', 'b'], hidden=True)
@@ -408,7 +420,11 @@ class Admin(commands.Cog):
         except (KeyError, TypeError):
             thumbnail = 'https://pbs.twimg.com/profile_images/1414990564408262661/r6YemvF9_400x400.jpg'
 
-        embed = Embed(title=f"Branches for **{self.bot.git['git_repo']}**", colour=0x58a6ff)
+        embed = Embed(
+            title=f"Branches for **{self.bot.git['git_repo']}**",
+            colour=0x58a6ff,
+            url=f"https://github.com/{self.bot.git['git_user']}/{self.bot.git['git_repo']}"
+        )
         embed.set_thumbnail(url=thumbnail)
         for branch, commit in latest_commit_data.items():
             embed.add_field(

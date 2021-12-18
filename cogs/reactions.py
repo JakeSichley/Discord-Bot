@@ -632,7 +632,7 @@ class ReactionRolePagination:
         page (int): The current page.
         max_pages (int): The maximum number of pages.
         active_reactions (List[str]): A list of valid reactions based on the current page.
-        active (bool): Whether or not pagination has started and is active.
+        active (bool): Whether pagination has started and is active.
     """
 
     PAGE_SIZE = 6
