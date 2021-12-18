@@ -1,3 +1,27 @@
+"""
+MIT License
+
+Copyright (c) 2021 Jake Sichley
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
 from discord.ext import commands
 from discord import TextChannel, HTTPException, Message, Embed
 from io import StringIO
@@ -10,8 +34,9 @@ from typing import Union, Optional
 from dreambot import DreamBot
 from utils.checks import ensure_git_credentials
 from utils.network_utils import network_request, NetworkReturnType
+from utils.database_utils import execute_query, retrieve_query
+from aiosqlite import Error as aiosqliteError
 from datetime import datetime
-import aiosqlite
 
 
 class Admin(commands.Cog):
@@ -212,18 +237,14 @@ class Admin(commands.Cog):
         """
 
         try:
-            async with aiosqlite.connect(self.bot.database) as db:
-                if (query.upper()).startswith('SELECT'):
-                    async with db.execute(query) as cursor:
-                        await ctx.send(await cursor.fetchall())
-                else:
-                    affected = await db.execute(query)
-                    await db.commit()
-                    await ctx.send(f'Executed. {affected.rowcount} rows affected.')
-
-        except aiosqlite.Error as e:
+            if (query.upper()).startswith('SELECT'):
+                result = await retrieve_query(self.bot.database, query)
+                await ctx.send(str(result))
+            else:
+                affected = await execute_query(self.bot.database, query)
+                await ctx.send(f'Executed. {affected} rows affected.')
+        except aiosqliteError as e:
             await ctx.send(f'Error: {e}')
-            print(f'Admin SQL Command Error: {e}')
 
     @commands.command(name='reloadprefixes', aliases=['rp'], hidden=True)
     async def reload_prefixes(self, ctx: commands.Context) -> None:
@@ -246,19 +267,15 @@ class Admin(commands.Cog):
         """
 
         try:
-            async with aiosqlite.connect(self.bot.database) as db:
-                async with db.execute("SELECT * FROM Prefixes") as cursor:
-                    rows = await cursor.fetchall()
-                    if not rows:
-                        self.bot.prefixes.clear()
-                    else:
-                        async for guild, prefix in cursor:
-                            self.bot.prefixes[int(guild)] = prefix
-                    await ctx.send('Reloaded Prefixes.')
+            result = await retrieve_query(self.bot.database, 'SELECT * FROM PREFIXES')
+            self.bot.prefixes.clear()
 
-        except aiosqlite.Error as e:
+            if result:
+                self.bot.prefixes = {int(guild): prefix for guild, prefix in result}
+                await ctx.send('Reloaded Prefixes.')
+
+        except aiosqliteError as e:
             await ctx.send(f'Error: {e}')
-            print(f'Reload Prefixes Error: {e}')
 
     @commands.command(name='resetcooldown', aliases=['rc'], hidden=True)
     async def reset_cooldown(self, ctx: commands.Context, command: str) -> None:
@@ -527,7 +544,7 @@ class Admin(commands.Cog):
                             # if the current message contents don't exceed the limit, send everything
                             if len(buffer) <= 2000:
                                 await channel.send(content=buffer, embed=embeds, files=attachments)
-                            # otherwise, break up the buffer where appropriate, the send everything
+                            # otherwise, break up the buffer where appropriate, then send everything
                             else:
                                 buffer = await try_to_send_buffer(channel, buffer)
                                 await channel.send(content=buffer, embed=embeds, files=attachments)
@@ -557,7 +574,7 @@ async def try_to_send_buffer(channel: TextChannel, buffer: str, force: bool = Fa
     Parameters:
         channel (discord.TextChannel): The channel to send the buffer to.
         buffer (str): The contents of the buffer.
-        force (bool): Whether to forcible the send the remaining buffer contents or return them. Default: False.
+        force (bool): Whether to forcibly send the remaining buffer contents or return them. Default: False.
 
     Returns:
         (Union[Message, str]): Returns a discord.Message object if the entire buffer was sent. Returns a str if

@@ -1,15 +1,40 @@
+"""
+MIT License
+
+Copyright (c) 2021 Jake Sichley
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
 from discord.ext import commands
 from discord import Member, Embed, PublicUserFlags
 from utils.utils import localize_time
 from utils.converters import MessageOrMessageReplyConverter
 from utils.network_utils import network_request, NetworkReturnType
+from utils.database_utils import execute_query, retrieve_query
 from typing import Optional
 from re import findall
 from inspect import Parameter
 from dreambot import DreamBot
+from aiosqlite import Error as aiosqliteError
 import datetime
 import pytz
-import aiosqlite
 import discord
 
 
@@ -77,18 +102,18 @@ class Utility(commands.Cog):
     @commands.has_permissions(administrator=True)
     @commands.guild_only()
     @commands.command(name='setprefix', help='Sets the bot\'s prefix for this guild. Administrator use only.')
-    async def set_prefix(self, ctx: commands.Context, pre: str) -> None:
+    async def set_prefix(self, ctx: commands.Context, prefix: str) -> None:
         """
         A method to change the command prefix for a guild. Only usable by a guild's administrators.
 
         Checks:
-            cooldown(): Whether or not the command is on cooldown. Can be used (1) time per (10) minutes per (Guild).
-            has_permissions(administrator): Whether or not the invoking user is an administrator.
-            guild_only(): Whether or not the command was invoked from a guild. No direct messages.
+            cooldown(): Whether the command is on cooldown. Can be used (1) time per (10) minutes per (Guild).
+            has_permissions(administrator): Whether the invoking user is an administrator.
+            guild_only(): Whether the command was invoked from a guild. No direct messages.
 
         Parameters:
             ctx (commands.Context): The invocation context.
-            pre (str): The new prefix to use.
+            prefix (str): The new prefix to use.
 
         Output:
             Success: Confirmation that the prefix changed.
@@ -99,22 +124,16 @@ class Utility(commands.Cog):
         """
 
         try:
-            async with aiosqlite.connect(self.bot.database) as db:
-                async with db.execute('SELECT EXISTS(SELECT 1 FROM PREFIXES WHERE GUILD_ID=?)',
-                                      (ctx.guild.id,)) as cursor:
-                    if (await cursor.fetchone())[0] == 1:
-                        await db.execute('UPDATE PREFIXES SET PREFIX=? WHERE GUILD_ID=?', (pre, ctx.guild.id))
-                        await db.commit()
-                        await ctx.send(f'Updated the prefix to `{pre}`.')
-                    else:
-                        await db.execute('INSERT INTO PREFIXES (GUILD_ID, PREFIX) VALUES (?, ?)', (ctx.guild.id, pre))
-                        await db.commit()
-                        await ctx.send(f'Changed the prefix to `{pre}`.')
-                    self.bot.prefixes[ctx.guild.id] = pre
+            await execute_query(
+                self.bot.database,
+                'INSERT INTO PREFIXES (GUILD_ID, PREFIX) VALUES (?, ?) '
+                'ON CONFLICT(GUILD_ID) DO UPDATE SET PREFIX=EXCLUDED.PREFIX',
+                (ctx.guild.id, prefix)
+            )
+            await ctx.send(f'Updated the prefix to `{prefix}`.')
 
-        except aiosqlite.Error as e:
+        except aiosqliteError:
             await ctx.send('Failed to change the guild\'s prefix.')
-            print(f'Set Prefix SQLite Error: {e}')
 
     @commands.guild_only()
     @commands.command(name='getprefix', aliases=['prefix'], help='Gets the bot\'s prefix for this guild.')
@@ -123,7 +142,7 @@ class Utility(commands.Cog):
         A method that outputs the command prefix for a guild.
 
         Checks:
-            guild_only(): Whether or not the command was invoked from a guild. No direct messages.
+            guild_only(): Whether the command was invoked from a guild. No direct messages.
 
         Parameters:
             ctx (commands.Context): The invocation context.
@@ -137,17 +156,17 @@ class Utility(commands.Cog):
         """
 
         try:
-            async with aiosqlite.connect(self.bot.database) as db:
-                async with db.execute('SELECT PREFIX FROM PREFIXES WHERE GUILD_ID=?', (ctx.guild.id,)) as cursor:
-                    result = await cursor.fetchone()
-                    if result is None:
-                        await ctx.send(self.bot.default_prefix)
-                    else:
-                        await ctx.send(f'Prefix: `{result[0]}`')
+            result = await retrieve_query(
+                self.bot.database,
+                'SELECT PREFIX FROM PREFIXES WHERE GUILD_ID=?',
+                (ctx.guild.id,)
+            )
+            prefix = result[0][0] if result else self.bot.default_prefix
 
-        except aiosqlite.Error as e:
+            await ctx.send(f'Prefix: `{prefix}`')
+
+        except aiosqliteError:
             await ctx.send('Could not retrieve the guild\'s prefix.')
-            print(f'Set Prefix SQLite Error: {e}')
 
     @commands.command(name='uptime', help='Returns current bot uptime.')
     async def uptime(self, ctx: commands.Context) -> None:
@@ -198,44 +217,12 @@ class Utility(commands.Cog):
         members = sorted(ctx.guild.members, key=lambda x: x.joined_at)
         embed.add_field(name='Join Position', value=str(members.index(user)))
         embed.add_field(name='User ID', value=str(user.id), inline=False)
-        embed.add_field(name='User Flags', value=await readable_flags(user.public_flags), inline=False)
+        embed.add_field(name='User Flags', value=readable_flags(user.public_flags), inline=False)
         roles = ', '.join(str(x) for x in (user.roles[::-1])[:-1])
         embed.add_field(name='Roles', value=roles if roles else 'None', inline=False)
         embed.set_footer(text="Please report any issues to my owner!")
 
         await ctx.send(embed=embed)
-
-    @commands.guild_only()
-    @commands.command(name='sync')
-    async def sync_permissions(self, ctx: commands.Context):
-        """
-        A method that re-syncs permissions with the channel's parent category.
-
-        Parameters:
-            ctx (commands.Context): The invocation context.
-
-        Output:
-            Command state information.
-
-        Returns:
-            None.
-        """
-
-        if not ctx.channel.category:
-            # await ctx.send('This channel does not belong to a category.')
-            return
-        if ctx.channel.permissions_synced:
-            # await ctx.send('Permissions for this channel are already synced')
-            return
-
-        author_can_edit = ctx.channel.category.permissions_for(ctx.author).manage_channels
-
-        if not author_can_edit:
-            # await ctx.send('You do not have permission to sync this channel.')
-            return
-
-        await ctx.channel.edit(sync_permissions=True)
-        await ctx.send('Successfully synced permissions.')
 
     @commands.command(name='unicodeemoji', aliases=['ue', 'eu'])
     async def unicode_emoji(self, ctx: commands.Context, emoji: str):
@@ -266,7 +253,7 @@ class Utility(commands.Cog):
         Parameters:
             ctx (commands.Context): The invocation context.
             source (Optional[discord.Message]): The message to extract emojis from.
-            animated (Optional[bool]): Whether or not the emoji is animated.
+            animated (Optional[bool]): Whether the emoji is animated.
             name (Optional[str]): The name of the emoji.
 
         Output:
@@ -377,7 +364,7 @@ class Utility(commands.Cog):
         await ctx.send(response)
 
 
-async def readable_flags(flags: PublicUserFlags) -> str:
+def readable_flags(flags: PublicUserFlags) -> str:
     """
     A method that converts PublicUserFlag enums to usable strings.
 

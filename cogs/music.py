@@ -53,7 +53,7 @@ class NoChannelProvided(commands.CommandError):
 
 class IncorrectChannelError(commands.CommandError):
     """
-    Error raised when commands are issued outside of the players session channel.
+    Error raised when commands are issued outside the player's session channel.
     """
 
     pass
@@ -67,7 +67,7 @@ class Track(wavelink.Track):
         id (str): The Base64 Track ID.
         info (dict): The raw track info.
         title (str): The track title.
-        identifier (Optional[str]): The tracks identifier. Could be None depending on track type.
+        identifier (Optional[str]): The track's identifier. Could be None depending on track type.
         ytid (Optional[str]): The tracks YouTube ID. Could be None if ytsearch was not used.
         length (float): The duration of the track.
         duration (float): Alias to length.
@@ -108,8 +108,8 @@ class Player(wavelink.Player):
         dj (Union[discord.User, discord.Member]): The user that invoked the player.
         queue (asyncio.Queue[Track]): An asynchronous queue containing the tracks.
         spotify (tekore.Spotify): The Spotify class used to query Spotify API data.
-        waiting (bool): Whether or not the player is waiting for the next track (queue empty).
-        updating (bool): Whether or not the player controller is updating.
+        waiting (bool): Whether the player is waiting for the next track (queue empty).
+        updating (bool): Whether the player controller is updating.
         pause_votes (set[Union[discord.User, discord.Member]]): A set of users who voted towards pausing.
         resume_votes (set[Union[discord.User, discord.Member]]): A set of users who voted towards resuming.
         skip_votes (set[Union[discord.User, discord.Member]]): A set of users who voted towards skipping.
@@ -264,7 +264,7 @@ class Player(wavelink.Player):
             None.
 
         Returns:
-            (bool): Whether or not the controller is one of the 5 most recent messages.
+            (bool): Whether the controller is one of the 5 most recent messages.
         """
 
         try:
@@ -347,7 +347,7 @@ class InteractiveController(menus.Menu):
             payload (discord.RawReactionActionEvent): The reaction event's details.
 
         Returns:
-            (bool): Whether or not the user AND the reaction added by the user are valid.
+            (bool): Whether the user AND the reaction added by the user are valid.
         """
 
         if payload.event_type == 'REACTION_REMOVE':
@@ -373,7 +373,7 @@ class InteractiveController(menus.Menu):
             channel (discord.TextChannel): The channel to send the initial message to.
 
         Returns:
-            (discord.Message): The sent message.
+            (discord.Message): The message that was sent.
         """
 
         return await channel.send(embed=self.embed)
@@ -575,7 +575,7 @@ class PaginatorSource(menus.ListPageSource):
         A method that formats a specified page.
 
         Parameters:
-            menu (menus.Menu): The menu containing the page
+            menu (menus.Menu): The menu containing the page.
             page (Page[entries]): The page containing the entries to display.
 
         Returns:
@@ -589,14 +589,14 @@ class PaginatorSource(menus.ListPageSource):
 
     def is_paginating(self):
         """
-        A method that specifies whether or not to embed.
+        A method that specifies Whether to embed.
         We always want to embed, even on 1 page of results.
 
         Parameters:
             None.
 
         Returns:
-            (bool): Whether or not we're paginating. Always True.
+            (bool): Whether we're paginating. Always True.
         """
 
         return True
@@ -759,7 +759,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             ctx (commands.Context): The invocation context.
 
         Returns:
-            (bool): Whether or not the command should execute.
+            (bool): Whether the command should execute.
         """
 
         if not ctx.guild:
@@ -771,7 +771,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     async def cog_before_invoke(self, ctx: commands.Context) -> None:
         """
         A cog-wide before-invoke hook.
-        Mainly used to check whether the user is in the players controller channel.
+        Mainly used to check whether the user is in the player's controller channel.
 
         Parameters:
             ctx (commands.Context): The invocation context.
@@ -852,13 +852,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
     def is_privileged(self, ctx: commands.Context) -> bool:
         """
-        A method that checks whether or not the invoking user is an Admin or a DJ.
+        A method that checks Whether the invoking user is an Admin or a DJ.
 
         Parameters:
             ctx (commands.Context): The invocation context.
 
         Returns:
-            (bool): Whether or not the invoking user has kick permissions or is a DJ.
+            (bool): Whether the invoking user has kick permissions or is a DJ.
         """
 
         player: Player = self.bot.wavelink.get_player(guild_id=ctx.guild.id, cls=Player, context=ctx)

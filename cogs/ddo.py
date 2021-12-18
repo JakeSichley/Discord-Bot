@@ -1,3 +1,27 @@
+"""
+MIT License
+
+Copyright (c) 2021 Jake Sichley
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
 from discord import Embed
 from discord.ext import commands, tasks
 from random import seed, shuffle, randrange
@@ -64,6 +88,16 @@ class DDO(commands.Cog):
         """
 
         async def evaluate_dice(dice: str) -> [int]:
+            """
+            Simulate rolling the specified dice.
+
+            Parameters:
+                dice (str): The specified dice pattern to generate.
+
+            Returns:
+                (List[int]): The result of rolling the specified pattern.
+            """
+
             die = dice.split('d')
             # create a list of all possible roll outcomes
             # dice = [x for x in range(int(die[0]), int(die[0]) * int(die[1]) + 1)]
@@ -76,6 +110,16 @@ class DDO(commands.Cog):
             return dice[0]
 
         async def evaluate_dice_string(string: str) -> str:
+            """
+            Turns a die string into a computed value without exposing the string to eval.
+
+            Parameters:
+                string (str): The die string to be evaluated.
+
+            Returns:
+                (str): The evaluated result.
+            """
+
             # avoid exposing eval() to the user -> manually parse the arithmetic expression we've generated
             # while we have valid expressions, break them down into groups
             while match := search(r'(\d+)([+\-])(\d+)', string):
@@ -106,7 +150,7 @@ class DDO(commands.Cog):
         # build a result string we can present to the user
         breakdown = f'Roll: **{pattern}**\nResult: **$**\n\nBreakdown:'
 
-        # group all of the non-die rolls together so we can append it the breakdown
+        # group all the non-die rolls together so we can append it the breakdown
         non_die = findall(r'([+|-]\d+)(?=\+|-|$)', pattern)
 
         # give the user a breakdown of each of their requested rolls
@@ -213,7 +257,7 @@ class DDO(commands.Cog):
                             # Sometimes, enchantments have a leading space, or a '+' character
                             #   look for 0 or more of these and add them to our match
                             # Finally, Positive Lookbehind to match the closing '>' character preceding our description
-                            # Note: This description was written 'backwards', (positive lookbehind occurs first, etc)
+                            # Note: This description was written 'backwards', (positive lookbehind occurs first, etc.)
                             result = search("(?<=>)( )*(\+\d+ )*(\w|\d)(.+?)(?=</a>)", element)
                             # If our result is not a Mythic Bonus (these are on nearly every single item), add it
                             if result is not None and str(result.group(0)).find('Mythic') == -1:
@@ -227,7 +271,7 @@ class DDO(commands.Cog):
                 if minimum_level_string is not None:
                     minimum_level = int(search("\d+?(?=(\n</td>))", minimum_level_string).group(0))
 
-                # If we have a item type string, extract the item type using regex
+                # If we have an item type string, extract the item type using regex
                 if item_type_string is not None:
                     item_type = search("(?<=>).+?(?=(\n</td>))", item_type_string).group(0)
                     # Sometimes (in the case of weapons) the parent type is bolded - strip these tags
