@@ -28,6 +28,7 @@ from sys import stderr
 from traceback import print_exception, format_exception
 from dreambot import DreamBot
 from aiohttp import ClientResponseError
+import logging
 
 
 class Exceptions(commands.Cog):
@@ -78,7 +79,7 @@ class Exceptions(commands.Cog):
         )
 
         if not isinstance(error, ignored):
-            print('Ignoring exception in command {}:'.format(ctx.command), file=stderr)
+            logging.log(logging.WARNING, f'Ignoring exception in command {ctx.command}:')
             print_exception(type(error), error, error.__traceback__, file=stderr)
 
         permissions = (commands.NotOwner, commands.MissingPermissions)

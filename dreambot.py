@@ -26,8 +26,9 @@ from os import getcwd, listdir
 from discord.ext.commands import ExtensionError, Bot, when_mentioned_or
 from datetime import datetime
 from typing import Optional, List, Any, Dict
+from utils.database_utils import retrieve_query
+from aiosqlite import Error as aiosqliteError
 import discord
-import aiosqlite
 import logging
 
 
@@ -133,14 +134,17 @@ class DreamBot(Bot):
             None.
         """
 
-        try:
-            async with aiosqlite.connect(self.database) as db:
-                async with db.execute("SELECT * FROM Prefixes") as cursor:
-                    async for guild, prefix in cursor:
-                        self.prefixes[int(guild)] = prefix
+        current_prefixes = self.prefixes
 
-        except aiosqlite.Error as e:
-            print(f'Retrieve Prefixes Error: {e}')
+        try:
+            self.prefixes.clear()
+            result = await retrieve_query(self.database, 'SELECT * FROM PREFIXES')
+
+            if result:
+                self.prefixes = {int(guild): prefix for guild, prefix in result}
+
+        except aiosqliteError:
+            self.prefixes = current_prefixes
 
     def run(self, token: str) -> None:
         """

@@ -23,13 +23,13 @@ SOFTWARE.
 """
 
 from discord.ext import commands, menus
-from utils.database_utils import execute_query, retrieve_query, exists_query
+from utils.database_utils import execute_query, retrieve_query
 from enum import Enum
 from typing import List, Union
 from asyncio import Condition
 from dreambot import DreamBot
+from aiosqlite import Error as aiosqliteError
 import discord
-import re
 
 CHANNEL_OBJECT = Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]
 PERMISSIONS_PARENT = Union[discord.Role, discord.Member]
@@ -63,8 +63,8 @@ class Moderation(commands.Cog):
         Should a user ID be supplied, any messages from that user in the last (limit) messages will be deleted.
 
         Checks:
-            has_permissions(manage_messages): Whether or not the invoking user can manage messages.
-            bot_has_permissions(manage_messages, read_message_history): Whether or not the bot can manage messages
+            has_permissions(manage_messages): Whether the invoking user can manage messages.
+            bot_has_permissions(manage_messages, read_message_history): Whether the bot can manage messages
                 and read the message history of a channel, both of which are required for the deletion of messages.
 
         Parameters:
@@ -98,8 +98,8 @@ class Moderation(commands.Cog):
             if conversion fails.
 
         Checks:
-            has_permissions(manage_roles): Whether or not the invoking user can manage roles.
-            bot_has_permissions(manage_roles): Whether or not the bot can manage roles.
+            has_permissions(manage_roles): Whether the invoking user can manage roles.
+            bot_has_permissions(manage_roles): Whether the bot can manage roles.
 
         Parameters:
             ctx (commands.Context): The invocation context.
@@ -110,7 +110,7 @@ class Moderation(commands.Cog):
             None.
         """
 
-        """bot_role = ctx.me.top_role
+        bot_role = ctx.me.top_role
         invoker_role = ctx.author.top_role
 
         if not all((bot_role, invoker_role, role)):
@@ -118,79 +118,25 @@ class Moderation(commands.Cog):
             return
         if role >= bot_role or role >= invoker_role:
             await ctx.send('You specified a role equal to or higher than mine or your top role.')
-            return"""
+            return
 
-        csuflol = self.bot.get_guild(183469430380953601)
-
-        mention_regex = re.compile(r'<@!?([0-9]+)>$')
-        id_regex = re.compile(r'([0-9]{15,21})$')
-
-        mentions = list(filter(mention_regex.match, members))
-        ids = list(filter(id_regex.match, members))
-        resolved = []
-
-        raws = [x for x in members if (x not in mentions and x not in ids)]
-        unresolved_raws = []
-
-        for arg in raws:
-            if len(arg) > 5 and arg[-5] == '#':
-                username, _, discriminator = arg.rpartition('#')
-                if found := discord.utils.get(csuflol.members, name=username, discriminator=discriminator):
-                    resolved.append(found)
-                else:
-                    unresolved_raws.append(arg)
-            else:
-                if found := discord.utils.find(lambda m: m.name == arg or m.nick == arg, csuflol.members):
-                    resolved.append(found)
-                else:
-                    unresolved_raws.append(arg)
-
-        from discord.ext.commands import IDConverter, BadArgument, MemberConverter, MemberNotFound
-
-        _members = resolved + [await MemberConverter().convert(ctx, arg) for arg in mentions + ids]
-
-        """
-        Denote different regex match cases
-        iterate through parameters and attempt to match
-            should match fail, append next parameter and attempt to match
-                should match fail, check next parameter for isolated match
-                    should match fail, repeat appending parameters
-                    should match succeed, discard previous parameter
-                        edge case where next parameter weakly matches (ex: nickname) and prematurely discards
-                    
-        trim excess (>1) (white)spaces from params
-            investigate how newlines, tabs interact with variadic parameters
-                if significant, potentially convert all whitespace to spaces
-        """
-
-        success, failed = [], unresolved_raws
-
-        for member in _members:
-            if isinstance(member, discord.Member):
-                success.append(str(member))
-            else:
-                failed.append(str(member))
-
-        """for member in _members:
+        success, failed = [], []
+        for member in members:
             try:
                 # noinspection PyUnresolvedReferences
-                # await member.add_roles(role, reason=f'Bulk Added by {str(ctx.author)}')
+                await member.add_roles(role, reason=f'Bulk Added by {str(ctx.author)}')
                 success.append(str(member))
             except discord.HTTPException:
                 failed.append(str(member))
             # since we used a special converter that returns the member's name (as a str) if conversation fails,
             # type 'str' won't have an add_roles method
             except AttributeError:
-                failed.append(str(member))"""
+                failed.append(str(member))
 
-        response = f'Successfully added the role to the following members:\n' \
-                   f'```{", ".join(success) if success else "None"}```'
-
-        if failed:
-            response += f'\nFailed to add the role to the following members:\n' \
-                        f'```{", ".join(failed) if failed else "None"}```'
-
-        await ctx.send(response)
+        await ctx.send(f'Successfully added the role to the following members:\n'
+                       f'```{", ".join(success) if success else "None"}```\n'
+                       f'Failed to add the role to the following members:\n'
+                       f'```{", ".join(failed) if failed else "None"}```')
 
     @commands.has_guild_permissions(manage_guild=True)
     @commands.command(name='getdefaultrole', aliases=['gdr'],
@@ -200,7 +146,7 @@ class Moderation(commands.Cog):
         A method for checking which role (if any) will be auto-granted to new users joining the guild.
 
         Checks:
-            has_guild_permissions(manage_guild): Whether or not the invoking user can manage the guild.
+            has_guild_permissions(manage_guild): Whether the invoking user can manage the guild.
 
         Parameters:
             ctx (commands.Context): The invocation context.
@@ -222,9 +168,33 @@ class Moderation(commands.Cog):
     @commands.has_guild_permissions(manage_channels=True)
     @commands.bot_has_guild_permissions(manage_channels=True)
     @commands.command(name='duplicate_permissions', aliases=['dp'])
-    async def duplicate_channel_permissions(self, ctx: commands.Context, base_channel: CHANNEL_OBJECT,
-                                            base_permission_owner: PERMISSIONS_PARENT, target_channel: CHANNEL_OBJECT,
-                                            target_permission_owner: PERMISSIONS_PARENT) -> None:
+    async def duplicate_channel_permissions(
+            self, ctx: commands.Context, base_channel: CHANNEL_OBJECT, base_permission_owner: PERMISSIONS_PARENT,
+            target_channel: CHANNEL_OBJECT, target_permission_owner: PERMISSIONS_PARENT
+    ) -> None:
+        """
+        A method to duplicate channel permissions to a different target.
+
+        Checks:
+            cooldown: Whether the command is on cooldown. Can be used (1) time per (10) minutes per (Guild).
+            has_guild_permissions(manage_channels)
+            bot_has_guild_permissions(manage_channels)
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+            base_channel (Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]): The base channel
+                to source permissions from.
+            base_permission_owner (Union[discord.Role, discord.Member]): The role or member whose permissions should
+                be copied.
+            target_channel (Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]): The target
+                channel to duplicate permissions to.
+            target_permission_owner (Union[discord.Role, discord.Member]): The role or member the permissions should
+                apply to.
+
+        Returns:
+            None.
+        """
+
         try:
             base_overwrites = base_channel.overwrites[base_permission_owner]
         except KeyError:
@@ -250,9 +220,9 @@ class Moderation(commands.Cog):
         A method for checking which role (if any) will be auto-granted to new users joining the guild.
 
         Checks:
-            cooldown(): Whether or not the command is on cooldown. Can be used (1) time per (10) minutes per (Guild).
+            cooldown(): Whether the command is on cooldown. Can be used (1) time per (10) minutes per (Guild).
             has_guild_permissions(manage_guild, manage_roles):
-                Whether or not the invoking user can manage the guild and roles.
+                Whether the invoking user can manage the guild and roles.
 
         Parameters:
             ctx (commands.Context): The invocation context.
@@ -494,18 +464,17 @@ class Moderation(commands.Cog):
             None.
         """
 
-        # perform an EXISTS query first since pi doesn't support ON_CONFLICT
-        if (await exists_query(self.bot.database, 'SELECT EXISTS(SELECT 1 FROM LOGGING WHERE GUILD_ID=?)',
-                               (ctx.guild.id,))):
-            await execute_query(self.bot.database,
-                                'UPDATE LOGGING SET CHANNEL_ID=? WHERE GUILD_ID=?',
-                                (channel.id, ctx.guild.id))
+        try:
+            await execute_query(
+                self.bot.database,
+                'INSERT INTO LOGGING (GUILD_ID, CHANNEL_ID, BITS) VALUES (?, ?, ?) '
+                'ON CONFLICT(GUILD_ID) DO UPDATE SET CHANNEL_ID=EXCLUDED.CHANNEL_ID',
+                (ctx.guild.id, channel.id, 0)
+            )
             await ctx.send(f'Updated the logging channel to {channel.mention}.')
-        else:
-            await execute_query(self.bot.database,
-                                'INSERT INTO LOGGING (GUILD_ID, CHANNEL_ID, BITS) VALUES (?, ?, ?)',
-                                (ctx.guild.id, channel.id, 0))
-            await ctx.send(f'Set the logging channel to {channel.mention}.')
+
+        except aiosqliteError:
+            await ctx.send('Failed to update the logging channel.')
 
 
 class LoggingActions(Enum):
@@ -538,14 +507,14 @@ class LoggingActions(Enum):
     @staticmethod
     def has_action(action: Enum, action_bits: int) -> bool:
         """
-        A class method for checking whether or not an action flag is enabled.
+        A class method for checking whether an action flag is enabled.
 
         Parameters:
             action (Enum): The action to check for.
             action_bits (int): The integer containing the action bits.
 
         Returns:
-            (bool): Whether or not the action flag is enabled.
+            (bool): Whether the action flag is enabled.
         """
 
         return bool(action.value & action_bits)

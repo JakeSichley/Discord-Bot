@@ -77,28 +77,3 @@ async def retrieve_query(database_name: str, query: str, values: Tuple[Any, ...]
     except aiosqlite.Error as error:
         print(f'aiosqlite retrieve error\n{query=}\n{error=}')
         raise error
-
-
-async def exists_query(database_name: str, query: str, values: Tuple[Any, ...] = None) -> bool:
-    """
-    A method that checks whether a record exists in the database.
-
-    Parameters:
-        database_name (str): The name of the database.
-        query (str): The statement to execute.
-        values (Tuple[Any, ...]): The values to insert into the query.
-
-    Returns:
-        (bool): Whether the user exists in the table.
-    """
-
-    values = values if values else tuple()
-
-    try:
-        async with aiosqlite.connect(database_name) as db:
-            async with await db.execute(query, values) as cursor:
-                return (await cursor.fetchone())[0] == 1
-
-    except aiosqlite.Error as error:
-        print(f'aiosqlite exists error\n{query=}\n{error=}')
-        raise error

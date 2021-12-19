@@ -24,7 +24,7 @@ SOFTWARE.
 
 from discord.ext import commands
 from discord import Embed, HTTPException
-from utils.database_utils import execute_query, retrieve_query, exists_query
+from utils.database_utils import execute_query, retrieve_query
 from utils.checks import check_memecoin_channel
 from typing import Optional
 from dreambot import DreamBot
@@ -69,33 +69,22 @@ class MemeCoin(commands.Cog):
             None.
         """
 
-        query = values = None
         if not (author_id := await check_coin_requirements(self.bot, payload, self.channel)):
             return
 
         if str(payload.emoji) == '✅':
-            # if the user is NOT in the database, create their record with a value of 1
-            if not (await exists_query(self.bot.database, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
-                                       (author_id,))):
-                query = 'INSERT INTO MEMECOIN (USER_ID, COINS) VALUES (?, ?)'
-                values = (author_id, 1)
-            # otherwise, increment their record
-            else:
-                query = 'UPDATE MEMECOIN SET COINS=COINS+1 WHERE USER_ID=?'
-                values = (author_id,)
+            value = 1
         elif str(payload.emoji) == '❌':
-            # if the user is NOT in the database, create their record with a value of -1
-            if not (await exists_query(self.bot.database, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
-                                       (author_id,))):
-                query = 'INSERT INTO MEMECOIN (USER_ID, COINS) VALUES (?, ?)'
-                values = (author_id, -1)
-            # otherwise, decrement their record
-            else:
-                query = 'UPDATE MEMECOIN SET COINS=COINS-1 WHERE USER_ID=?'
-                values = (author_id,)
+            value = -1
+        else:
+            return
 
-        if query is not None:
-            await execute_query(self.bot.database, query, values)
+        await execute_query(
+            self.bot.database,
+            'INSERT INTO MEMECOIN (USER_ID, COINS) VALUES (?, ?) '
+            'ON CONFLICT(USER_ID) DO UPDATE SET COINS=COINS+EXCLUDED.COINS',
+            (author_id, value)
+        )
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent) -> None:
@@ -115,22 +104,22 @@ class MemeCoin(commands.Cog):
             None.
         """
 
-        query = None
         if not (author_id := await check_coin_requirements(self.bot, payload, self.channel)):
             return
 
-        # Don't create a record on a reaction removal. Increment or decrement an existing record where appropriate
         if str(payload.emoji) == '✅':
-            if await exists_query(self.bot.database, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
-                                  (author_id,)):
-                query = 'UPDATE MEMECOIN SET COINS=COINS-1 WHERE USER_ID=?'
+            value = -1
         elif str(payload.emoji) == '❌':
-            if await exists_query(self.bot.database, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
-                                  (author_id,)):
-                query = 'UPDATE MEMECOIN SET COINS=COINS+1 WHERE USER_ID=?'
+            value = 1
+        else:
+            return
 
-        if query is not None:
-            await execute_query(self.bot.database, query, (author_id,))
+        await execute_query(
+            self.bot.database,
+            'INSERT INTO MEMECOIN (USER_ID, COINS) VALUES (?, ?) '
+            'ON CONFLICT(USER_ID) DO UPDATE SET COINS=COINS+EXCLUDED.COINS',
+            (author_id, value)
+        )
 
     @check_memecoin_channel()
     @commands.command(name='coins', help='Checks you how many of those sweet, sweet Meme Coins you own!')
@@ -152,15 +141,10 @@ class MemeCoin(commands.Cog):
             None.
         """
 
-        if await exists_query(self.bot.database, 'SELECT EXISTS(SELECT 1 FROM MEMECOIN WHERE USER_ID=?)',
-                              (ctx.author.id,)):
-            result = await retrieve_query(self.bot.database, 'SELECT COINS FROM MEMECOIN WHERE USER_ID=?',
-                                          (ctx.author.id,))
-            if result is not None:
-                await ctx.send(f'{ctx.author.mention}, you have {result[0][0]} Meme Coin(s)!')
-            else:
-                await ctx.send(f'{ctx.author.mention}, I might have misplaced your Meme Coins..')
-                print(f'MemeCoin Coins Query Result Error: USER_ID exists but returned None (ID: {ctx.author.id})')
+        result = await retrieve_query(self.bot.database, 'SELECT COINS FROM MEMECOIN WHERE USER_ID=?',
+                                      (ctx.author.id,))
+        if result:
+            await ctx.send(f'{ctx.author.mention}, you have {result[0][0]} Meme Coin(s)!')
         else:
             await ctx.send(f'{ctx.author.mention}, you have no Meme Coins :(')
 
@@ -195,7 +179,7 @@ class MemeCoin(commands.Cog):
         embed.add_field(name='\u200B', value='\u200B')
         embed.set_footer(text="Please report any issues to my owner!")
 
-        result = await retrieve_query(self.bot.database, 'SELECT * FROM MEMECOIN', ())
+        result = await retrieve_query(self.bot.database, 'SELECT * FROM MEMECOIN')
 
         if len(result) > 0:
             top_scores = sorted(result, key=lambda x: x[1], reverse=True)
@@ -219,8 +203,9 @@ class MemeCoin(commands.Cog):
         await ctx.send(embed=embed)
 
 
-async def check_coin_requirements(bot: commands.Bot, payload: discord.RawReactionActionEvent,
-                                  memecoin_channel: int) -> Optional[int]:
+async def check_coin_requirements(
+        bot: commands.Bot, payload: discord.RawReactionActionEvent, memecoin_channel: int
+) -> Optional[int]:
     """
     A method that checks whether an event is eligible for Meme Coins.
     Returns None if requirements are not met.
@@ -238,7 +223,7 @@ async def check_coin_requirements(bot: commands.Bot, payload: discord.RawReactio
         memecoin_channel (int): The ID of the Meme Coin channel.
 
     Returns:
-        (int): If the requirements have been met - the original message's author id. Else - -1.
+        (int): If the requirements have been met - the original message's author id. Else: None.
     """
 
     # get the original message: fetch channel -> fetch message

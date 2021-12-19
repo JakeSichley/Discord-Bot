@@ -183,7 +183,7 @@ class Admin(commands.Cog):
         """
 
         await ctx.send('Closing Event Loop.')
-        await self.bot.logout()
+        await self.bot.close()
 
     @commands.command(name='eval', hidden=True)
     async def _eval(self, ctx: commands.Context, _ev: str) -> None:
@@ -266,16 +266,8 @@ class Admin(commands.Cog):
             None.
         """
 
-        try:
-            result = await retrieve_query(self.bot.database, 'SELECT * FROM PREFIXES')
-            self.bot.prefixes.clear()
-
-            if result:
-                self.bot.prefixes = {int(guild): prefix for guild, prefix in result}
-                await ctx.send('Reloaded Prefixes.')
-
-        except aiosqliteError as e:
-            await ctx.send(f'Error: {e}')
+        await self.bot.retrieve_prefixes()
+        await ctx.send('Reloaded Prefixes.')
 
     @commands.command(name='resetcooldown', aliases=['rc'], hidden=True)
     async def reset_cooldown(self, ctx: commands.Context, command: str) -> None:
