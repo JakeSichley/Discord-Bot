@@ -1,7 +1,34 @@
+"""
+MIT License
+
+Copyright (c) 2021 Jake Sichley
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
 from discord.ext import commands
 from discord import HTTPException
 from sys import stderr
 from traceback import print_exception, format_exception
+from dreambot import DreamBot
+from aiohttp import ClientResponseError
+import logging
 
 
 class Exceptions(commands.Cog):
@@ -9,15 +36,15 @@ class Exceptions(commands.Cog):
     A Cogs class that provides centralized exception handling for the bot.
 
     Attributes:
-        bot (commands.Bot): The Discord bot.
+        bot (DreamBot): The Discord bot.
     """
 
-    def __init__(self, bot):
+    def __init__(self, bot: DreamBot) -> None:
         """
         The constructor for the Exceptions class.
 
         Parameters:
-            bot (commands.Bot): The Discord bot.
+            bot (DreamBott): The Discord bot.
         """
 
         self.bot = bot
@@ -40,25 +67,28 @@ class Exceptions(commands.Cog):
             None.
         """
 
-        print('Ignoring exception in command {}:'.format(ctx.command), file=stderr)
-        print_exception(type(error), error, error.__traceback__, file=stderr)
-
-        # Prevent any commands with local handlers being handled
         if hasattr(ctx.command, 'on_error'):
             return
 
-        ignored = (commands.CommandNotFound, commands.UserInputError)
+        if isinstance(error, commands.CommandInvokeError):
+            error = error.__cause__
+
+        ignored = (
+            commands.CommandNotFound, commands.UserInputError, commands.CheckFailure, ClientResponseError,
+            commands.CommandOnCooldown
+        )
+
+        if not isinstance(error, ignored):
+            logging.log(logging.WARNING, f'Ignoring exception in command {ctx.command}:')
+            print_exception(type(error), error, error.__traceback__, file=stderr)
+
         permissions = (commands.NotOwner, commands.MissingPermissions)
         # Allows us to check for original exceptions raised and sent to CommandInvokeError
         # If nothing is found, keep the exception passed in
         error = getattr(error, 'original', error)
 
-        # Anything in ignored will return without any additional handling
-        if isinstance(error, ignored):
-            return
-
-        elif isinstance(error, commands.DisabledCommand):
-            await ctx.send(f'{ctx.command} has been disabled.')
+        if isinstance(error, commands.DisabledCommand):
+            await ctx.send(f'`{ctx.command}` has been disabled.')
             return
 
         elif isinstance(error, commands.NoPrivateMessage):
@@ -81,6 +111,17 @@ class Exceptions(commands.Cog):
             else:
                 await ctx.send(f'{ctx.message.author.mention}, please wait {int(error.retry_after)} seconds '
                                f'before calling this command again!')
+            return
+
+        # External network error
+        elif isinstance(error, ClientResponseError):
+            await ctx.send(f'`{ctx.command}` encountered a network error: `{error.message} ({error.status})`')
+            return
+
+        # Check failure
+        elif isinstance(error, commands.CheckFailure):
+            await ctx.send(f'One or more checks failed during the invocation of command: '
+                           f'`{ctx.command.qualified_name}`.')
             return
 
         # Calling a command without the required role
@@ -107,17 +148,13 @@ class Exceptions(commands.Cog):
         elif isinstance(error, commands.ExtensionError):
             await ctx.send(f'```py\n{"".join(format_exception(type(error), error, error.__traceback__))}```')
 
-        # All other errors not returned come here. Print the default traceback
-        print('Ignoring exception in command {}:'.format(ctx.command), file=stderr)
-        print_exception(type(error), error, error.__traceback__, file=stderr)
 
-
-def setup(bot) -> None:
+def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (commands.Bot): The bot the cog should be added to.
+        bot (DreamBot): The bot the cog should be added to.
 
     Returns:
         None.

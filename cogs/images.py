@@ -1,28 +1,47 @@
-import discord
-import PIL.ImageOps
+"""
+MIT License
+
+Copyright (c) 2021 Jake Sichley
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
 from discord.ext import commands
-from aiohttp import ClientSession
-from PIL import Image
-from io import BytesIO
-from asyncio import get_event_loop
-from concurrent.futures import ThreadPoolExecutor
-from re import search
+from utils.image_utils import NoImage, BufferSizeExceeded, extract_image_as_bytes, invert_object, title_card_generator
+from dreambot import DreamBot
+import discord
 
 
 class Images(commands.Cog):
     """
-    A Cogs class that invokes ImageSupport methods.
+    A Cogs class that invokes ImageUtils methods.
 
     Attributes:
-        bot (commands.Bot): The Discord bot class.
+        bot (DreamBot): The Discord bot class.
     """
 
-    def __init__(self, bot):
+    def __init__(self, bot: DreamBot) -> None:
         """
         The constructor for the MemeCoin class.
 
         Parameters:
-            bot (commands.Bot): The Discord bot.
+            bot (DreamBot): The Discord bot.
         """
 
         self.bot = bot
@@ -30,14 +49,14 @@ class Images(commands.Cog):
     @commands.command(name='invert')
     async def invert(self, ctx: commands.Context, url: str = None) -> None:
         """
-        A method that invokes image inversion from ImageSupport.
+        A method that invokes image inversion from ImageUtils.
 
         Parameters:
             ctx (commands.Context): The invocation context.
             url (Optional[str]): An optional image url. Default: None
 
         Output:
-            Success: a discord.File object containing the inverted image2.
+            Success: A discord.File object containing the inverted image.
             Failure: An error message.
 
         Returns:
@@ -46,124 +65,63 @@ class Images(commands.Cog):
 
         async with ctx.channel.typing():
             try:
-                buffer = await ImageSupport.extract_image_as_bytes(ctx.message, url)
-                inverted = await ImageSupport.invert_object(buffer)
+                buffer = await extract_image_as_bytes(ctx.message, url)
+                inverted = await invert_object(buffer)
             except NoImage:
                 await ctx.send('No image was provided.')
+                return
+            except BufferSizeExceeded:
+                await ctx.send('The supplied image is too large. Bots are limited to images of size < 8 Megabytes.')
                 return
             except discord.HTTPException as e:
                 await ctx.send(f'Could not download image. Details: [Status {e.status} | {e.text}]')
                 return
 
-            await ctx.send(file=discord.File(inverted, filename="inverted.png"))
+            try:
+                await ctx.send(file=discord.File(inverted, filename="inverted.png"))
+            except discord.HTTPException as e:
+                await ctx.send(f'Could not send image. Details: [Status {e.status} | {e.text}]')
+                return
 
-
-class ImageSupport:
-    """
-    A class that implements image manipulation methods.
-
-    Attributes:
-        None.
-    """
-
-    @staticmethod
-    async def get_from_cdn(url) -> bytes:
+    @commands.command(name='iasip', aliases=['sun', 'sunny', 'title'])
+    async def iasip_title_card(self, ctx: commands.Context, *, title: str) -> None:
         """
-        A method that downloads an image from a url.
+        A method that invokes "It's Always Sunny In Philadelphia" title card generation from ImageUtils.
 
         Parameters:
-            url (str): The url of the image.
+            ctx (commands.Context): The invocation context.
+            title (str): The text to display on the title card.
+
+        Output:
+            Success: A discord.File object containing the generated title card image.
+            Failure: An error message.
 
         Returns:
-            (bytes): A bytes object of the downloaded image.
+            None.
         """
 
-        async with ClientSession() as session:
-            async with session.get(url) as resp:
-                if resp.status == 200:
-                    return await resp.read()
-                elif resp.status == 404:
-                    raise discord.NotFound(resp, 'Not Found')
-                elif resp.status == 403:
-                    raise discord.Forbidden(resp, 'Forbidden')
-                else:
-                    raise discord.HTTPException(resp, 'Failed')
+        async with ctx.channel.typing():
+            if not title.startswith('"'):
+                title = '"' + title
 
-    @staticmethod
-    async def extract_image_as_bytes(message: discord.Message, url: str) -> BytesIO:
-        """
-        A method that downloads an image from a url.
+            if not title.endswith('"'):
+                title += '"'
 
-        Parameters:
-            message (discord.Message): The message in the invocation context.
-            url (str): An image url.
-        Returns:
-            buffer (BytesIO): A BytesIO object of the image data.
-        """
+            buffer = await title_card_generator(title)
 
-        if message.attachments:
-            buffer = BytesIO()
-            await message.attachments[0].save(buffer, seek_begin=True)
-            return buffer
-        elif url and search(r'.(webp|jpeg|jpg|png|bmp)', url):
-            # if the user provided an embed, refresh to allow discord time to update the message
-            buffer = BytesIO()
-            data = await ImageSupport.get_from_cdn(url)
-            buffer.write(data)
-            buffer.seek(0)
-            return buffer
-        else:
-            raise NoImage
-
-    @staticmethod
-    async def invert_object(file: BytesIO) -> BytesIO:
-        """
-        A method that downloads an image from a url.
-        The inner function actually performs the inversion (blocking).
-        The outer function (this) wraps the blocking code, allowing for async execution.
-
-        Parameters:
-            file (BytesIO): A BytesIO object of the image to invert.
-        Returns:
-            inverted_buffer (BytesIO): A BytesIO object of the inverted image.
-        """
-
-        def blocking_invert() -> BytesIO:
-            inverted_buffer = BytesIO()
-            image = Image.open(file)
-
-            if image.mode == 'RGBA':
-                r, g, b, a = image.split()
-                rgb_image = Image.merge('RGB', (r, g, b))
-                inverted_image = PIL.ImageOps.invert(rgb_image)
-                r2, g2, b2 = inverted_image.split()
-                final_transparent_image = Image.merge('RGBA', (r2, g2, b2, a))
-                final_transparent_image.save(inverted_buffer, format='PNG')
-            else:
-                inverted_image = PIL.ImageOps.invert(image)
-                inverted_image.save(inverted_buffer, format='PNG')
-
-            inverted_buffer.seek(0)
-            return inverted_buffer
-
-        loop = get_event_loop()
-        return await loop.run_in_executor(ThreadPoolExecutor(), blocking_invert)
+            try:
+                await ctx.send(file=discord.File(buffer, filename="iasip.png"))
+            except discord.HTTPException as e:
+                await ctx.send(f'Could not send image. Details: [Status {e.status} | {e.text}]')
+                return
 
 
-class NoImage(Exception):
-    """
-    Error raised when no image was supplied.
-    """
-
-    pass
-
-
-def setup(bot) -> None:
+def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (commands.Bot): The bot the cog should be added to.
+        bot (DreamBot): The bot the cog should be added to.
 
     Returns:
         None.

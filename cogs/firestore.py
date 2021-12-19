@@ -1,25 +1,60 @@
-import discord
+"""
+MIT License
+
+Copyright (c) 2021 Jake Sichley
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
 from os import getenv
 from discord.ext import commands
 from google.cloud.firestore import AsyncClient, ArrayUnion
 from google.oauth2 import service_account
 from datetime import datetime
+from dreambot import DreamBot
+import discord
 # noinspection PyTypeChecker
 
 
 class Firestore(commands.Cog):
-    def __init__(self, bot):
+    """
+    A Cogs class that supports Firestore logging.
+
+    Attributes:
+        bot (DreamBot): The Discord bot class.
+        firestore (AsyncClient): The async Google Firestore client.
+
+    """
+
+    def __init__(self, bot: DreamBot) -> None:
         """
         The constructor for the Moderation class.
 
         Parameters:
-            bot (commands.Bot): The Discord bot class.
+            bot (DreamBot): The Discord bot class.
         """
+
+        self.bot = bot
 
         credentials = service_account.Credentials.from_service_account_file('firebase-auth.json')
         project = getenv('FIRESTORE_PROJECT')
         self.firestore = AsyncClient(project=project, credentials=credentials)
-        self.bot = bot
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
@@ -47,7 +82,7 @@ class Firestore(commands.Cog):
     async def on_raw_message_edit(self, payload: discord.RawMessageUpdateEvent) -> None:
         """
         A listener method that is called whenever a message is updated.
-        'raw' events fire regardless of whether or not a message is cached.
+        'raw' events fire regardless of whether a message is cached.
 
         Parameters:
            payload (discord.RawMessageUpdateEvent): Represents a payload for a raw message update event.
@@ -72,7 +107,7 @@ class Firestore(commands.Cog):
     async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent) -> None:
         """
         A listener method that is called whenever a message is deleted.
-        'raw' events fire regardless of whether or not a message is cached.
+        'raw' events fire regardless of whether a message is cached.
 
         Parameters:
            payload (discord.RawMessageDeleteEvent): Represents a payload for a raw message deletion event.
@@ -90,12 +125,12 @@ class Firestore(commands.Cog):
         })
 
 
-def setup(bot) -> None:
+def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
     Parameters:
-        bot (commands.Bot): The bot the cog should be added to.
+        bot (DreamBot): The bot the cog should be added to.
 
     Returns:
         None.
