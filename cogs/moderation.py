@@ -250,7 +250,6 @@ class Moderation(commands.Cog):
                 await ctx.send('Cannot set a default role higher than or equal to the bot\'s or your highest role.')
                 return
             else:
-                # noinspection SqlResolve
                 await execute_query(self.bot.database,
                                     'INSERT INTO DEFAULT_ROLES (GUILD_ID, ROLE_ID) VALUES (?, ?) ON CONFLICT(GUILD_ID) '
                                     'DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID', (ctx.guild.id, role.id))

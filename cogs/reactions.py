@@ -159,7 +159,6 @@ class ReactionRoles(commands.Cog):
             return await cleanup(cleanup_messages, ctx.channel)
 
         # we should have all pieces for a reaction role now
-        # noinspection SqlResolve
         await execute_query(self.bot.database,
                             'INSERT INTO REACTION_ROLES (GUILD_ID, CHANNEL_ID, MESSAGE_ID, REACTION, ROLE_ID) '
                             'VALUES (?, ?, ?, ?, ?) '

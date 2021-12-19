@@ -102,7 +102,7 @@ class DreamBot(Bot):
             await self.retrieve_prefixes()
             self.initialized = True
 
-        logging.log(logging.INFO, 'DreamBot Ready: Prefixes and Presence initialized')
+            logging.log(logging.INFO, 'DreamBot Ready: Prefixes and Presence initialized')
 
     async def on_message(self, message: discord.Message) -> None:
         """

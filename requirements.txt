@@ -1,6 +1,6 @@
-aiohttp==3.6.2
+aiohttp==3.8.1
 aiosqlite==0.17.0
-async_timeout==3.0.1
+async_timeout==4.0.1
 beautifulsoup4==4.10.0
 discord.py==1.7.3
 Pillow==8.4.0
