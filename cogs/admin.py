@@ -361,7 +361,7 @@ class Admin(commands.Cog):
                 await ctx.send(f'```py\n{value}{ret}\n```')
 
     @ensure_git_credentials()
-    @commands.group(name='git')
+    @commands.group(name='git', hidden=True)
     async def git(self, ctx: commands.Context) -> None:
         """
         Parent command that handles git related commands.

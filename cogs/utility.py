@@ -244,7 +244,7 @@ class Utility(commands.Cog):
 
     @commands.has_guild_permissions(manage_emojis=True)
     @commands.bot_has_guild_permissions(manage_emojis=True)
-    @commands.command(name='raw_yoink', aliases=['rawyoink'], help='Yoinks an emoji based on it\'s id.')
+    @commands.command(name='raw_yoink', aliases=['rawyoink'], help='Yoinks an emoji based on its id.')
     async def raw_yoink_emoji(self, ctx: commands.Context,  source: int, name: Optional[str] = None,
                               animated: Optional[bool] = False) -> None:
         """

@@ -34,14 +34,6 @@ from dreambot import DreamBot
 import discord
 
 
-class UserInputReceived(Exception):
-    """
-    Error raised when a user supplies valid input. Used as a double break.
-    """
-
-    pass
-
-
 class ReactionRoles(commands.Cog):
     """
     A Cogs class that implements reaction roles.
@@ -361,7 +353,7 @@ class ReactionRoles(commands.Cog):
     @reaction_role.command(name='check', help='Generates a breakdown of reaction roles for the given scope. Valid '
                                               'scopes: Guild, Channel, Message.')
     async def check_reaction_roles(
-            self, ctx: commands.Context, source: Union[GuildConverter, discord.TextChannel, discord.Message] = None
+            self, ctx: commands.Context, source: Union[GuildConverter, discord.TextChannel, discord.Message]
     ) -> None:
         """
         Generates a breakdown of reaction roles for the given scope. Valid scopes: Guild, Channel, Message.
@@ -453,8 +445,9 @@ class ReactionRoles(commands.Cog):
             else:
                 return None
 
-        if source.guild.id != ctx.guild.id:
-            await ctx.send("That message doesn't belong to this guild.")
+        source_id = source.guild.id if isinstance(source, (discord.TextChannel, discord.Message)) else source.id
+        if source_id != ctx.guild.id:
+            await ctx.send("That object doesn't belong to this guild.")
             return
 
         # invoke the proper sub-method based on our source type

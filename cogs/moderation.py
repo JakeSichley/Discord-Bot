@@ -176,7 +176,6 @@ class Moderation(commands.Cog):
         A method to duplicate channel permissions to a different target.
 
         Checks:
-            cooldown: Whether the command is on cooldown. Can be used (1) time per (10) minutes per (Guild).
             has_guild_permissions(manage_channels)
             bot_has_guild_permissions(manage_channels)
 
@@ -188,8 +187,8 @@ class Moderation(commands.Cog):
                 be copied.
             target_channel (Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]): The target
                 channel to duplicate permissions to.
-            target_permission_owner (Union[discord.Role, discord.Member]): The role or member the permissions should
-                apply to.
+            target_permission_owner (Union[discord.Role, discord.Member]): The role or member the permissions should be
+                copied to.
 
         Returns:
             None.
