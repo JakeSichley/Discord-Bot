@@ -83,3 +83,22 @@ def pairs(sequence: Sequence[Any]) -> Iterator[Tuple[Any, Any]]:
     i = iter(sequence)
     for item in i:
         yield item, next(i)
+
+
+def readable_flags(flags: discord.PublicUserFlags) -> str:
+    """
+    A method that converts PublicUserFlag enums to usable strings.
+
+    Parameters:
+        flags (PublicUserFlags): The public user flags for a given user.
+
+    Returns:
+        (str): An embed-ready string detailing the user's flags.
+    """
+
+    flag_strings = [' '.join(x.capitalize() for x in flag[0].split('_')) for flag in flags if flag[1]]
+
+    if flag_strings:
+        return ', '.join(flag_strings)
+    else:
+        return 'None'

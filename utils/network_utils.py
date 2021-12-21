@@ -50,6 +50,9 @@ async def network_request(url: str, **options) -> Any:
                 'encoding' (str)
                 'raise_errors' (bool)
 
+    Raises:
+        aiohttp.ClientResponseError
+
     Returns:
         (Optional[Union[str, bytes, Dict[Any, Optional[Any]]]]) The request's response.
     """

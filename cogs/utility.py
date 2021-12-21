@@ -23,8 +23,7 @@ SOFTWARE.
 """
 
 from discord.ext import commands
-from discord import Member, Embed, PublicUserFlags
-from utils.utils import localize_time
+from utils.utils import localize_time, readable_flags
 from utils.converters import MessageOrMessageReplyConverter
 from utils.network_utils import network_request, NetworkReturnType
 from utils.database_utils import execute_query, retrieve_query
@@ -33,6 +32,7 @@ from re import findall
 from inspect import Parameter
 from dreambot import DreamBot
 from aiosqlite import Error as aiosqliteError
+from aiohttp import ClientResponseError
 import datetime
 import pytz
 import discord
@@ -193,7 +193,7 @@ class Utility(commands.Cog):
 
     @commands.command(name='userinfo', aliases=['ui'],
                       help='Generates an embed detailing information about the specified user')
-    async def user_info(self, ctx: commands.Context, user: Member) -> None:
+    async def user_info(self, ctx: commands.Context, user: discord.Member) -> None:
         """
         A method that outputs user information.
 
@@ -208,7 +208,7 @@ class Utility(commands.Cog):
             None.
         """
 
-        embed = Embed(title=f'{str(user)}\'s User Information', color=0x1dcaff)
+        embed = discord.Embed(title=f'{str(user)}\'s User Information', color=0x1dcaff)
         if user.nick:
             embed.description = f'Known as **{user.nick}** round\' these parts'
         embed.set_thumbnail(url=user.avatar_url)
@@ -252,9 +252,9 @@ class Utility(commands.Cog):
 
         Parameters:
             ctx (commands.Context): The invocation context.
-            source (Optional[discord.Message]): The message to extract emojis from.
-            animated (Optional[bool]): Whether the emoji is animated.
+            source (int): The ID of the emoji.
             name (Optional[str]): The name of the emoji.
+            animated (Optional[bool]): Whether the emoji is animated.
 
         Output:
             Command state information.
@@ -263,14 +263,12 @@ class Utility(commands.Cog):
             None.
         """
 
-        name = name if name else str(source)
+        extension = 'gif' if animated else 'png'
+        emoji_asset = await network_request(
+            f'https://cdn.discordapp.com/emojis/{source}.{extension}?size=96', return_type=NetworkReturnType.BYTES
+        )
 
-        try:
-            extension = 'gif' if animated else 'png'
-            emoji_asset = await network_request(f'https://cdn.discordapp.com/emojis/{source}.{extension}?size=96')
-        except discord.HTTPException as e:
-            await ctx.send(f'**{name}** failed with `{e.text}`')
-            return
+        name = name if name else str(source)
 
         try:
             await ctx.guild.create_custom_emoji(name=name, image=emoji_asset, reason=f'Yoink\'d by {ctx.author}')
@@ -334,14 +332,15 @@ class Utility(commands.Cog):
         success, failed = [], []
 
         for emoji in unique_emojis:
+            extension = 'gif' if emoji[0] else 'png'
+
             try:
-                extension = 'gif' if emoji[0] else 'png'
                 emoji_asset = await network_request(
                     f'https://cdn.discordapp.com/emojis/{emoji[2]}.{extension}?size=96',
                     return_type=NetworkReturnType.BYTES
                 )
-            except discord.HTTPException as e:
-                failed.append(f'**{emoji[1]}** failed with `{e.text}`')
+            except ClientResponseError as e:
+                failed.append(f'**{emoji[1]}** failed with `{e.message}`')
                 continue
 
             try:
@@ -362,25 +361,6 @@ class Utility(commands.Cog):
                         f'```{", ".join(failed) if failed else "None"}```'
 
         await ctx.send(response)
-
-
-def readable_flags(flags: PublicUserFlags) -> str:
-    """
-    A method that converts PublicUserFlag enums to usable strings.
-
-    Parameters:
-        flags (PublicUserFlags): The public user flags for a given user.
-
-    Returns:
-        (str): An embed-ready string detailing the user's flags.
-    """
-
-    flag_strings = [' '.join(x.capitalize() for x in flag[0].split('_')) for flag in flags if flag[1]]
-
-    if flag_strings:
-        return ', '.join(flag_strings)
-    else:
-        return 'None'
 
 
 def setup(bot: DreamBot) -> None:
