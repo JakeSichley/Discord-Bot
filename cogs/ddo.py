@@ -32,6 +32,7 @@ from bs4 import BeautifulSoup
 from dreambot import DreamBot
 from asyncio import sleep, wait_for, TimeoutError
 from json.decoder import JSONDecodeError
+from functools import reduce
 
 
 class DDO(commands.Cog):
@@ -151,7 +152,8 @@ class DDO(commands.Cog):
         breakdown = f'Roll: **{pattern}**\nResult: **$**\n\nBreakdown:'
 
         # group all the non-die rolls together so we can append it the breakdown
-        non_die = findall(r'([+|-]\d+)(?=\+|-|$)', pattern)
+        non_die_base = reduce(lambda s, r: s.replace(r, '@', 1), die_patterns, pattern)
+        non_die = findall(r'[+|-]\d+|\d+(?=[+|-])', non_die_base)
 
         # give the user a breakdown of each of their requested rolls
         for key, value in results.items():
@@ -430,7 +432,7 @@ class DDO(commands.Cog):
             await ctx.send(f'**Filtered Results on {server}:** {", ".join(x[1] for x in all_quests)}')
 
     @tasks.loop(seconds=QUERY_INTERVAL)
-    async def query_ddo_audit(self):
+    async def query_ddo_audit(self) -> None:
         """
         A discord.ext.tasks loop that queries the DDOAudit API for LFM information.
         Executes every {QUERY_INTERVAL} seconds to comply with DDOAudit's rate limit (30 seconds).
@@ -474,7 +476,7 @@ class DDO(commands.Cog):
         self.query_ddo_audit_task_count -= 1
 
     @query_ddo_audit.before_loop
-    async def before_api_query_loop(self):
+    async def before_api_query_loop(self) -> None:
         """
         A pre-task method to ensure the bot is ready before executing.
 
@@ -484,7 +486,7 @@ class DDO(commands.Cog):
 
         await self.bot.wait_until_ready()
 
-    def cog_unload(self):
+    def cog_unload(self) -> None:
         """
         A method detailing custom extension unloading procedures.
         Clears internal caches and immediately and forcefully exits any discord.ext.tasks.
