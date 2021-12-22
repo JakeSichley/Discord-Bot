@@ -24,6 +24,7 @@ SOFTWARE.
 
 from discord.ext import commands
 from discord import TextChannel, HTTPException, Message, Embed
+from discord.abc import Messageable
 from io import StringIO
 from contextlib import redirect_stdout
 from textwrap import indent
@@ -175,8 +176,7 @@ class Admin(commands.Cog):
             ctx (commands.Context): The invocation context.
 
         Output:
-            First: A confirmation message.
-            Second: The status of the logout method.
+           A confirmation message.
 
         Returns:
             None.
@@ -559,12 +559,12 @@ class Admin(commands.Cog):
                         await try_to_send_buffer(channel, buffer, True)
 
 
-async def try_to_send_buffer(channel: TextChannel, buffer: str, force: bool = False) -> Union[Message, str]:
+async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool = False) -> Union[Message, str]:
     """
     Parses a string buffer and either sends or returns the buffer in an optimal break point.
 
     Parameters:
-        channel (discord.TextChannel): The channel to send the buffer to.
+        messagable (discord.abc.Messageable): The channel to send the buffer to.
         buffer (str): The contents of the buffer.
         force (bool): Whether to forcibly send the remaining buffer contents or return them. Default: False.
 
@@ -574,14 +574,14 @@ async def try_to_send_buffer(channel: TextChannel, buffer: str, force: bool = Fa
     """
 
     # if the buffer is within our limit, no special calculations are needed
-    if len(buffer) <= 2000:
-        return await channel.send(buffer)
+    if len(buffer) <= 4000:
+        return await messagable.send(buffer)
 
     # default break index to 1800
-    break_index = 1800
+    break_index = 3800
 
     # starting from the last character in the maximum buffer length, look for a nice character to break on
-    for index, character in reversed(list(enumerate(buffer[:2000]))):
+    for index, character in reversed(list(enumerate(buffer[:4000]))):
         if character in ('\n', '.', '!', '?'):
             break_index = index + 1
             break
@@ -596,11 +596,11 @@ async def try_to_send_buffer(channel: TextChannel, buffer: str, force: bool = Fa
                 break
 
     # once all checks are performed, send the first portion of the buffer
-    await channel.send(str(buffer[:break_index]))
+    await messagable.send(str(buffer[:break_index]))
 
     # depending on parameters, either send or return the remaining portion of the buffer
     if force:
-        return await channel.send(str(buffer[break_index:]))
+        return await messagable.send(str(buffer[break_index:]))
     else:
         return str(buffer[break_index:])
 

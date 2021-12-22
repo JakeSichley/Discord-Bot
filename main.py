@@ -45,8 +45,9 @@ def main() -> None:
     # required
     token = getenv('DISCORD_TOKEN')
     owner = int(getenv('OWNER_ID'))
-    prefix = getenv('PREFIX', '!')
+    prefix = getenv('PREFIX', '>')
     database = getenv('DATABASE')
+    environment = getenv('ENVIRONMENT', 'DEV')
 
     # optional
     options = {
@@ -74,7 +75,7 @@ def main() -> None:
     intents = discord.Intents(guilds=True, members=True, bans=True, emojis=True, voice_states=True, messages=True,
                               reactions=True)
 
-    dream_bot = DreamBot(intents, database, prefix, owner, options=options)
+    dream_bot = DreamBot(intents, database, prefix, owner, environment, options=options)
     dream_bot.run(token)
 
 

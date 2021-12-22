@@ -130,12 +130,12 @@ class Utility(commands.Cog):
                 'ON CONFLICT(GUILD_ID) DO UPDATE SET PREFIX=EXCLUDED.PREFIX',
                 (ctx.guild.id, prefix)
             )
+            self.bot.prefixes[ctx.guild.id] = prefix
             await ctx.send(f'Updated the prefix to `{prefix}`.')
 
         except aiosqliteError:
             await ctx.send('Failed to change the guild\'s prefix.')
 
-    @commands.guild_only()
     @commands.command(name='getprefix', aliases=['prefix'], help='Gets the bot\'s prefix for this guild.')
     async def get_prefix(self, ctx: commands.Context) -> None:
         """
@@ -154,6 +154,10 @@ class Utility(commands.Cog):
         Returns:
             None.
         """
+
+        if not ctx.guild:
+            await ctx.send(f'Prefix: `{self.bot.default_prefix}`')
+            return
 
         try:
             result = await retrieve_query(

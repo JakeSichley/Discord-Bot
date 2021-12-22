@@ -27,12 +27,13 @@ from discord.ext import commands, tasks
 from random import seed, shuffle, randrange
 from re import search, findall
 from time import time
-from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 from dreambot import DreamBot
 from asyncio import sleep, wait_for, TimeoutError
 from json.decoder import JSONDecodeError
 from functools import reduce
+from aiohttp import ClientResponseError
+from utils.network_utils import network_request, NetworkReturnType
 
 
 class DDO(commands.Cog):
@@ -191,110 +192,101 @@ class DDO(commands.Cog):
         """
 
         url = 'https://ddowiki.com/page/Item:' + item.replace(' ', '_')
+        data = await network_request(url)
+        soup = BeautifulSoup(data, features="html5lib")
+        # Pull the main table
+        table = soup.find_all('tr')
 
-        async with ClientSession() as session:
-            async with session.get(url) as r:
-                # If the page 404's, return an error message
-                if r.status == 404:
-                    await ctx.send(f'ERROR: Request Status Code 404. Please make sure the item exists!')
-                    return
+        # Tag elements don't function in this table
+        # Create list of all elements in the table (type: string)
+        string_elements = [str(element).strip() for element in table]
 
-                # If not 404, soup-ify the page
-                data = await r.text()
-                soup = BeautifulSoup(data, features="html5lib")
-                # Pull the main table
-                table = soup.find_all('tr')
+        # Prep data variables, can be checked later for 'None'
+        enchantment_string = None
+        minimum_level_string = None
+        item_type_string = None
 
-                # Tag elements don't function in this table
-                # Create list of all elements in the table (type: string)
-                string_elements = [str(element).strip() for element in table]
+        # Search each element to see if it contains the data we're interested in
+        for string in string_elements:
+            if string.find('Enchantments') != -1:
+                enchantment_string = string
+            elif string.lower().find('minimum level') != -1:
+                minimum_level_string = string
+            elif string.find('Item Type') != -1 or string.find('Weapon Type') != -1:
+                item_type_string = string
 
-                # Prep data variables, can be checked later for 'None'
-                enchantment_string = None
-                minimum_level_string = None
-                item_type_string = None
+        # If we did not find an enchantments element, return an error
+        if enchantment_string is None:
+            await ctx.send(f'ERROR: Enchantments table not found. Could not fetch item data.')
+            return
 
-                # Search each element to see if it contains the data we're interested in
-                for string in string_elements:
-                    if string.find('Enchantments') != -1:
-                        enchantment_string = string
-                    elif string.lower().find('minimum level') != -1:
-                        minimum_level_string = string
-                    elif string.find('Item Type') != -1 or string.find('Weapon Type') != -1:
-                        item_type_string = string
+        # Each enchantment is a table list element. Find the first element, and the end of the last element
+        first_index = enchantment_string.find('<li>')
+        last_index = enchantment_string.rfind('</li>')
 
-                # If we did not find an enchantments element, return an error
-                if enchantment_string is None:
-                    await ctx.send(f'ERROR: Enchantments table not found. Could not supply item data.')
-                    return
+        # If there are not valid list indexes, return an error
+        if first_index == -1 or last_index == -1:
+            await ctx.send(f'ERROR: Enchantments table was found, but could not find valid enchantments.')
+            return
 
-                # Each enchantment is a table list element. Find the first element, and the end of the last element
-                first_index = enchantment_string.find('<li>')
-                last_index = enchantment_string.rfind('</li>')
+        # Substring the main enchantments element from the above indexes
+        rows = enchantment_string[first_index:last_index].split('<li>')
+        enchantments = []
 
-                # If there are not valid list indexes, return an error
-                if first_index == -1 or last_index == -1:
-                    await ctx.send(f'ERROR: Enchantments table was found, but could not find valid enchantments.')
-                    return
+        for element in rows:
+            if element != '':
+                # 'pure' elements have no tooltip or any other html tags
+                if element.find('has_tooltip') == -1 and element.find('</a>') == -1:
+                    if element != '</li>':
+                        # Clean up element from whitespace and tags
+                        result = (element.replace('</li>', '').replace('\n', '').replace('<ul>', ''))
+                        # Weird case where an augment slips through
+                        if result != '' and result.find('Elemental damage') == -1:
+                            enchantments.append(result)
+                # If the element has a tooltip, do some regex magic
+                elif element.find('has_tooltip') != -1:
+                    # Enchantment description is always before the first closing '</a>'
+                    # Positive Lookahead for the fewest number of characters
+                    # These characters are always preceded by a word or a digit
+                    # Sometimes, enchantments have a leading space, or a '+' character
+                    #   look for 0 or more of these and add them to our match
+                    # Finally, Positive Lookbehind to match the closing '>' character preceding our description
+                    # Note: This description was written 'backwards', (positive lookbehind occurs first, etc.)
+                    result = search("(?<=>)( )*(\+\d+ )*(\w|\d)(.+?)(?=</a>)", element)
+                    # If our result is not a Mythic Bonus (these are on nearly every single item), add it
+                    if result and str(result.group(0)).find('Mythic') == -1:
+                        enchantments.append(result.group(0).strip())
 
-                # Substring the main enchantments element from the above indexes
-                rows = enchantment_string[first_index:last_index].split('<li>')
-                enchantments = []
+        # Prep other detail variables
+        item_type = 'none'
+        minimum_level = -1
 
-                for element in rows:
-                    if element != '':
-                        # 'pure' elements have no tooltip or any other html tags
-                        if element.find('has_tooltip') == -1 and element.find('</a>') == -1:
-                            if element != '</li>':
-                                # Clean up element from whitespace and tags
-                                result = (element.replace('</li>', '').replace('\n', '').replace('<ul>', ''))
-                                # Weird case where an augment slips through
-                                if result != '' and result.find('Elemental damage') == -1:
-                                    enchantments.append(result)
-                        # If the element has a tooltip, do some regex magic
-                        elif element.find('has_tooltip') != -1:
-                            # Enchantment description is always before the first closing '</a>'
-                            # Positive Lookahead for the fewest number of characters
-                            # These characters are always preceded by a word or a digit
-                            # Sometimes, enchantments have a leading space, or a '+' character
-                            #   look for 0 or more of these and add them to our match
-                            # Finally, Positive Lookbehind to match the closing '>' character preceding our description
-                            # Note: This description was written 'backwards', (positive lookbehind occurs first, etc.)
-                            result = search("(?<=>)( )*(\+\d+ )*(\w|\d)(.+?)(?=</a>)", element)
-                            # If our result is not a Mythic Bonus (these are on nearly every single item), add it
-                            if result is not None and str(result.group(0)).find('Mythic') == -1:
-                                enchantments.append(result.group(0).strip())
+        # If we have a minimum level string, extract the minimum level using regex
+        if minimum_level_string is not None:
+            minimum_level = int(search("\d+?(?=(\n</td>))", minimum_level_string).group(0))
 
-                # Prep other detail variables
-                item_type = 'none'
-                minimum_level = -1
+        # If we have an item type string, extract the item type using regex
+        if item_type_string is not None:
+            item_type = search("(?<=>).+?(?=(\n</td>))", item_type_string).group(0)
+            # Sometimes (in the case of weapons) the parent type is bolded - strip these tags
+            item_type = item_type.replace('<b>', '').replace('</b>', '')
 
-                # If we have a minimum level string, extract the minimum level using regex
-                if minimum_level_string is not None:
-                    minimum_level = int(search("\d+?(?=(\n</td>))", minimum_level_string).group(0))
+        # Check for Attuned to Heroism, as this is coded strangely
+        for index in range(len(enchantments)):
+            if enchantments[index].find('Attuned to Heroism') != -1:
+                # If Attuned to Heroism is an enchantment, remove all sub-enchantments from the final list
+                enchantments = enchantments[0:index + 1]
+                break
 
-                # If we have an item type string, extract the item type using regex
-                if item_type_string is not None:
-                    item_type = search("(?<=>).+?(?=(\n</td>))", item_type_string).group(0)
-                    # Sometimes (in the case of weapons) the parent type is bolded - strip these tags
-                    item_type = item_type.replace('<b>', '').replace('</b>', '')
-
-                # Check for Attuned to Heroism, as this is coded strangely
-                for index in range(len(enchantments)):
-                    if enchantments[index].find('Attuned to Heroism') != -1:
-                        # If Attuned to Heroism is an enchantment, remove all sub-enchantments from the final list
-                        enchantments = enchantments[0:index + 1]
-                        break
-
-                # Create and send our embedded object
-                embed = Embed(title='**' + item + '**', url=url, color=0x6879f2)
-                embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
-                embed.set_thumbnail(url='https://i.imgur.com/QV6uUZf.png')
-                embed.add_field(name='Minimum Level', value=str(minimum_level))
-                embed.add_field(name='Item Type', value=item_type)
-                embed.add_field(name='Enchantments', value='\n'.join(enchantments))
-                embed.set_footer(text="Please report any formatting issues to my owner!")
-                await ctx.send(embed=embed)
+        # Create and send our embedded object
+        embed = Embed(title=f'**{item}**', url=url, color=0x6879f2)
+        embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
+        embed.set_thumbnail(url='https://i.imgur.com/QV6uUZf.png')
+        embed.add_field(name='Minimum Level', value=str(minimum_level))
+        embed.add_field(name='Item Type', value=item_type)
+        embed.add_field(name='Enchantments', value='\n'.join(enchantments))
+        embed.set_footer(text="Please report any formatting issues to my owner!")
+        await ctx.send(embed=embed)
 
     @commands.command(name='lfms', help=f'Returns a list of active LFMs for the specified server.\nValid servers'
                                         f' include Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis,'
@@ -454,14 +446,14 @@ class DDO(commands.Cog):
 
         for server in self.SERVERS:
             try:
-                async with ClientSession() as session:
-                    async with session.get(f'https://www.playeraudit.com/api/groups?s={server}', ssl=False) as r:
-                        if r.status == 200:
-                            self.api_data[server] = await r.json(encoding='utf-8-sig')
-                            self.reconnect_tries = 0
+                self.api_data[server] = await network_request(
+                    f'https://www.playeraudit.com/api/groups?s={server}',
+                    return_type=NetworkReturnType.JSON, ssl=False, encoding='utf-8-sig'
+                )
+                self.reconnect_tries = 0
 
-            except JSONDecodeError as e:
-                print(f'DDOAudit JSONDecode Error: {e}')
+            except (ClientResponseError, JSONDecodeError) as e:
+                print(f'DDOAudit Query Error: {e}')
                 self.api_data[server] = None
                 self.reconnect_tries += 1
 
