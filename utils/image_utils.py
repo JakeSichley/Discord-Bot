@@ -25,12 +25,11 @@ SOFTWARE.
 from PIL import Image, ImageDraw, ImageFont
 from textwrap import wrap
 from io import BytesIO
-from asyncio import get_event_loop
-from concurrent.futures import ThreadPoolExecutor
 from re import search
 from discord.ext.commands import MissingRequiredArgument, BadArgument
 from typing import List, Tuple
 from utils.network_utils import network_request, NetworkReturnType
+from utils.utils import run_in_executor
 import discord
 import PIL.ImageOps
 
@@ -68,7 +67,8 @@ async def extract_image_as_bytes(message: discord.Message, url: str) -> BytesIO:
         raise NoImage
 
 
-async def invert_object(file: BytesIO) -> BytesIO:
+@run_in_executor
+def invert_object(file: BytesIO) -> BytesIO:
     """
     A method that downloads an image from a url.
     The inner function actually performs the inversion (blocking).
@@ -81,29 +81,26 @@ async def invert_object(file: BytesIO) -> BytesIO:
         inverted_buffer (BytesIO): A BytesIO object of the inverted image.
     """
 
-    def blocking_invert() -> BytesIO:
-        inverted_buffer = BytesIO()
-        image = Image.open(file)
+    inverted_buffer = BytesIO()
+    image = Image.open(file)
 
-        if image.mode == 'RGBA':
-            r, g, b, a = image.split()
-            rgb_image = Image.merge('RGB', (r, g, b))
-            inverted_image = PIL.ImageOps.invert(rgb_image)
-            r2, g2, b2 = inverted_image.split()
-            final_transparent_image = Image.merge('RGBA', (r2, g2, b2, a))
-            final_transparent_image.save(inverted_buffer, format='PNG')
-        else:
-            inverted_image = PIL.ImageOps.invert(image)
-            inverted_image.save(inverted_buffer, format='PNG')
+    if image.mode == 'RGBA':
+        r, g, b, a = image.split()
+        rgb_image = Image.merge('RGB', (r, g, b))
+        inverted_image = PIL.ImageOps.invert(rgb_image)
+        r2, g2, b2 = inverted_image.split()
+        final_transparent_image = Image.merge('RGBA', (r2, g2, b2, a))
+        final_transparent_image.save(inverted_buffer, format='PNG')
+    else:
+        inverted_image = PIL.ImageOps.invert(image)
+        inverted_image.save(inverted_buffer, format='PNG')
 
-        inverted_buffer.seek(0)
-        return inverted_buffer
-
-    loop = get_event_loop()
-    return await loop.run_in_executor(ThreadPoolExecutor(), blocking_invert)
+    inverted_buffer.seek(0)
+    return inverted_buffer
 
 
-async def title_card_generator(title: str) -> BytesIO:
+@run_in_executor
+def title_card_generator(title: str) -> BytesIO:
     """
     A method that generates an "It's Always Sunny In Philadelphia" style title card.
 
@@ -114,42 +111,38 @@ async def title_card_generator(title: str) -> BytesIO:
         buffer (BytesIO): A BytesIO object containing the generated title card.
     """
 
-    def generate_card() -> BytesIO:
-        width = 4000
-        height = 2000
+    width = 4000
+    height = 2000
 
-        # Create the font
-        font = ImageFont.truetype('textile.ttf', 250)
-        # New image based on the settings defined above
-        img = Image.new("RGB", (width, height), color='black')
-        # Interface to draw on the image
-        draw_interface = ImageDraw.Draw(img)
+    # Create the font
+    font = ImageFont.truetype(r'resources\fonts\textile.ttf', 250)
+    # New image based on the settings defined above
+    img = Image.new("RGB", (width, height), color='black')
+    # Interface to draw on the image
+    draw_interface = ImageDraw.Draw(img)
 
-        # Wrap the `text` string into a list of `CHAR_LIMIT`-character strings
-        text_lines = wrap(title, 22)
-        # Get the first vertical coordinate at which to draw text and the height of each line of text
-        y, line_heights = get_y_and_heights(text_lines, (width, height), 40, font)
+    # Wrap the `text` string into a list of `CHAR_LIMIT`-character strings
+    text_lines = wrap(title, 22)
+    # Get the first vertical coordinate at which to draw text and the height of each line of text
+    y, line_heights = get_y_and_heights(text_lines, (width, height), 40, font)
 
-        # Draw each line of text
-        for i, line in enumerate(text_lines):
-            # Calculate the horizontally-centered position at which to draw this line
-            line_width = font.getmask(line).getbbox()[2]
-            x = ((width - line_width) // 2)
+    # Draw each line of text
+    for i, line in enumerate(text_lines):
+        # Calculate the horizontally-centered position at which to draw this line
+        line_width = font.getmask(line).getbbox()[2]
+        x = ((width - line_width) // 2)
 
-            # Draw this line
-            draw_interface.text((x, y), line, font=font, fill='white')
+        # Draw this line
+        draw_interface.text((x, y), line, font=font, fill='white')
 
-            # Move on to the height at which the next line should be drawn at
-            y += line_heights[i]
+        # Move on to the height at which the next line should be drawn at
+        y += line_heights[i]
 
-        # Save the resulting image
-        buffer = BytesIO()
-        img.save(buffer, format='PNG')
-        buffer.seek(0)
-        return buffer
-
-    loop = get_event_loop()
-    return await loop.run_in_executor(ThreadPoolExecutor(), generate_card)
+    # Save the resulting image
+    buffer = BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    return buffer
 
 
 def get_y_and_heights(text_wrapped: List[str], dimensions: Tuple[int, int], margin: int,
@@ -169,7 +162,6 @@ def get_y_and_heights(text_wrapped: List[str], dimensions: Tuple[int, int], marg
 
     # https://stackoverflow.com/a/46220683/9263761
     ascent, descent = font.getmetrics()
-    print(type(font))
 
     # Calculate the height needed to draw each line of text (including its bottom margin)
     line_heights = [font.getmask(text_line).getbbox()[3] + descent + margin for text_line in text_wrapped]

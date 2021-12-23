@@ -22,10 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import List, Sequence, Any, Iterator, Tuple
+from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable
 import discord
 import datetime
 import pytz
+import functools
+import asyncio
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.TextChannel) -> None:
@@ -102,3 +104,33 @@ def readable_flags(flags: discord.PublicUserFlags) -> str:
         return ', '.join(flag_strings)
     else:
         return 'None'
+
+
+def run_in_executor(func: Callable) -> Callable:
+    """
+    A decorator that runs a blocking method in an executor.
+
+    Parameters:
+        func (Callable): The blocking method.
+
+    Returns:
+        (Callable): The wrapped method.
+    """
+
+    @functools.wraps(func)
+    def inner(*args: Any, **kwargs: Any) -> Awaitable:
+        """
+        A decorator that runs a blocking method in an executor.
+
+        Parameters:
+            args (Any): The args that should be passed to the inner function.
+            kwargs (Any): The kwargs that should be passed to the inner function.
+
+        Returns:
+            (Any): The result of the wrapped method.
+        """
+
+        loop = asyncio.get_running_loop()
+        return loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
+
+    return inner

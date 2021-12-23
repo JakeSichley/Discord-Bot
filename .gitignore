@@ -135,6 +135,4 @@ tests.py
 cogs/test.py
 BotDatabase
 firebase-auth.json
-*.ttf
-*.mp3
-*.json
+*/assets/*
