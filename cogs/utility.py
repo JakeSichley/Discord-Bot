@@ -98,7 +98,7 @@ class Utility(commands.Cog):
         await ctx.send('_Need help with bugs or want to request a feature? Join the Discord!_'
                        '\nhttps://discord.gg/fgHEWdt')
 
-    @commands.cooldown(1, 600, commands.BucketType.guild)
+    @commands.cooldown(1, 10, commands.BucketType.guild)
     @commands.has_permissions(administrator=True)
     @commands.guild_only()
     @commands.command(name='setprefix', help='Sets the bot\'s prefix for this guild. Administrator use only.')
@@ -107,7 +107,7 @@ class Utility(commands.Cog):
         A method to change the command prefix for a guild. Only usable by a guild's administrators.
 
         Checks:
-            cooldown(): Whether the command is on cooldown. Can be used (1) time per (10) minutes per (Guild).
+            cooldown(): Whether the command is on cooldown. Can be used (1) time per (10) seconds per (Guild).
             has_permissions(administrator): Whether the invoking user is an administrator.
             guild_only(): Whether the command was invoked from a guild. No direct messages.
 
@@ -195,15 +195,16 @@ class Utility(commands.Cog):
         await ctx.send(f'Bot Epoch: {self.bot.uptime.strftime("%I:%M %p on %A, %B %d, %Y")}'
                        f'\nBot Uptime: {weeks} Weeks, {days} Days, {hours} Hours, {minutes} Minutes, {seconds} Seconds')
 
+    @commands.guild_only()
     @commands.command(name='userinfo', aliases=['ui'],
                       help='Generates an embed detailing information about the specified user')
-    async def user_info(self, ctx: commands.Context, user: discord.Member) -> None:
+    async def user_info(self, ctx: commands.Context, user: discord.Member = None) -> None:
         """
         A method that outputs user information.
 
         Parameters:
             ctx (commands.Context): The invocation context.
-            user (discord.Member): The member to generate information about.
+            user (Optional[discord.Member]): The member to generate information about. Defaults to command invoker.
 
         Output:
             Information about the specified user, including creation and join date.
@@ -211,6 +212,9 @@ class Utility(commands.Cog):
         Returns:
             None.
         """
+
+        if not user:
+            user = ctx.author
 
         embed = discord.Embed(title=f'{str(user)}\'s User Information', color=0x1dcaff)
         if user.nick:

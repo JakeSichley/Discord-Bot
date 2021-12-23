@@ -577,7 +577,7 @@ async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool =
     if len(buffer) <= 4000:
         return await messagable.send(buffer)
 
-    # default break index to 1800
+    # default break index to 3800
     break_index = 3800
 
     # starting from the last character in the maximum buffer length, look for a nice character to break on
