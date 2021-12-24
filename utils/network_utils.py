@@ -49,6 +49,10 @@ async def network_request(url: str, **options) -> Any:
                 'header' (Dict)
                 'encoding' (str)
                 'raise_errors' (bool)
+                'ssl' (bool)
+
+    Raises:
+        aiohttp.ClientResponseError
 
     Returns:
         (Optional[Union[str, bytes, Dict[Any, Optional[Any]]]]) The request's response.
@@ -58,9 +62,10 @@ async def network_request(url: str, **options) -> Any:
     header = options.pop('header', None)
     encoding = options.pop('encoding', 'utf-8')
     raise_errors = options.pop('raise_errors', True)
+    ssl = options.pop('ssl', None)
 
     async with aiohttp.ClientSession(raise_for_status=raise_errors) as session:
-        async with session.get(url, headers=header) as r:
+        async with session.get(url, headers=header, ssl=ssl) as r:
             if return_type == NetworkReturnType.JSON:
                 return await r.json(encoding=encoding)
             elif return_type == NetworkReturnType.BYTES:

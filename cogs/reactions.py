@@ -34,14 +34,6 @@ from dreambot import DreamBot
 import discord
 
 
-class UserInputReceived(Exception):
-    """
-    Error raised when a user supplies valid input. Used as a double break.
-    """
-
-    pass
-
-
 class ReactionRoles(commands.Cog):
     """
     A Cogs class that implements reaction roles.
@@ -361,7 +353,7 @@ class ReactionRoles(commands.Cog):
     @reaction_role.command(name='check', help='Generates a breakdown of reaction roles for the given scope. Valid '
                                               'scopes: Guild, Channel, Message.')
     async def check_reaction_roles(
-            self, ctx: commands.Context, source: Union[GuildConverter, discord.TextChannel, discord.Message] = None
+            self, ctx: commands.Context, source: Union[GuildConverter, discord.TextChannel, discord.Message]
     ) -> None:
         """
         Generates a breakdown of reaction roles for the given scope. Valid scopes: Guild, Channel, Message.
@@ -453,8 +445,9 @@ class ReactionRoles(commands.Cog):
             else:
                 return None
 
-        if source.guild.id != ctx.guild.id:
-            await ctx.send("That message doesn't belong to this guild.")
+        source_id = source.guild.id if isinstance(source, (discord.TextChannel, discord.Message)) else source.id
+        if source_id != ctx.guild.id:
+            await ctx.send("That object doesn't belong to this guild.")
             return
 
         # invoke the proper sub-method based on our source type
@@ -685,13 +678,15 @@ class ReactionRolePagination:
             None.
         """
 
-        await self.message.clear_reactions()
-
+        currently_active_reactions = self.active_reactions
         digit_reactions = [f'{i + 1}\ufe0f\u20e3' for i in range(len(self.embed.fields))]
         self.active_reactions = ['\u23ee\ufe0f'] + digit_reactions + ['\u23f9\ufe0f', '\u23ed\ufe0f']
 
-        for reaction in self.active_reactions:
-            await self.message.add_reaction(reaction)
+        if currently_active_reactions != self.active_reactions:
+            await self.message.clear_reactions()
+
+            for reaction in self.active_reactions:
+                await self.message.add_reaction(reaction)
 
 
 def setup(bot: DreamBot) -> None:

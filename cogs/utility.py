@@ -23,8 +23,7 @@ SOFTWARE.
 """
 
 from discord.ext import commands
-from discord import Member, Embed, PublicUserFlags
-from utils.utils import localize_time
+from utils.utils import localize_time, readable_flags
 from utils.converters import MessageOrMessageReplyConverter
 from utils.network_utils import network_request, NetworkReturnType
 from utils.database_utils import execute_query, retrieve_query
@@ -33,6 +32,7 @@ from re import findall
 from inspect import Parameter
 from dreambot import DreamBot
 from aiosqlite import Error as aiosqliteError
+from aiohttp import ClientResponseError
 import datetime
 import pytz
 import discord
@@ -98,7 +98,7 @@ class Utility(commands.Cog):
         await ctx.send('_Need help with bugs or want to request a feature? Join the Discord!_'
                        '\nhttps://discord.gg/fgHEWdt')
 
-    @commands.cooldown(1, 600, commands.BucketType.guild)
+    @commands.cooldown(1, 10, commands.BucketType.guild)
     @commands.has_permissions(administrator=True)
     @commands.guild_only()
     @commands.command(name='setprefix', help='Sets the bot\'s prefix for this guild. Administrator use only.')
@@ -107,7 +107,7 @@ class Utility(commands.Cog):
         A method to change the command prefix for a guild. Only usable by a guild's administrators.
 
         Checks:
-            cooldown(): Whether the command is on cooldown. Can be used (1) time per (10) minutes per (Guild).
+            cooldown(): Whether the command is on cooldown. Can be used (1) time per (10) seconds per (Guild).
             has_permissions(administrator): Whether the invoking user is an administrator.
             guild_only(): Whether the command was invoked from a guild. No direct messages.
 
@@ -130,12 +130,12 @@ class Utility(commands.Cog):
                 'ON CONFLICT(GUILD_ID) DO UPDATE SET PREFIX=EXCLUDED.PREFIX',
                 (ctx.guild.id, prefix)
             )
+            self.bot.prefixes[ctx.guild.id] = prefix
             await ctx.send(f'Updated the prefix to `{prefix}`.')
 
         except aiosqliteError:
             await ctx.send('Failed to change the guild\'s prefix.')
 
-    @commands.guild_only()
     @commands.command(name='getprefix', aliases=['prefix'], help='Gets the bot\'s prefix for this guild.')
     async def get_prefix(self, ctx: commands.Context) -> None:
         """
@@ -154,6 +154,10 @@ class Utility(commands.Cog):
         Returns:
             None.
         """
+
+        if not ctx.guild:
+            await ctx.send(f'Prefix: `{self.bot.default_prefix}`')
+            return
 
         try:
             result = await retrieve_query(
@@ -191,15 +195,16 @@ class Utility(commands.Cog):
         await ctx.send(f'Bot Epoch: {self.bot.uptime.strftime("%I:%M %p on %A, %B %d, %Y")}'
                        f'\nBot Uptime: {weeks} Weeks, {days} Days, {hours} Hours, {minutes} Minutes, {seconds} Seconds')
 
+    @commands.guild_only()
     @commands.command(name='userinfo', aliases=['ui'],
                       help='Generates an embed detailing information about the specified user')
-    async def user_info(self, ctx: commands.Context, user: Member) -> None:
+    async def user_info(self, ctx: commands.Context, user: discord.Member = None) -> None:
         """
         A method that outputs user information.
 
         Parameters:
             ctx (commands.Context): The invocation context.
-            user (discord.Member): The member to generate information about.
+            user (Optional[discord.Member]): The member to generate information about. Defaults to command invoker.
 
         Output:
             Information about the specified user, including creation and join date.
@@ -208,7 +213,10 @@ class Utility(commands.Cog):
             None.
         """
 
-        embed = Embed(title=f'{str(user)}\'s User Information', color=0x1dcaff)
+        if not user:
+            user = ctx.author
+
+        embed = discord.Embed(title=f'{str(user)}\'s User Information', color=0x1dcaff)
         if user.nick:
             embed.description = f'Known as **{user.nick}** round\' these parts'
         embed.set_thumbnail(url=user.avatar_url)
@@ -244,7 +252,7 @@ class Utility(commands.Cog):
 
     @commands.has_guild_permissions(manage_emojis=True)
     @commands.bot_has_guild_permissions(manage_emojis=True)
-    @commands.command(name='raw_yoink', aliases=['rawyoink'], help='Yoinks an emoji based on it\'s id.')
+    @commands.command(name='raw_yoink', aliases=['rawyoink'], help='Yoinks an emoji based on its id.')
     async def raw_yoink_emoji(self, ctx: commands.Context,  source: int, name: Optional[str] = None,
                               animated: Optional[bool] = False) -> None:
         """
@@ -252,9 +260,9 @@ class Utility(commands.Cog):
 
         Parameters:
             ctx (commands.Context): The invocation context.
-            source (Optional[discord.Message]): The message to extract emojis from.
-            animated (Optional[bool]): Whether the emoji is animated.
+            source (int): The ID of the emoji.
             name (Optional[str]): The name of the emoji.
+            animated (Optional[bool]): Whether the emoji is animated.
 
         Output:
             Command state information.
@@ -263,14 +271,12 @@ class Utility(commands.Cog):
             None.
         """
 
-        name = name if name else str(source)
+        extension = 'gif' if animated else 'png'
+        emoji_asset = await network_request(
+            f'https://cdn.discordapp.com/emojis/{source}.{extension}?size=96', return_type=NetworkReturnType.BYTES
+        )
 
-        try:
-            extension = 'gif' if animated else 'png'
-            emoji_asset = await network_request(f'https://cdn.discordapp.com/emojis/{source}.{extension}?size=96')
-        except discord.HTTPException as e:
-            await ctx.send(f'**{name}** failed with `{e.text}`')
-            return
+        name = name if name else str(source)
 
         try:
             await ctx.guild.create_custom_emoji(name=name, image=emoji_asset, reason=f'Yoink\'d by {ctx.author}')
@@ -334,14 +340,15 @@ class Utility(commands.Cog):
         success, failed = [], []
 
         for emoji in unique_emojis:
+            extension = 'gif' if emoji[0] else 'png'
+
             try:
-                extension = 'gif' if emoji[0] else 'png'
                 emoji_asset = await network_request(
                     f'https://cdn.discordapp.com/emojis/{emoji[2]}.{extension}?size=96',
                     return_type=NetworkReturnType.BYTES
                 )
-            except discord.HTTPException as e:
-                failed.append(f'**{emoji[1]}** failed with `{e.text}`')
+            except ClientResponseError as e:
+                failed.append(f'**{emoji[1]}** failed with `{e.message}`')
                 continue
 
             try:
@@ -362,25 +369,6 @@ class Utility(commands.Cog):
                         f'```{", ".join(failed) if failed else "None"}```'
 
         await ctx.send(response)
-
-
-def readable_flags(flags: PublicUserFlags) -> str:
-    """
-    A method that converts PublicUserFlag enums to usable strings.
-
-    Parameters:
-        flags (PublicUserFlags): The public user flags for a given user.
-
-    Returns:
-        (str): An embed-ready string detailing the user's flags.
-    """
-
-    flag_strings = [' '.join(x.capitalize() for x in flag[0].split('_')) for flag in flags if flag[1]]
-
-    if flag_strings:
-        return ', '.join(flag_strings)
-    else:
-        return 'None'
 
 
 def setup(bot: DreamBot) -> None:

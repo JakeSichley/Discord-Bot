@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from os import getcwd, listdir
+from os import getcwd, listdir, path
 from discord.ext.commands import ExtensionError, Bot, when_mentioned_or
 from datetime import datetime
 from typing import Optional, List, Any, Dict
@@ -42,41 +42,56 @@ class DreamBot(Bot):
         uptime (datetime.datetime): The time the bot was initialized.
         database (str): The name of the database the bot uses.
         default_prefix (str): The default prefix to use if a guild has not specified one.
+        environment (str): Environment string. Disable features (such as firebase logging) when not 'PROD'.
+        wavelink (wavelink.Client): The bot's wavelink client. This initialization prevents attr errors in 'Music'.
+        _status_type (Optional[int]): The discord.ActivityType to set the bot's status to.
+        _status_text (Optional[str]): The text of the bot's status.
     """
 
-    def __init__(self, intents: discord.Intents, database: str, prefix: str, owner: int,
+    def __init__(self, intents: discord.Intents, database: str, prefix: str, owner: int, environment: str,
                  options: Optional[Dict[str, Optional[Any]]]) -> None:
         """
         The constructor for the DreamBot class.
 
         Parameters:
-            None.
+            intents (discord.Intents): Which gateway features to enable for the bot.
+            database (str): The filename of the bot's database.
+            prefix (str): The bot's default prefix.
+            owner (int): The ID of the bot's owner. Required for most 'Admin' commands.
+            environment (str): Environment string. Disable features (such as firebase logging) when not 'PROD'.
+            options (Optional[Dict[str, Optional[Any]]]): Additional setup features for the bot.
+                _status_type (int): The discord.ActivityType to set the bot's status to.
+                _status_text (str): The text of the bot's status.
+                git (Dict[str, str]): Username, repository name, and personal access token.
+
 
         Returns:
             None.
         """
 
-        super().__init__(command_prefix=get_prefix, case_insensitive=True, owner_id=owner, max_messages=None,
-                         intents=intents)
+        super().__init__(
+            command_prefix=get_prefix, case_insensitive=True, owner_id=owner, max_messages=None, intents=intents
+        )
         self.wavelink = None
         self.prefixes = {}
         self.initialized = False
         self.uptime = datetime.now()
         self.database = database
         self.default_prefix = prefix
+        self.environment = environment
 
         # optionals
         self._status_type = options.pop('status_type', discord.ActivityType(1))
         self._status_text = options.pop('status_text', None)
-        self.disabled_cogs = options.pop('disabled_cogs', [])
+        disabled_cogs = options.pop('disabled_cogs', [])
 
         # git optionals
         self.git = options.pop('git', None)
 
         # load our cogs
-        for cog in listdir(getcwd() + '\\cogs'):
+        for cog in listdir(path.join(getcwd(), 'cogs')):
             # only load python files that we haven't explicitly disabled
-            if cog.endswith('.py') and cog[:-3] not in self.disabled_cogs:
+            if cog.endswith('.py') and cog[:-3] not in disabled_cogs:
                 try:
                     self.load_extension(f'cogs.{cog[:-3]}')
                 except ExtensionError as e:
@@ -117,9 +132,6 @@ class DreamBot(Bot):
 
         if message.author == self.user:
             return
-
-        if message.guild is None:
-            print(f'Direct Message from {message.author}\nContent: {message.clean_content}')
 
         await self.process_commands(message)
 
@@ -173,6 +185,6 @@ async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:
         (List[str]): An iterable of valid prefix(es), including when the bot is mentioned.
     """
 
-    if message.guild is not None and message.guild.id in bot.prefixes:
-        return when_mentioned_or(bot.prefixes[message.guild.id])(bot, message)
-    return when_mentioned_or(bot.default_prefix)(bot, message)
+    guild_id = message.guild.id if message.guild else None
+
+    return when_mentioned_or(bot.prefixes.get(guild_id, bot.default_prefix))(bot, message)
