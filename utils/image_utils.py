@@ -30,6 +30,7 @@ from discord.ext.commands import MissingRequiredArgument, BadArgument
 from typing import List, Tuple
 from utils.network_utils import network_request, NetworkReturnType
 from utils.utils import run_in_executor
+from os import path
 import discord
 import PIL.ImageOps
 
@@ -115,7 +116,8 @@ def title_card_generator(title: str) -> BytesIO:
     height = 2000
 
     # Create the font
-    font = ImageFont.truetype(r'resources\fonts\textile.ttf', 250)
+    font_path = path.join('resources', 'fonts', 'textile.ttf')
+    font = ImageFont.truetype(font_path, 250)
     # New image based on the settings defined above
     img = Image.new("RGB", (width, height), color='black')
     # Interface to draw on the image

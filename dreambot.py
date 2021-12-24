@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from os import getcwd, listdir
+from os import getcwd, listdir, path
 from discord.ext.commands import ExtensionError, Bot, when_mentioned_or
 from datetime import datetime
 from typing import Optional, List, Any, Dict
@@ -89,7 +89,7 @@ class DreamBot(Bot):
         self.git = options.pop('git', None)
 
         # load our cogs
-        for cog in listdir(getcwd() + '\\cogs'):
+        for cog in listdir(path.join(getcwd(), 'cogs')):
             # only load python files that we haven't explicitly disabled
             if cog.endswith('.py') and cog[:-3] not in disabled_cogs:
                 try:
