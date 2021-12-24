@@ -574,14 +574,14 @@ async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool =
     """
 
     # if the buffer is within our limit, no special calculations are needed
-    if len(buffer) <= 4000:
+    if len(buffer) <= 2000:
         return await messagable.send(buffer)
 
-    # default break index to 3800
-    break_index = 3800
+    # default break index to 1800
+    break_index = 1800
 
     # starting from the last character in the maximum buffer length, look for a nice character to break on
-    for index, character in reversed(list(enumerate(buffer[:4000]))):
+    for index, character in reversed(list(enumerate(buffer[:2000]))):
         if character in ('\n', '.', '!', '?'):
             break_index = index + 1
             break
