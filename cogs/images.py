@@ -25,7 +25,7 @@ SOFTWARE.
 from discord.ext import commands
 from dreambot import DreamBot
 from utils import image_utils
-from utils.converters import MessageOrMessageReplyConverter
+from utils.defaults import MessageReply
 from typing import Union, Optional
 import discord
 
@@ -48,15 +48,14 @@ class Images(commands.Cog):
 
         self.bot = bot
 
-    # todo: make this work with replies
     @commands.command(name='invert')
-    async def invert(self, ctx: commands.Context, source: Optional[Union[MessageOrMessageReplyConverter, str]]) -> None:
+    async def invert(self, ctx: commands.Context, source: Union[discord.Message, str] = MessageReply) -> None:
         """
         A method that invokes image inversion from ImageUtils.
 
         Parameters:
             ctx (commands.Context): The invocation context.
-            source (Optional[Union[MessageOrMessageReplyConverter, str]]): The source of the image to invert.
+            source ([Union[discord.Message, str]]): The source of the image to invert (can be a message reply).
 
         Output:
             Success: A discord.File object containing the inverted image.
@@ -65,8 +64,6 @@ class Images(commands.Cog):
         Returns:
             None.
         """
-
-        print(source)
 
         async with ctx.channel.typing():
             try:

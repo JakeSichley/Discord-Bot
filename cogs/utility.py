@@ -24,7 +24,7 @@ SOFTWARE.
 
 from discord.ext import commands
 from utils.utils import localize_time, readable_flags
-from utils.converters import MessageOrMessageReplyConverter
+from utils.defaults import MessageReply
 from utils.network_utils import network_request, NetworkReturnType
 from utils.database_utils import execute_query, retrieve_query
 from typing import Optional
@@ -289,13 +289,13 @@ class Utility(commands.Cog):
     @commands.has_guild_permissions(manage_emojis=True)
     @commands.bot_has_guild_permissions(manage_emojis=True)
     @commands.command(name='yoink', help='Yoinks emojis from the specified message.')
-    async def yoink_emoji(self, ctx: commands.Context, source: Optional[MessageOrMessageReplyConverter]) -> None:
+    async def yoink_emoji(self, ctx: commands.Context, source: discord.Message = MessageReply) -> None:
         """
         A method to "yoink" an emoji. Retrieves the emoji as an asset and uploads it to the current guild.
 
         Parameters:
             ctx (commands.Context): The invocation context.
-            source (Optional[discord.Message]): The message to extract emojis from.
+            source (Optional[discord.Message]): The message to extract emojis from (can be a message reply).
 
         Output:
             Command state information.
