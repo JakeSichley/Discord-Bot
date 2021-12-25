@@ -31,6 +31,7 @@ from typing import List, Tuple, Union
 from utils.network_utils import network_request, NetworkReturnType
 from utils.utils import run_in_executor
 from os import path
+from inspect import Parameter
 import discord
 import PIL.ImageOps
 
@@ -64,7 +65,7 @@ async def extract_image_as_bytes(source: Union[discord.Message, str]) -> BytesIO
         else:
             return buffer
     else:
-        raise NoImage
+        raise NoImage('source')
 
 
 @run_in_executor
@@ -184,7 +185,15 @@ class NoImage(MissingRequiredArgument):
     Error raised when no image was supplied.
     """
 
-    pass
+    def __init__(self, param: str):
+        """
+        The constructor for the NoImage exception class.
+
+        Parameters:
+            param (str): The name of the missing parameter.
+        """
+
+        super().__init__(Parameter(param, Parameter.POSITIONAL_ONLY))
 
 
 class BufferSizeExceeded(BadArgument):
