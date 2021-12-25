@@ -27,7 +27,7 @@ from textwrap import wrap
 from io import BytesIO
 from re import search
 from discord.ext.commands import MissingRequiredArgument, BadArgument
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from utils.network_utils import network_request, NetworkReturnType
 from utils.utils import run_in_executor
 from os import path
@@ -35,29 +35,28 @@ import discord
 import PIL.ImageOps
 
 
-async def extract_image_as_bytes(message: discord.Message, url: str) -> BytesIO:
+async def extract_image_as_bytes(source: Union[discord.Message, str]) -> BytesIO:
     """
     A method that downloads an image from a url.
 
     Parameters:
-        message (discord.Message): The message in the invocation context.
-        url (str): An image url.
+        source (Union[discord.Message, str]): The image source. Could be an attachment or url.
 
     Returns:
         buffer (BytesIO): A BytesIO object of the image data.
     """
 
-    if message.attachments:
+    if isinstance(source, discord.Message) and source.attachments:
         buffer = BytesIO()
-        await message.attachments[0].save(buffer, seek_begin=True)
+        await source.attachments[0].save(buffer, seek_begin=True)
         if buffer.getbuffer().nbytes >= 8000000:
             raise BufferSizeExceeded
         else:
             return buffer
-    elif url and search(r'.(webp|jpeg|jpg|png|bmp)', url):
+    elif isinstance(source, str) and search(r'.(webp|jpeg|jpg|png|bmp)', source):
         # if the user provided an embed, refresh to allow discord time to update the message
         buffer = BytesIO()
-        data = await network_request(url, return_type=NetworkReturnType.BYTES)
+        data = await network_request(source, return_type=NetworkReturnType.BYTES)
         buffer.write(data)
         buffer.seek(0)
         if buffer.getbuffer().nbytes >= 8000000:
