@@ -4,7 +4,7 @@ A Python-based bot for Discord utilizing [Rapptz's Discord Wrapper](https://gith
 #### Versions
 **Python**: 3.8.1
 
-**discord.py**: 1.7.3
+**discord.py**: [Forked @ 1.7.3](https://github.com/JakeSichley/discord.py)
 
 # Overview
 This bot is designed for personal use in Discord servers that I somehow have power in.
