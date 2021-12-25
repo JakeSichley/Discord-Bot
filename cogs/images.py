@@ -23,8 +23,10 @@ SOFTWARE.
 """
 
 from discord.ext import commands
-from utils.image_utils import NoImage, BufferSizeExceeded, extract_image_as_bytes, invert_object, title_card_generator
 from dreambot import DreamBot
+from utils import image_utils
+from utils.defaults import MessageReply
+from typing import Union, Optional
 import discord
 
 
@@ -47,13 +49,13 @@ class Images(commands.Cog):
         self.bot = bot
 
     @commands.command(name='invert')
-    async def invert(self, ctx: commands.Context, url: str = None) -> None:
+    async def invert(self, ctx: commands.Context, source: Union[discord.Message, str] = MessageReply) -> None:
         """
         A method that invokes image inversion from ImageUtils.
 
         Parameters:
             ctx (commands.Context): The invocation context.
-            url (Optional[str]): An optional image url. Default: None
+            source ([Union[discord.Message, str]]): The source of the image to invert (can be a message reply).
 
         Output:
             Success: A discord.File object containing the inverted image.
@@ -65,12 +67,12 @@ class Images(commands.Cog):
 
         async with ctx.channel.typing():
             try:
-                buffer = await extract_image_as_bytes(ctx.message, url)
-                inverted = await invert_object(buffer)
-            except NoImage:
+                buffer = await image_utils.extract_image_as_bytes(source)
+                inverted = await image_utils.invert_object(buffer)
+            except image_utils.NoImage:
                 await ctx.send('No image was provided.')
                 return
-            except BufferSizeExceeded:
+            except image_utils.BufferSizeExceeded:
                 await ctx.send('The supplied image is too large. Bots are limited to images of size < 8 Megabytes.')
                 return
             except discord.HTTPException as e:
@@ -107,7 +109,7 @@ class Images(commands.Cog):
             if not title.endswith('"'):
                 title += '"'
 
-            buffer = await title_card_generator(title)
+            buffer = await image_utils.title_card_generator(title)
 
             try:
                 await ctx.send(file=discord.File(buffer, filename="iasip.png"))
