@@ -151,6 +151,3 @@ async def run_in_subprocess(command: str) -> str:
     process = await asyncio.create_subprocess_shell(command, stdout=PIPE, stderr=PIPE)
     result = await process.communicate()
     return '\n'.join(x.decode() for x in result) if result else 'None'
-
-def five():
-    return 10
