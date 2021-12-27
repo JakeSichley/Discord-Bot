@@ -29,7 +29,7 @@ from io import StringIO
 from contextlib import redirect_stdout
 from textwrap import indent
 from traceback import format_exc
-from utils.utils import localize_time, pairs
+from utils.utils import localize_time, pairs, run_in_subprocess
 from re import finditer
 from typing import Union, Optional
 from dreambot import DreamBot
@@ -74,7 +74,7 @@ class Admin(commands.Cog):
 
         return await self.bot.is_owner(ctx.author)
 
-    @commands.command(name='adminhelp', aliases=['ahelp'], hidden=True)
+    @commands.command(name='admin_help', aliases=['ahelp', 'adminhelp'], hidden=True)
     async def admin_help_command(self, ctx: commands.Context) -> None:
         """
         A command to generate help information for the Admin cog.
@@ -93,12 +93,12 @@ class Admin(commands.Cog):
             None.
         """
 
-        list_of_commands = self.get_commands()
-        longest_command_name = sorted((len(x.name) for x in list_of_commands), reverse=True)[0]
+        list_of_commands = list(self.walk_commands())
+        longest_command_name = sorted((len(x.qualified_name) for x in list_of_commands), reverse=True)[0]
         help_string = f'```Admin Cog.\n\nCommands:'
 
         for command in list_of_commands:
-            help_string += f'\n  {command.name:{longest_command_name + 1}} {command.short_doc}'
+            help_string += f'\n  {command.qualified_name:{longest_command_name + 1}} {command.short_doc}'
 
         help_string += '\n\nType ?help command for more info on a command.\n' \
                        'You can also type ?help category for more info on a category.```'
@@ -291,7 +291,7 @@ class Admin(commands.Cog):
         self.bot.get_command(command).reset_cooldown(ctx)
         await ctx.send(f'Reset cooldown of Command: `{command}`')
 
-    @commands.command(name='exec', aliases=['execute'], pass_context=True, hidden=True)
+    @commands.command(name='exec', aliases=['execute'], hidden=True)
     async def _exec(self, ctx: commands.Context, *, body: str) -> None:
         """
         A command to execute a Python code block and output the result, if any.
@@ -377,7 +377,7 @@ class Admin(commands.Cog):
             await ctx.send_help('git')
 
     @git.command(name='pull', aliases=['p'], hidden=True)
-    async def git_pull(self, ctx: commands.Context, branch: Optional[str]):
+    async def git_pull(self, ctx: commands.Context, branch: Optional[str]) -> None:
         """
         Pulls the latest commit from the specified branch.
 
@@ -391,6 +391,21 @@ class Admin(commands.Cog):
 
         # r'(?:Successfully installed )(.+ ?)+'
         pass
+
+    @git.command(name='dry_run', aliases=['dry', 'd'], hidden=True)
+    async def dry_run(self, ctx: commands.Context) -> None:
+        """
+        Performs a dry run of git pull. Equivalent to git fetch && git diff --stat origin/master.
+
+        Parameters:
+            ctx (commands.Context): The invocation context.
+
+        Returns:
+            None.
+        """
+
+        result = await run_in_subprocess('git fetch && git diff --stat origin/master')
+        await ctx.send(f'**Pulling would modify the following the following files:**\n```\n{result}```')
 
     @git.command(name='branches', aliases=['branch', 'b'], hidden=True)
     async def git_branches(self, ctx: commands.Context) -> None:
@@ -430,7 +445,7 @@ class Admin(commands.Cog):
             thumbnail = 'https://pbs.twimg.com/profile_images/1414990564408262661/r6YemvF9_400x400.jpg'
 
         embed = Embed(
-            title=f"Branches for **{self.bot.git['git_repo']}**",
+            title=f"Overview of **{self.bot.git['git_repo']}**",
             colour=0x58a6ff,
             url=f"https://github.com/{self.bot.git['git_user']}/{self.bot.git['git_repo']}"
         )
