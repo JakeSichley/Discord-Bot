@@ -499,7 +499,9 @@ class ReactionRoles(commands.Cog):
                 # if we fetched all our prerequisites, attempt to add the role to the member
                 if role and member:
                     try:
-                        await member.add_roles(role, reason=f'Reaction Roles [MESSAGE ID: {payload.message_id}]')
+                        await member.add_roles(
+                            role, reason=f'Reaction Roles - Add [Message ID: {payload.message_id}]'
+                        )
                     except discord.HTTPException:
                         pass
 
@@ -530,7 +532,9 @@ class ReactionRoles(commands.Cog):
                 # if we fetched all our prerequisites, attempt to remove the role from the member
                 if role and member:
                     try:
-                        await member.remove_roles(role, reason=f'Reaction Roles [MESSAGE ID: {payload.message_id}]')
+                        await member.remove_roles(
+                            role, reason=f'Reaction Roles - Remove [Message ID: {payload.message_id}]'
+                        )
                     except discord.HTTPException:
                         pass
 

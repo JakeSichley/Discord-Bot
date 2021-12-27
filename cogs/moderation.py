@@ -313,7 +313,7 @@ class Moderation(commands.Cog):
                 role = after.guild.get_role(role[0][0])
 
                 try:
-                    await after.add_roles(role, reason='MEMBERSHIP SCREENING')
+                    await after.add_roles(role, reason='Default Role [Membership Screening] Assignment')
                 except discord.HTTPException:
                     try:
                         await after.guild.system_channel.send(f'Failed to add the default role to `{str(after)}`.')

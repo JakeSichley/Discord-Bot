@@ -296,14 +296,19 @@ class VoiceRoles(commands.Cog):
 
                 if add_role:
                     try:
-                        await member.add_roles(add_role, reason=f'Reaction Roles [CHANNEL ID: {after.channel.id}]')
+                        await member.add_roles(
+                            add_role,
+                            reason=f'Voice Roles - Join [Channel ID: {after.channel.id} ("{after.channel.name}")]'
+                        )
                     except discord.HTTPException:
                         pass
 
                 if remove_roles:
                     try:
-                        await member.remove_roles(*remove_roles,
-                                                  reason=f'Reaction Roles [CHANNEL ID: {after.channel.id}]')
+                        await member.remove_roles(
+                            *remove_roles,
+                            reason=f'Voice Roles - Leave [Channel ID: {after.channel.id} ("{after.channel.name}")]'
+                        )
                     except discord.HTTPException:
                         pass
 
@@ -314,8 +319,7 @@ class VoiceRoles(commands.Cog):
 
                 if remove_roles:
                     try:
-                        await member.remove_roles(*remove_roles,
-                                                  reason=f'Reaction Roles [DISCONNECT]')
+                        await member.remove_roles(*remove_roles, reason=f'Voice Roles - Disconnect')
                     except discord.HTTPException:
                         pass
 
