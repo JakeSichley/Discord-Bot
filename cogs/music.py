@@ -1414,6 +1414,22 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         # assign new queue to the player queue
         player.queue = new_queue
 
+    def cog_unload(self) -> None:
+        """
+        A method detailing custom extension unloading procedures.
+        Destroys the wavelink client.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
+        self.bot.wavelink = None
+
+        print('Completed Unload for Cog: Music')
+
 
 def setup(bot: DreamBot) -> None:
     """

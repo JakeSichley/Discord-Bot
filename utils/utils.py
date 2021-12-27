@@ -23,7 +23,6 @@ SOFTWARE.
 """
 
 from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable
-from subprocess import PIPE
 import discord
 import datetime
 import pytz
@@ -135,19 +134,3 @@ def run_in_executor(func: Callable) -> Callable:
         return loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
 
     return inner
-
-
-async def run_in_subprocess(command: str) -> str:
-    """
-    Runs the specified command in an asyncio subprocess shell and communicates the result.
-
-    Parameters:
-     command (str): The command to execute.
-
-    Returns:
-     (str): The output, if any, that results from the execution.
-    """
-
-    process = await asyncio.create_subprocess_shell(command, stdout=PIPE, stderr=PIPE)
-    result = await process.communicate()
-    return '\n'.join(x.decode() for x in result) if result else 'None'

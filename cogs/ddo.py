@@ -453,13 +453,14 @@ class DDO(commands.Cog):
                 self.reconnect_tries = 0
 
             except (ClientResponseError, JSONDecodeError) as e:
-                print(f'DDOAudit Query Error: {e}')
+                print(f'DDOAudit Query[{server}] Error: {e}')
                 self.api_data[server] = None
                 self.reconnect_tries += 1
 
-                # if the query fails 5 times in a row, delay querying the API for an hour
+                # if the query fails whatever number of times this is in a row, delay querying the API for an hour
                 if self.reconnect_tries >= (len(self.SERVERS) - 1) * 2:
                     self.reconnect_tries = 0
+                    self.api_data = {server: None for server in self.SERVERS}
                     await sleep(3600)
 
             finally:
