@@ -28,6 +28,7 @@ import datetime
 import pytz
 import functools
 import asyncio
+import subprocess
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.TextChannel) -> None:
@@ -134,3 +135,22 @@ def run_in_executor(func: Callable) -> Callable:
         return loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
 
     return inner
+
+
+async def run_in_subprocess(command: str) -> Tuple[bytes, bytes]:
+    """
+    A method that runs the specified command in a subprocess shell and returns the communicated result.
+
+    Parameters:
+        command (str): The command that should be run the subprocess shell.
+
+    Returns:
+        (Tuple[bytes, bytes]): The result of the command.
+    """
+
+    try:
+        process = await asyncio.create_subprocess_shell(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return await process.communicate()
+    except NotImplementedError:
+        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return await asyncio.get_running_loop().run_in_executor(None, process.communicate)

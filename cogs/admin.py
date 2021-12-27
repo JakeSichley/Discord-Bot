@@ -29,17 +29,15 @@ from io import StringIO
 from contextlib import redirect_stdout
 from textwrap import indent
 from traceback import format_exc
-from utils.utils import localize_time, pairs
+from utils.utils import localize_time, pairs, run_in_subprocess
 from re import finditer
-from typing import Union, Optional
+from typing import Union
 from dreambot import DreamBot
 from utils.checks import ensure_git_credentials
 from utils.network_utils import network_request, NetworkReturnType
 from utils.database_utils import execute_query, retrieve_query
 from aiosqlite import Error as aiosqliteError
 from datetime import datetime
-import asyncio
-import subprocess
 
 
 class Admin(commands.Cog):
@@ -379,13 +377,12 @@ class Admin(commands.Cog):
             await ctx.send_help('git')
 
     @git.command(name='pull', aliases=['p'], hidden=True)
-    async def git_pull(self, ctx: commands.Context, branch: Optional[str]) -> None:
+    async def git_pull(self, ctx: commands.Context) -> None:
         """
-        Pulls the latest commit from the specified branch.
+        Pulls the latest commit from master.
 
         Parameters:
             ctx (commands.Context): The invocation context.
-            branch (str): The name of the target branch.
 
         Returns:
             None.
@@ -406,18 +403,10 @@ class Admin(commands.Cog):
             None.
         """
 
-        command = 'git fetch && git diff --stat origin/master'
-        result = None
+        result = await run_in_subprocess('git fetch && git diff --stat origin/master')
+        output = '\n'.join(x.decode() for x in result) if result else 'None'
 
-        try:
-            process = await asyncio.create_subprocess_shell(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            result = await process.communicate()
-        except NotImplementedError:
-            process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            result = await self.bot.loop.run_in_executor(None, process.communicate)
-        finally:
-            result = '\n'.join(x.decode() for x in result) if result else 'None'
-            await ctx.send(f'**Pulling would modify the following the following files:**\n```\n{result}```')
+        await ctx.send(f'**Pulling would modify the following the following files:**\n```\n{output}```')
 
     @git.command(name='branches', aliases=['branch', 'b'], hidden=True)
     async def git_branches(self, ctx: commands.Context) -> None:
