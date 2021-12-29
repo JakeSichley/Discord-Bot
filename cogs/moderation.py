@@ -167,11 +167,9 @@ class Moderation(commands.Cog):
                 # noinspection PyUnresolvedReferences
                 await member.add_roles(role, reason=f'Bulk Added by {str(ctx.author)}')
                 success.append(str(member))
-            except discord.HTTPException:
-                failed.append(str(member))
             # since we used a special converter that returns the member's name (as a str) if conversation fails,
             # type 'str' won't have an add_roles method
-            except AttributeError:
+            except (discord.HTTPException, AttributeError):
                 failed.append(str(member))
 
         await ctx.send(f'Successfully added the role to the following members:\n'
@@ -179,7 +177,7 @@ class Moderation(commands.Cog):
                        f'Failed to add the role to the following members:\n'
                        f'```{", ".join(failed) if failed else "None"}```')
 
-    @commands.has_guild_permissions(manage_guild=True)
+    @commands.has_guild_permissions(manage_roles=True)
     @commands.command(name='getdefaultrole', aliases=['gdr'],
                       help='Displays the role (if any) users are auto-granted on joining the guild.')
     async def get_default_role(self, ctx: commands.Context) -> None:
@@ -206,7 +204,7 @@ class Moderation(commands.Cog):
         else:
             await ctx.send(f'There is no default role set for the server.')
 
-    @commands.cooldown(1, 600, commands.BucketType.guild)
+    @commands.cooldown(1, 10, commands.BucketType.guild)
     @commands.has_guild_permissions(manage_guild=True, manage_roles=True)
     @commands.bot_has_guild_permissions(manage_roles=True)
     @commands.command(name='setdefaultrole', aliases=['sdr'],
@@ -218,7 +216,7 @@ class Moderation(commands.Cog):
         A method for checking which role (if any) will be auto-granted to new users joining the guild.
 
         Checks:
-            cooldown(): Whether the command is on cooldown. Can be used (1) time per (10) minutes per (Guild).
+            cooldown(): Whether the command is on cooldown. Can be used (1) time per (10) seconds per (Guild).
             has_guild_permissions(manage_guild, manage_roles):
                 Whether the invoking user can manage the guild and roles.
 

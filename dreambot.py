@@ -119,22 +119,6 @@ class DreamBot(Bot):
 
             logging.log(logging.INFO, 'DreamBot Ready: Prefixes and Presence initialized')
 
-    async def on_message(self, message: discord.Message) -> None:
-        """
-        A Client.event() method that is called when a discord.Message is created and sent.
-
-        Parameters:
-            message (discord.Message): The message that was sent.
-
-        Returns:
-            None.
-        """
-
-        if message.author == self.user:
-            return
-
-        await self.process_commands(message)
-
     async def retrieve_prefixes(self) -> None:
         """
         A method that creates a quick-reference dict for guilds and their respective prefixes.
