@@ -22,47 +22,26 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-
 from discord.ext import commands
-from discord import Message
-from typing import Any, Optional
-from utils.context import Context
+from typing import Any
+from uuid import uuid4
 
 
-class MessageReply(commands.CustomDefault):
+class Context(commands.Context):
     """
-    Default parameter that returns a message reply from the current context.
+    A Custom commands.Context class.
 
     Attributes:
-        required (bool): Whether the argument is required for the invocation context to be valid.
+        id (UUID): The UUID of the context instance. Used for logging purposes.
     """
 
-    def __init__(self, *, required: bool = True) -> None:
+    def __init__(self, **kwargs: Any):
         """
-        The constructor for the Moderation class.
+        The constructor for the Context class.
 
         Parameters:
-            required (bool): Whether the argument is required for the invocation context to be valid.
+            kwargs (**kwargs): Any keyword arguments that should be passed to the parent class.
         """
 
-        self.required = required
-
-    async def default(self, ctx: Context, param: Any) -> Optional[Message]:
-        """
-        Attempts to default the argument into a discord.Message object.
-
-        Parameters:
-            ctx (Context): The invocation context.
-            param (Any): The arg to be converted.
-
-        Returns:
-            (Optional[discord.Message]): The resulting discord.Message.
-        """
-
-        try:
-            return ctx.message.reference.resolved
-        except AttributeError:
-            if self.required:
-                raise commands.MissingRequiredArgument(param)
-            else:
-                return None
+        super().__init__(**kwargs)
+        self.id = uuid4()

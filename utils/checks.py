@@ -24,6 +24,7 @@ SOFTWARE.
 
 from discord.ext import commands
 from typing import Callable
+from utils.context import Context
 
 
 def check_memecoin_channel() -> Callable:
@@ -31,12 +32,12 @@ def check_memecoin_channel() -> Callable:
     Memecoin Channel Check.
     """
 
-    def predicate(ctx: commands.Context) -> bool:
+    def predicate(ctx: Context) -> bool:
         """
         A commands.check decorator that ensures MemeCoin commands are only executed in the proper channel.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             (boolean): Whether the invocation channel is the authorized MemeCoin channel.
@@ -51,12 +52,12 @@ def ensure_git_credentials() -> Callable:
     Admin.Git Group Check.
     """
 
-    def predicate(ctx: commands.Context) -> bool:
+    def predicate(ctx: Context) -> bool:
         """
         A commands.check decorator that git commands are able to properly execute.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             (boolean): Whether the bot was initialized with git credentials.

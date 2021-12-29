@@ -39,6 +39,7 @@ from utils.database_utils import execute_query, retrieve_query
 from aiosqlite import Error as aiosqliteError
 from datetime import datetime
 from asyncio import TimeoutError
+from utils.context import Context
 
 
 class Admin(commands.Cog):
@@ -61,13 +62,13 @@ class Admin(commands.Cog):
         self.bot = bot
         self._last_result = None
 
-    async def cog_check(self, ctx: commands.Context) -> bool:
+    async def cog_check(self, ctx: Context) -> bool:
         """
         A method that registers a cog-wide check.
         Requires the invoking user to be the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             (boolean): Whether the invoking user is the bot's owner.
@@ -76,7 +77,7 @@ class Admin(commands.Cog):
         return await self.bot.is_owner(ctx.author)
 
     @commands.command(name='admin_help', aliases=['ahelp', 'adminhelp'], hidden=True)
-    async def admin_help_command(self, ctx: commands.Context) -> None:
+    async def admin_help_command(self, ctx: Context) -> None:
         """
         A command to generate help information for the Admin cog.
         The native help command will not generate information for the Admin cog, since all commands are hidden.
@@ -85,7 +86,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Output:
             Help information for admin-only commands.
@@ -107,7 +108,7 @@ class Admin(commands.Cog):
         await ctx.send(help_string)
 
     @commands.command(name='reload', aliases=['load'], hidden=True)
-    async def reload(self, ctx: commands.Context, module: str) -> None:
+    async def reload(self, ctx: Context, module: str) -> None:
         """
         A command to reload a module.
         If the reload fails, the previous state of module is maintained.
@@ -117,7 +118,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             module (str): The module to be reloaded.
 
         Output:
@@ -135,7 +136,7 @@ class Admin(commands.Cog):
             await ctx.send(f'Loaded Module: `{module}`')
 
     @commands.command(name='unload', hidden=True)
-    async def unload(self, ctx: commands.Context, module: str) -> None:
+    async def unload(self, ctx: Context, module: str) -> None:
         """
         A command to unload a module.
 
@@ -143,7 +144,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             module (str): The module to be unloaded.
 
         Output:
@@ -165,7 +166,7 @@ class Admin(commands.Cog):
             await ctx.send(f'Could Not Unload Module: `{module}`')
 
     @commands.command(name='logout', aliases=['shutdown'], hidden=True)
-    async def logout(self, ctx: commands.Context) -> None:
+    async def logout(self, ctx: Context) -> None:
         """
         A command to stop (close/logout) the bot.
         The command must be confirmed to complete the logout.
@@ -174,7 +175,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Output:
            A confirmation message.
@@ -187,7 +188,7 @@ class Admin(commands.Cog):
         await self.bot.close()
 
     @commands.command(name='eval', hidden=True)
-    async def _eval(self, ctx: commands.Context, _ev: str) -> None:
+    async def _eval(self, ctx: Context, _ev: str) -> None:
         """
         A command to evaluate a python statement.
         Should the evaluation encounter an exception, the output will be the exception details.
@@ -196,7 +197,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             _ev (str): The statement to be evaluated.
 
         Output:
@@ -215,7 +216,7 @@ class Admin(commands.Cog):
         await ctx.send(output)
 
     @commands.command(name='sql', hidden=True)
-    async def sql(self, ctx: commands.Context, *, query: str) -> None:
+    async def sql(self, ctx: Context, *, query: str) -> None:
         """
         A command to execute a sqlite3 statement.
         If the statement type is 'SELECT', successful executions will send the result.
@@ -225,7 +226,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             query (str): The statement to be executed.
 
         Output:
@@ -248,7 +249,7 @@ class Admin(commands.Cog):
             await ctx.send(f'Error: {e}')
 
     @commands.command(name='reloadprefixes', aliases=['rp'], hidden=True)
-    async def reload_prefixes(self, ctx: commands.Context) -> None:
+    async def reload_prefixes(self, ctx: Context) -> None:
         """
         A command to reload the bot's store prefixes.
         Prefixes are normally reloaded when explicitly changed.
@@ -257,7 +258,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Output:
             Success: 'Reloaded Prefixes'.
@@ -271,7 +272,7 @@ class Admin(commands.Cog):
         await ctx.send('Reloaded Prefixes.')
 
     @commands.command(name='resetcooldown', aliases=['rc'], hidden=True)
-    async def reset_cooldown(self, ctx: commands.Context, command: str) -> None:
+    async def reset_cooldown(self, ctx: Context, command: str) -> None:
         """
         A command to reset the cooldown of a command.
 
@@ -279,7 +280,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             command (str): The command for which the cooldown will be reset.
 
         Output:
@@ -293,7 +294,7 @@ class Admin(commands.Cog):
         await ctx.send(f'Reset cooldown of Command: `{command}`')
 
     @commands.command(name='exec', aliases=['execute'], hidden=True)
-    async def _exec(self, ctx: commands.Context, *, body: str) -> None:
+    async def _exec(self, ctx: Context, *, body: str) -> None:
         """
         A command to execute a Python code block and output the result, if any.
 
@@ -301,7 +302,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             body (str): The block of code to be executed.
 
         Output:
@@ -363,12 +364,12 @@ class Admin(commands.Cog):
 
     @ensure_git_credentials()
     @commands.group(name='git', hidden=True)
-    async def git(self, ctx: commands.Context) -> None:
+    async def git(self, ctx: Context) -> None:
         """
         Parent command that handles git related commands.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -378,12 +379,12 @@ class Admin(commands.Cog):
             await ctx.send_help('git')
 
     @git.command(name='pull', aliases=['p'], hidden=True)
-    async def git_pull(self, ctx: commands.Context) -> None:
+    async def git_pull(self, ctx: Context) -> None:
         """
         Pulls the latest commit from master.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -428,12 +429,12 @@ class Admin(commands.Cog):
             await ctx.send('Continuing')
 
     @git.command(name='dry_run', aliases=['dry', 'd'], hidden=True)
-    async def dry_run(self, ctx: commands.Context) -> None:
+    async def dry_run(self, ctx: Context) -> None:
         """
         Performs a dry run of git pull. Equivalent to git fetch && git diff --stat origin/master.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -445,12 +446,12 @@ class Admin(commands.Cog):
         await ctx.send(f'**Pulling would modify the following the following files:**\n```\n{output}```')
 
     @git.command(name='branches', aliases=['branch', 'b'], hidden=True)
-    async def git_branches(self, ctx: commands.Context) -> None:
+    async def git_branches(self, ctx: Context) -> None:
         """
         Fetches a list of branches from the bot's repository.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -499,13 +500,13 @@ class Admin(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name='archive', hidden=True)
-    async def archive(self, ctx: commands.Context, target: int) -> None:
+    async def archive(self, ctx: Context, target: int) -> None:
         """
         Archives a channel as efficiently as possible. Places messages without attachments, files, or embeds into a
         buffer and sends the buffer when the message character limit is exceeded.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             target (int): The beginning channel id (archive this channel).
 
         Returns:

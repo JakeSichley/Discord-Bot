@@ -24,6 +24,7 @@ SOFTWARE.
 
 from typing import Optional, Union, Any
 from discord.ext import commands
+from utils.context import Context
 import discord
 import re
 
@@ -40,13 +41,13 @@ class GuildConverter(commands.IDConverter):
     2. Lookup by name
     """
 
-    async def convert(self, ctx, argument) -> Optional[discord.Guild]:
+    async def convert(self, ctx: Context, argument: Any) -> Optional[discord.Guild]:
         """
         Attempts to convert the argument into a discord.Guild object.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
-            argument (str): The arg to be converted.
+            ctx (Context): The invocation context.
+            argument (Any): The arg to be converted.
 
         Returns:
             result (discord.Guild): The resulting discord.Guild. Could be None if conversion failed without exceptions.
@@ -90,13 +91,13 @@ class DefaultMemberConverter(commands.MemberConverter):
     rather than the command failing.
     """
 
-    async def convert(self, ctx: commands.Context, argument: Any) -> Union[discord.Member, str]:
+    async def convert(self, ctx: Context, argument: Any) -> Union[discord.Member, str]:
         """
         Attempts to convert the argument into a discord.Member object.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
-            argument (str): The arg to be converted.
+            ctx (Context): The invocation context.
+            argument (Any): The arg to be converted.
 
         Returns:
             (Union[discord.Member, str]): The resulting discord.Member. If conversion fails, returns the argument.

@@ -28,6 +28,7 @@ from datetime import datetime
 from typing import Optional, List, Any, Dict
 from utils.database_utils import retrieve_query
 from aiosqlite import Error as aiosqliteError
+from utils.context import Context
 import discord
 import logging
 
@@ -155,6 +156,20 @@ class DreamBot(Bot):
         """
 
         super().run(token)
+
+    async def get_context(self, message: discord.Message, *, cls: classmethod = Context) -> Context:
+        """
+        Creates a Context instance for the current command invocation.
+
+        Parameters:
+            message (discord.Message): The message to generate a context instance for.
+            cls (classmethod): The classmethod to generate the context instance with.
+
+        Returns:
+            (Context): The custom context instance.
+        """
+
+        return await super().get_context(message, cls=cls)
 
 
 async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:
