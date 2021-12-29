@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 from discord.ext import commands
-from discord import TextChannel, HTTPException, Message, Embed
+from discord import TextChannel, HTTPException, Message, Embed, RawReactionActionEvent
 from discord.abc import Messageable
 from io import StringIO
 from contextlib import redirect_stdout
@@ -38,6 +38,7 @@ from utils.network_utils import network_request, NetworkReturnType
 from utils.database_utils import execute_query, retrieve_query
 from aiosqlite import Error as aiosqliteError
 from datetime import datetime
+from asyncio import TimeoutError
 
 
 class Admin(commands.Cog):
@@ -388,8 +389,43 @@ class Admin(commands.Cog):
             None.
         """
 
-        # r'(?:Successfully installed )(.+ ?)+'
-        pass
+        result = await run_in_subprocess('git fetch && git diff --stat origin/Git-Pull')
+        actual_result = [x for x in result if x]
+
+        if not actual_result:
+            await ctx.send('The bot is already up to date.')
+            return
+
+        output = '\n'.join(x.decode() for x in actual_result)
+        confirmation = await ctx.send(f'**Pulling would modify the following the following files:**\n```\n{output}```'
+                                      f'\nDo you wish to continue?')
+        try:
+            await confirmation.add_reaction('✅')
+            await confirmation.add_reaction('❌')
+        except HTTPException:
+            await ctx.send("Couldn't add confirmation reactions. Aborting.")
+            return
+
+        owner_id = self.bot.owner_id
+
+        # noinspection PyMissingOrEmptyDocstring
+        def reaction_check(pl: RawReactionActionEvent):
+            if pl.event_type == 'REACTION_REMOVE':
+                return
+            return pl.message_id == confirmation.id and pl.member.id == owner_id
+
+        try:
+            payload = await self.bot.wait_for('raw_reaction_add', timeout=30.0, check=reaction_check)
+        except TimeoutError:
+            await ctx.send('Timeout reached for confirmation. Aborting.')
+            return
+
+        if str(payload.emoji) != '✅':
+            await ctx.send('Aborting pull.')
+            return
+
+        else:
+            await ctx.send('Continuing')
 
     @git.command(name='dry_run', aliases=['dry', 'd'], hidden=True)
     async def dry_run(self, ctx: commands.Context) -> None:
