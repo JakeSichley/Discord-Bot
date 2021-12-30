@@ -25,6 +25,7 @@ SOFTWARE.
 from discord.ext import commands
 from typing import Any, Union, Optional
 from uuid import uuid4
+from asyncio import TimeoutError
 import discord
 
 
@@ -76,7 +77,7 @@ class Context(commands.Context):
         Parameters:
             status (bool): The type of reaction to add.
                 True: ✅
-                False:
+                False: ❌
                 None: ✖
             raise_exceptions (bool): Whether exceptions should be raised. Defaults to False.
 
@@ -91,3 +92,61 @@ class Context(commands.Context):
         }
 
         await self.react(reactions[status], raise_exceptions=raise_exceptions)
+
+    async def confirmation_prompt(
+            self, message: str, *, timeout: float = 30.0, ephemeral: bool = True
+    ) -> Optional[bool]:
+        """
+        Prompts the user to confirm an action.
+
+        Parameters:
+            message (str): The actual prompt to send to user.
+            timeout (float): How long the user has to respond. Default: 30.0s.
+            ephemeral (bool): Whether the confirmation message should be deleted afterwards. Default: True.
+
+        Returns:
+            (Optional[bool]): The user's response to the prompt. None if timeout occurs or any general exception.
+        """
+
+        confirmation_emojis = ['✅', '❌']
+
+        prompt = await self.send(message)
+
+        for emoji in confirmation_emojis:
+            await prompt.add_reaction(emoji)
+
+        def reaction_check(pl: discord.RawReactionActionEvent):
+            """
+            Our check criteria for determining the result of the prompt.
+
+            Return a payload if:
+                (1) The reaction was to the prompt message,
+                and (2) The reaction was added (not removed),
+                and (3) The user adding the reaction is our original author,
+                and (4) The added reaction is one of our prompt reactions
+
+            Parameters:
+                pl (discord.RawReactionActionEvent): The payload data to check requirements against.
+
+            Returns:
+                (bool): Whether the payload meets our check criteria.
+            """
+
+            return pl.message_id == prompt.id and \
+                pl.member.id == self.author.id and \
+                pl.event_type == 'REACTION_ADD' and \
+                str(pl.emoji) in confirmation_emojis
+
+        result = None
+
+        try:
+            payload = await self.bot.wait_for('raw_reaction_add', timeout=timeout, check=reaction_check)
+        except TimeoutError:
+            result = None
+        else:
+            result = True if str(payload.emoji) == '✅' else False
+        finally:
+            if ephemeral:
+                await prompt.delete()
+            return result
+
