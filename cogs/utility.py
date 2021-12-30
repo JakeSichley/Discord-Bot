@@ -34,6 +34,7 @@ from inspect import Parameter
 from dreambot import DreamBot
 from aiosqlite import Error as aiosqliteError
 from aiohttp import ClientResponseError
+from discord.ext.commands.default import Author
 import datetime
 import pytz
 import discord
@@ -199,7 +200,7 @@ class Utility(commands.Cog):
     @commands.guild_only()
     @commands.command(name='userinfo', aliases=['ui'],
                       help='Generates an embed detailing information about the specified user')
-    async def user_info(self, ctx: Context, user: discord.Member = None) -> None:
+    async def user_info(self, ctx: Context, user: discord.Member = Author) -> None:
         """
         A method that outputs user information.
 
@@ -213,9 +214,6 @@ class Utility(commands.Cog):
         Returns:
             None.
         """
-
-        if not user:
-            user = ctx.author
 
         embed = discord.Embed(title=f'{str(user)}\'s User Information', color=0x1dcaff)
         if user.nick:

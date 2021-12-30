@@ -394,7 +394,7 @@ class Admin(commands.Cog):
         actual_result = [x for x in result if x]
 
         if not actual_result:
-            await ctx.send('The bot is already up to date.')
+            await ctx.send('The bot is already up-to-date.')
             return
 
         output = '\n'.join(x.decode() for x in actual_result)
