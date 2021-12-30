@@ -133,7 +133,7 @@ class Context(commands.Context):
             """
 
             return pl.message_id == prompt.id and \
-                pl.member.id == self.author.id and \
+                pl.member == self.author and \
                 pl.event_type == 'REACTION_ADD' and \
                 str(pl.emoji) in confirmation_emojis
 

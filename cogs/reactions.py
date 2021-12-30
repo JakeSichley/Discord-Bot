@@ -132,11 +132,23 @@ class ReactionRoles(commands.Cog):
                                           '\nYou can react to this message with the reaction!')
         cleanup_messages.append(reaction_message)
 
-        # noinspection PyMissingOrEmptyDocstring
         def reaction_check(pl: discord.RawReactionActionEvent):
-            if pl.event_type == 'REACTION_REMOVE':
-                return
-            return pl.message_id == reaction_message.id and pl.member == ctx.author
+            """
+            Our check criteria to wait for.
+
+            Return a payload if:
+                (1) The reaction was to the correct message,
+                and (2) The reaction was added (not removed),
+                and (3) The user adding the reaction is our original author
+
+            Parameters:
+                pl (discord.RawReactionActionEvent): The payload data to check requirements against.
+
+            Returns:
+                (bool): Whether the payload meets our check criteria.
+            """
+
+            return pl.message_id == reaction_message.id and pl.member == ctx.author and pl.event_type == 'REACTION_ADD'
 
         # wrap the entire operation in a try -> break this with timeout
         try:
@@ -206,11 +218,26 @@ class ReactionRoles(commands.Cog):
             await reaction_role_pagination.start(message)
             cleanup_messages.append(reaction_role_pagination.message)
 
-            # noinspection PyMissingOrEmptyDocstring
             def reaction_check(pl: discord.RawReactionActionEvent):
+                """
+                Our check criteria to wait for.
+
+                Return a payload if:
+                    (1) The reaction was to the correct message,
+                    and (2) The reaction was added (not removed),
+                    and (3) The user adding the reaction is our original author
+                    and (4) The added reaction is one of our active reactions
+
+                Parameters:
+                    pl (discord.RawReactionActionEvent): The payload data to check requirements against.
+
+                Returns:
+                    (bool): Whether the payload meets our check criteria.
+                """
+
                 return pl.message_id == reaction_role_pagination.message.id and \
-                       pl.member == ctx.author and \
-                       str(pl.emoji) in reaction_role_pagination.active_reactions
+                    pl.member == ctx.author and \
+                    str(pl.emoji) in reaction_role_pagination.active_reactions
 
             while reaction_role_pagination.active:
                 try:

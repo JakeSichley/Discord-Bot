@@ -51,16 +51,12 @@ async def prompt_user_for_voice_channel(
 
     sent_messages = [await ctx.send(initial_prompt)] if initial_prompt else []
 
-    # noinspection PyMissingOrEmptyDocstring
-    def message_check(m):
-        return m.author == ctx.author
-
     # wrap the entire operation in a try -> break this with timeout
     try:
         # give the user multiple attempts to pass a valid argument
         while True:
             # wait for them to respond
-            response = await bot.wait_for('message', timeout=30.0, check=message_check)
+            response = await bot.wait_for('message', timeout=30.0, check=lambda m: m.author == ctx.author)
             # try to convert their response to a VoiceChannel object
             try:
                 channel = await commands.VoiceChannelConverter().convert(ctx, response.content)
@@ -97,16 +93,12 @@ async def prompt_user_for_role(
 
     sent_messages = [await ctx.send(initial_prompt)] if initial_prompt else []
 
-    # noinspection PyMissingOrEmptyDocstring
-    def message_check(m):
-        return m.author == ctx.author
-
     # wrap the entire operation in a try -> break this with timeout
     try:
         # give the user multiple attempts to pass a valid argument
         while True:
             # wait for them to respond
-            response = await bot.wait_for('message', timeout=30.0, check=message_check)
+            response = await bot.wait_for('message', timeout=30.0, check=lambda m: m.author == ctx.author)
             # try to convert their response to a role object
             try:
                 role = await commands.RoleConverter().convert(ctx, response.content)
@@ -152,16 +144,12 @@ async def prompt_user_for_message(
 
     sent_messages = [await ctx.send(initial_prompt)] if initial_prompt else []
 
-    # noinspection PyMissingOrEmptyDocstring
-    def message_check(m):
-        return m.author == ctx.author
-
     # wrap the entire operation in a try -> break this with timeout
     try:
         # give the user multiple attempts to pass a valid argument
         while True:
             # wait for them to respond
-            response = await bot.wait_for('message', timeout=30.0, check=message_check)
+            response = await bot.wait_for('message', timeout=30.0, check=lambda m: m.author == ctx.author)
             # try to convert their response to a message object
             try:
                 message = await commands.MessageConverter().convert(ctx, response.content)

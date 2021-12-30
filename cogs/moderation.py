@@ -82,11 +82,7 @@ class Moderation(commands.Cog):
         if user is None:
             await ctx.channel.purge(limit=limit + 1)
         else:
-            # noinspection PyMissingOrEmptyDocstring
-            def purge_check(message):
-                return message.author.id == user.id
-
-            await ctx.channel.purge(limit=limit + 1, check=purge_check)
+            await ctx.channel.purge(limit=limit + 1, check=lambda m: m.author == user)
 
     @commands.has_guild_permissions(manage_channels=True)
     @commands.bot_has_guild_permissions(manage_channels=True)
