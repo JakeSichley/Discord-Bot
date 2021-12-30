@@ -23,8 +23,9 @@ SOFTWARE.
 """
 
 from discord.ext import commands
-from typing import Any
+from typing import Any, Union, Optional
 from uuid import uuid4
+import discord
 
 
 class Context(commands.Context):
@@ -41,7 +42,52 @@ class Context(commands.Context):
 
         Parameters:
             kwargs (**kwargs): Any keyword arguments that should be passed to the parent class.
+
+        Returns:
+            None.
         """
 
         super().__init__(**kwargs)
         self.id = uuid4()
+
+    async def react(self, emoji: Union[discord.Emoji, discord.Reaction, discord.PartialEmoji, str],
+                    *, raise_exceptions: bool = False) -> None:
+        """
+        Attempts to add the specified emoji to the message.
+
+        Parameters:
+            emoji (Union[discord.Emoji, discord.Reaction, discord.PartialEmoji, str]): The emoji to add.
+            raise_exceptions (bool): Whether exceptions should be raised. Defaults to False.
+
+        Returns:
+            None.
+        """
+
+        try:
+            await self.message.add_reaction(emoji)
+        except discord.HTTPException:
+            if raise_exceptions:
+                raise
+
+    async def tick(self, status: Optional[bool] = True, *, raise_exceptions: bool = False) -> None:
+        """
+        Attempts to a status reaction to the message.
+
+        Parameters:
+            status (bool): The type of reaction to add.
+                True: ✅
+                False:
+                None: ✖
+            raise_exceptions (bool): Whether exceptions should be raised. Defaults to False.
+
+        Returns:
+            None.
+        """
+
+        reactions = {
+            True: '✅',
+            False: '❌',
+            None: '✖'
+        }
+
+        await self.react(reactions[status], raise_exceptions=raise_exceptions)

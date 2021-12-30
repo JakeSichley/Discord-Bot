@@ -30,7 +30,6 @@ from utils.database_utils import execute_query, retrieve_query
 from utils.context import Context
 from typing import Optional
 from re import findall
-from inspect import Parameter
 from dreambot import DreamBot
 from aiosqlite import Error as aiosqliteError
 from aiohttp import ClientResponseError
@@ -59,14 +58,15 @@ class Utility(commands.Cog):
         self.bot = bot
 
     @commands.command(name='time', help='Responds with the current time. Can be supplied with a timezone.\nFor a full '
-                      'list of supported timezones, see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones')
+                                        'list of supported timezones, see '
+                                        'https://en.wikipedia.org/wiki/List_of_tz_database_time_zones')
     async def current_time(self, ctx: Context, timezone: str = 'UTC') -> None:
         """
         A method to output the current time in a specified timezone.
 
         Parameters:
             ctx (Context): The invocation context.
-            timezone (str): A support pytz timezone. Default: 'UTC'.
+            timezone (str): A supported tz timezone. Default: 'UTC'.
 
         Output:
             The time in the specified timezone.
@@ -82,7 +82,7 @@ class Utility(commands.Cog):
         await ctx.send(f'{ctx.author.mention}, the current time is {printable_format}')
 
     @commands.command(name='devserver', help='Responds with an invite link to the development server. Useful for '
-                      'getting assistance with a bug, or requesting a new feature!')
+                                             'getting assistance with a bug, or requesting a new feature!')
     async def dev_server(self, ctx: Context) -> None:
         """
         A method to output a link to the DreamBot development server.
@@ -252,7 +252,7 @@ class Utility(commands.Cog):
     @commands.has_guild_permissions(manage_emojis=True)
     @commands.bot_has_guild_permissions(manage_emojis=True)
     @commands.command(name='raw_yoink', aliases=['rawyoink'], help='Yoinks an emoji based on its id.')
-    async def raw_yoink_emoji(self, ctx: Context,  source: int, name: Optional[str] = None,
+    async def raw_yoink_emoji(self, ctx: Context, source: int, name: Optional[str] = None,
                               animated: Optional[bool] = False) -> None:
         """
         A method to "yoink" an emoji. Retrieves the emoji as an asset and uploads it to the current guild.
@@ -278,12 +278,15 @@ class Utility(commands.Cog):
         name = name if name else str(source)
 
         try:
-            await ctx.guild.create_custom_emoji(name=name, image=emoji_asset, reason=f'Yoink\'d by {ctx.author}')
+            created_emoji = await ctx.guild.create_custom_emoji(
+                name=name, image=emoji_asset, reason=f'Yoink\'d by {ctx.author}'
+            )
+            try:
+                await ctx.react(created_emoji, raise_exceptions=True)
+            except discord.HTTPException:
+                await ctx.tick()
         except discord.HTTPException as e:
             await ctx.send(f'**{name}** failed with `{e.text}`')
-            return
-
-        await ctx.send(f'Successfully yoink\'d the following emoji:\n```{name}```')
 
     @commands.has_guild_permissions(manage_emojis=True)
     @commands.bot_has_guild_permissions(manage_emojis=True)
@@ -302,9 +305,6 @@ class Utility(commands.Cog):
         Returns:
             None.
         """
-
-        if not isinstance(source, discord.Message):
-            raise commands.MissingRequiredArgument(Parameter('message_source', Parameter.POSITIONAL_ONLY))
 
         emojis = findall(r'<(?P<animated>a?):(?P<name>[a-zA-Z0-9_]{2,32}):(?P<id>[0-9]{18,22})>', source.content)
 
@@ -351,23 +351,26 @@ class Utility(commands.Cog):
                 continue
 
             try:
-                await ctx.guild.create_custom_emoji(
+                created_emoji = await ctx.guild.create_custom_emoji(
                     name=emoji[1], image=emoji_asset, reason=f'Yoink\'d by {ctx.author}'
                 )
+                try:
+                    await ctx.react(created_emoji, raise_exceptions=True)
+                except discord.HTTPException:
+                    success.append(emoji[1])
             except discord.HTTPException as e:
                 failed.append(f'**{emoji[1]}** failed with `{e.text}`')
-                continue
 
-            success.append(emoji[1])
+        response = ''
 
-        response = f'Successfully yoink\'d the following emoji:\n' \
-                   f'```{", ".join(success) if success else "None"}```'
+        if success:
+            response += f'Successfully yoink\'d the following emoji:\n```{", ".join(success)}```\n'
 
         if failed:
-            response += f'\nFailed to yoink the following emoji:\n' \
-                        f'```{", ".join(failed) if failed else "None"}```'
+            response += f'Failed to yoink the following emoji:\n```{", ".join(failed)}```'
 
-        await ctx.send(response)
+        if response:
+            await ctx.send(response)
 
 
 def setup(bot: DreamBot) -> None:

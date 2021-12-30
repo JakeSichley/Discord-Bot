@@ -57,6 +57,9 @@ class Admin(commands.Cog):
 
         Parameters:
             bot (commands.Bot): The Discord bot.
+
+        Returns:
+            None.
         """
 
         self.bot = bot
