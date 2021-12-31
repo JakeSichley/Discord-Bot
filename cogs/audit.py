@@ -29,6 +29,7 @@ from typing import List
 from asyncio import Condition
 from dreambot import DreamBot
 from aiosqlite import Error as aiosqliteError
+from utils.context import Context
 import discord
 
 
@@ -141,12 +142,12 @@ class Audit(commands.Cog):
                                  f'**{str(member)}** was unbanned from the guild.')
 
     @commands.group(name='auditaction', aliases=['aa', 'auditactions'])
-    async def audit_actions(self, ctx: commands.Context) -> None:
+    async def audit_actions(self, ctx: Context) -> None:
         """
         Parent command that handles the audit actions commands.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -159,12 +160,12 @@ class Audit(commands.Cog):
     @audit_actions.command(name='viewactions', aliases=['va'],
                            help='Generates an embed detailing the currently enabled and disabled logging actions for'
                                 'this guild.')
-    async def view_audit_actions(self, ctx: commands.Context) -> None:
+    async def view_audit_actions(self, ctx: Context) -> None:
         """
         A method to view the currently enabled audit (logging) actions (if any) for the guild.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -186,14 +187,14 @@ class Audit(commands.Cog):
                                 'with the current settings, you can submit them.\nNote: If the cancel reaction is '
                                 'selected, changes will be discarded. Changes are also discarded after 5 minutes of '
                                 'inactivity.')
-    async def change_audit_actions(self, ctx: commands.Context) -> None:
+    async def change_audit_actions(self, ctx: Context) -> None:
         """
         A method to change the audit (logging) actions for the guild.
         This is implemented via a discord.ext.menus interface.
             For a more detailed description of how the menu works, see the ActionBitMenu class.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -224,12 +225,12 @@ class Audit(commands.Cog):
                            help='Sets the Audit Log channel for this guild. Once set, any enabled Logging Actions will '
                                 'be sent to this channel.\n\nNote: attempts to search for the specified channel by: '
                                 '(1) ID, (2) mention, (3) name.')
-    async def set_audit_channel(self, ctx: commands.Context, channel: discord.TextChannel) -> None:
+    async def set_audit_channel(self, ctx: Context, channel: discord.TextChannel) -> None:
         """
         A method to set (or change) the logging channel for the guild.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             channel (discord.TextChannel): The new logging channel for the guild.
 
         Returns:
@@ -369,12 +370,12 @@ class ActionBitMenu(menus.Menu):
         self.bits = bits
         self.condition = condition
 
-    async def send_initial_message(self, ctx: commands.Context, channel: discord.TextChannel) -> discord.Message:
+    async def send_initial_message(self, ctx: Context, channel: discord.TextChannel) -> discord.Message:
         """
         Sends the initial menu message.
 
         Parameters:
-            ctx (commands.Context): The context to send the initial message with.
+            ctx (Context): The context to send the initial message with.
             channel (discord.TextChannel): The channel to send the initial message to.
 
         Returns:

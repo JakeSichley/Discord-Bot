@@ -28,6 +28,7 @@ from os import getenv
 from time import time
 from random import shuffle
 from dreambot import DreamBot
+from utils.context import Context as discord_Context
 import asyncio
 import twitchio
 
@@ -107,12 +108,12 @@ class Twitch(discord_commands.Cog):
 
     @discord_commands.has_role('Community Stream')
     @discord_commands.command(name='twitchgiveaway', aliases=['tg'])
-    async def discord_command(self, ctx: discord_commands.Context, interval: int, remove=True):
+    async def discord_command(self, ctx: discord_Context, interval: int, remove=True):
         """
         A discord_commands.Command to invoke the method `twitch_giveaway` in the designated Twitch channel.
 
         Parameters:
-            ctx (discord_commands.Context): The invocation context.
+            ctx (discord_Context): The invocation context.
             interval (int): The time interval in minutes to consider users eligible for a giveaway.
             remove (bool): Whether the winner should be removed form list of eligible users.
 

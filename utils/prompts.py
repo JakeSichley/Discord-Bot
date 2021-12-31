@@ -27,18 +27,19 @@ from dreambot import DreamBot
 from typing import List, Tuple, Optional
 from asyncio import TimeoutError
 from discord.ext import commands
+from utils.context import Context
 import discord
 
 
 async def prompt_user_for_voice_channel(
-        bot: DreamBot, ctx: commands.Context, initial_prompt: Optional[str] = None
+        bot: DreamBot, ctx: Context, initial_prompt: Optional[str] = None
 ) -> Tuple[List[discord.Message], Optional[discord.VoiceChannel]]:
     """
     A method to fetch a discord.VoiceChannel from a user.
 
     Parameters:
         bot (DreamBot): The discord bot.
-        ctx (commands.Context): The invocation context.
+        ctx (Context): The invocation context.
         initial_prompt (Optional[str]): The initial message to send during the prompt.
 
     Output:
@@ -50,16 +51,12 @@ async def prompt_user_for_voice_channel(
 
     sent_messages = [await ctx.send(initial_prompt)] if initial_prompt else []
 
-    # noinspection PyMissingOrEmptyDocstring
-    def message_check(m):
-        return m.author == ctx.author
-
     # wrap the entire operation in a try -> break this with timeout
     try:
         # give the user multiple attempts to pass a valid argument
         while True:
             # wait for them to respond
-            response = await bot.wait_for('message', timeout=30.0, check=message_check)
+            response = await bot.wait_for('message', timeout=30.0, check=lambda m: m.author == ctx.author)
             # try to convert their response to a VoiceChannel object
             try:
                 channel = await commands.VoiceChannelConverter().convert(ctx, response.content)
@@ -74,7 +71,7 @@ async def prompt_user_for_voice_channel(
 
 
 async def prompt_user_for_role(
-        bot: DreamBot, ctx: commands.Context, bot_role: discord.Role, author_role: discord.Role,
+        bot: DreamBot, ctx: Context, bot_role: discord.Role, author_role: discord.Role,
         initial_prompt: Optional[str] = None
 ) -> Tuple[List[discord.Message], Optional[discord.Role]]:
     """
@@ -82,7 +79,7 @@ async def prompt_user_for_role(
 
     Parameters:
         bot (DreamBot): The discord bot.
-        ctx (commands.Context): The invocation context.
+        ctx (Context): The invocation context.
         bot_role (commands.Role): The bot's role in the invocation server.
         author_role (commands.Role): The author's role in the invocation server.
         initial_prompt (Optional[str]): The initial message to send during the prompt.
@@ -96,16 +93,12 @@ async def prompt_user_for_role(
 
     sent_messages = [await ctx.send(initial_prompt)] if initial_prompt else []
 
-    # noinspection PyMissingOrEmptyDocstring
-    def message_check(m):
-        return m.author == ctx.author
-
     # wrap the entire operation in a try -> break this with timeout
     try:
         # give the user multiple attempts to pass a valid argument
         while True:
             # wait for them to respond
-            response = await bot.wait_for('message', timeout=30.0, check=message_check)
+            response = await bot.wait_for('message', timeout=30.0, check=lambda m: m.author == ctx.author)
             # try to convert their response to a role object
             try:
                 role = await commands.RoleConverter().convert(ctx, response.content)
@@ -132,14 +125,14 @@ async def prompt_user_for_role(
 
 
 async def prompt_user_for_message(
-        bot: DreamBot, ctx: commands.Context, initial_prompt: Optional[str] = None
+        bot: DreamBot, ctx: Context, initial_prompt: Optional[str] = None
 ) -> Tuple[List[discord.Message], Optional[discord.Message]]:
     """
     A method to fetch a discord.Message from a user.
 
     Parameters:
         bot (DreamBot): The discord bot.
-        ctx (commands.Context): The invocation context.
+        ctx (Context): The invocation context.
         initial_prompt (Optional[str]): The initial message to send during the prompt.
 
     Output:
@@ -151,16 +144,12 @@ async def prompt_user_for_message(
 
     sent_messages = [await ctx.send(initial_prompt)] if initial_prompt else []
 
-    # noinspection PyMissingOrEmptyDocstring
-    def message_check(m):
-        return m.author == ctx.author
-
     # wrap the entire operation in a try -> break this with timeout
     try:
         # give the user multiple attempts to pass a valid argument
         while True:
             # wait for them to respond
-            response = await bot.wait_for('message', timeout=30.0, check=message_check)
+            response = await bot.wait_for('message', timeout=30.0, check=lambda m: m.author == ctx.author)
             # try to convert their response to a message object
             try:
                 message = await commands.MessageConverter().convert(ctx, response.content)

@@ -28,6 +28,7 @@ from utils.database_utils import execute_query, retrieve_query
 from utils.converters import GuildConverter
 from utils.prompts import prompt_user_for_role, prompt_user_for_message
 from utils.utils import cleanup
+from utils.context import Context
 from typing import Union, Optional, List, Tuple
 from math import ceil
 from dreambot import DreamBot
@@ -53,12 +54,12 @@ class ReactionRoles(commands.Cog):
         self.bot = bot
 
     @commands.group(name='reactionrole', aliases=['rr', 'reactionroles'])
-    async def reaction_role(self, ctx: commands.Context) -> None:
+    async def reaction_role(self, ctx: Context) -> None:
         """
         Parent command that handles the reaction role commands.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -76,13 +77,13 @@ class ReactionRoles(commands.Cog):
                                             ' the role name in order for it to be properly parsed ("my role").\nYou can'
                                             ' also use this method to change the role of an existing reaction. Specify'
                                             ' the same message and reaction and simply supply a new role!')
-    async def add_reaction_role(self, ctx: commands.Context, message: discord.Message = None,
+    async def add_reaction_role(self, ctx: Context, message: discord.Message = None,
                                 role: discord.Role = None) -> None:
         """
         Adds a reaction role to a specified message.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             message (discord.Message): The base message for the reaction role. Could be None.
             role: (discord.Role): The role to grant/remove when a user reacts. Could be None.
 
@@ -131,11 +132,23 @@ class ReactionRoles(commands.Cog):
                                           '\nYou can react to this message with the reaction!')
         cleanup_messages.append(reaction_message)
 
-        # noinspection PyMissingOrEmptyDocstring
         def reaction_check(pl: discord.RawReactionActionEvent):
-            if pl.event_type == 'REACTION_REMOVE':
-                return
-            return pl.message_id == reaction_message.id and pl.member == ctx.author
+            """
+            Our check criteria to wait for.
+
+            Return a payload if:
+                (1) The reaction was to the correct message,
+                and (2) The reaction was added (not removed),
+                and (3) The user adding the reaction is our original author
+
+            Parameters:
+                pl (discord.RawReactionActionEvent): The payload data to check requirements against.
+
+            Returns:
+                (bool): Whether the payload meets our check criteria.
+            """
+
+            return pl.message_id == reaction_message.id and pl.member == ctx.author and pl.event_type == 'REACTION_ADD'
 
         # wrap the entire operation in a try -> break this with timeout
         try:
@@ -168,12 +181,12 @@ class ReactionRoles(commands.Cog):
                                                'specific reaction, consider using "add" instead!\nIf you wish to '
                                                'remove all reaction roles from a message, consider using "clear" '
                                                'instead!')
-    async def remove_reaction_role(self, ctx: commands.Context, message: discord.Message = None) -> None:
+    async def remove_reaction_role(self, ctx: Context, message: discord.Message = None) -> None:
         """
         Removes a reaction role from a specified message.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             message (discord.Message): The base message for the reaction role. Could be None.
 
         Returns:
@@ -205,11 +218,26 @@ class ReactionRoles(commands.Cog):
             await reaction_role_pagination.start(message)
             cleanup_messages.append(reaction_role_pagination.message)
 
-            # noinspection PyMissingOrEmptyDocstring
             def reaction_check(pl: discord.RawReactionActionEvent):
+                """
+                Our check criteria to wait for.
+
+                Return a payload if:
+                    (1) The reaction was to the correct message,
+                    and (2) The reaction was added (not removed),
+                    and (3) The user adding the reaction is our original author
+                    and (4) The added reaction is one of our active reactions
+
+                Parameters:
+                    pl (discord.RawReactionActionEvent): The payload data to check requirements against.
+
+                Returns:
+                    (bool): Whether the payload meets our check criteria.
+                """
+
                 return pl.message_id == reaction_role_pagination.message.id and \
-                       pl.member == ctx.author and \
-                       str(pl.emoji) in reaction_role_pagination.active_reactions
+                    pl.member == ctx.author and \
+                    str(pl.emoji) in reaction_role_pagination.active_reactions
 
             while reaction_role_pagination.active:
                 try:
@@ -277,12 +305,12 @@ class ReactionRoles(commands.Cog):
                                               ' this command without a supplying a message, you will be prompted for'
                                               ' one.\nIf you wish to remove only a single reaction role, consider'
                                               ' using "remove" instead!')
-    async def clear_reaction_roles(self, ctx: commands.Context, message: discord.Message = None) -> None:
+    async def clear_reaction_roles(self, ctx: Context, message: discord.Message = None) -> None:
         """
         Clears all reaction roles from a specified message.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             message (discord.Message): The base message for the reaction role. Could be None.
 
         Returns:
@@ -353,7 +381,7 @@ class ReactionRoles(commands.Cog):
     @reaction_role.command(name='check', help='Generates a breakdown of reaction roles for the given scope. Valid '
                                               'scopes: Guild, Channel, Message.')
     async def check_reaction_roles(
-            self, ctx: commands.Context, source: Union[GuildConverter, discord.TextChannel, discord.Message]
+            self, ctx: Context, source: Union[GuildConverter, discord.TextChannel, discord.Message]
     ) -> None:
         """
         Generates a breakdown of reaction roles for the given scope. Valid scopes: Guild, Channel, Message.
@@ -362,7 +390,7 @@ class ReactionRoles(commands.Cog):
             specified scope has been filled out.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             source (Union[discord.Guild, discord.TextChannel, discord.Message]):
                 The scope for which a reaction role breakdown should be generated.
 
@@ -548,7 +576,7 @@ class ReactionRolePagination:
         EMOJI_TO_INT (dict): Pairs numbered key-cap emojis to their respective integers.
 
     Attributes:
-        ctx (commands.Context): The invocation context.
+        ctx (Context): The invocation context.
         data (List[Tuple[str, discord.Role]]): The reaction (str) and Role data for the requested source.
         message (discord.Message): The message containing the reaction role pagination embed.
         page (int): The current page.
@@ -567,12 +595,12 @@ class ReactionRolePagination:
         u'6\ufe0f\u20e3': 6
     }
 
-    def __init__(self, ctx: commands.Context, data: List[Tuple[str, discord.Role]]) -> None:
+    def __init__(self, ctx: Context, data: List[Tuple[str, discord.Role]]) -> None:
         """
         The constructor for the ReactionRolePagination class.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             data (List[Tuple[str, discord.Role]]): The reaction (str) and Role data for the requested source.
 
         Returns:

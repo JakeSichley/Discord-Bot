@@ -26,7 +26,8 @@ from discord.ext import commands
 from dreambot import DreamBot
 from utils import image_utils
 from utils.defaults import MessageReply
-from typing import Union, Optional
+from typing import Union
+from utils.context import Context
 import discord
 
 
@@ -49,12 +50,12 @@ class Images(commands.Cog):
         self.bot = bot
 
     @commands.command(name='invert')
-    async def invert(self, ctx: commands.Context, source: Union[discord.Message, str] = MessageReply) -> None:
+    async def invert(self, ctx: Context, source: Union[discord.Message, str] = MessageReply) -> None:
         """
         A method that invokes image inversion from ImageUtils.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             source ([Union[discord.Message, str]]): The source of the image to invert (can be a message reply).
 
         Output:
@@ -86,12 +87,12 @@ class Images(commands.Cog):
                 return
 
     @commands.command(name='iasip', aliases=['sun', 'sunny', 'title'])
-    async def iasip_title_card(self, ctx: commands.Context, *, title: str) -> None:
+    async def iasip_title_card(self, ctx: Context, *, title: str) -> None:
         """
         A method that invokes "It's Always Sunny In Philadelphia" title card generation from ImageUtils.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             title (str): The text to display on the title card.
 
         Output:

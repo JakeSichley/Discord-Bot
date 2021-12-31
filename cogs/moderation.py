@@ -28,6 +28,7 @@ from typing import Union
 from dreambot import DreamBot
 from utils.converters import DefaultMemberConverter
 from aiosqlite import Error as aiosqliteError
+from utils.context import Context
 import discord
 
 CHANNEL_OBJECT = Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]
@@ -56,7 +57,7 @@ class Moderation(commands.Cog):
     @commands.bot_has_permissions(manage_messages=True, read_message_history=True)
     @commands.command(name='purge', help='Purges n+1 messages from the current channel. If a user is supplied, the bot '
                                          'will purge any message from that user in the last n messages.')
-    async def purge(self, ctx: commands.Context, limit: int = 0, user: discord.Member = None):
+    async def purge(self, ctx: Context, limit: int = 0, user: discord.Member = None):
         """
         A method to purge messages from a channel.
         Should a user ID be supplied, any messages from that user in the last (limit) messages will be deleted.
@@ -67,7 +68,7 @@ class Moderation(commands.Cog):
                 and read the message history of a channel, both of which are required for the deletion of messages.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             limit (int): The number of messages to purge. Default: 0.
             user (discord.User): The User to delete messages from. Default: None.
 
@@ -81,17 +82,13 @@ class Moderation(commands.Cog):
         if user is None:
             await ctx.channel.purge(limit=limit + 1)
         else:
-            # noinspection PyMissingOrEmptyDocstring
-            def purge_check(message):
-                return message.author.id == user.id
-
-            await ctx.channel.purge(limit=limit + 1, check=purge_check)
+            await ctx.channel.purge(limit=limit + 1, check=lambda m: m.author == user)
 
     @commands.has_guild_permissions(manage_channels=True)
     @commands.bot_has_guild_permissions(manage_channels=True)
     @commands.command(name='duplicate_permissions', aliases=['dp'])
     async def duplicate_channel_permissions(
-            self, ctx: commands.Context, base_channel: CHANNEL_OBJECT, base_permission_owner: PERMISSIONS_PARENT,
+            self, ctx: Context, base_channel: CHANNEL_OBJECT, base_permission_owner: PERMISSIONS_PARENT,
             target_channel: CHANNEL_OBJECT, target_permission_owner: PERMISSIONS_PARENT
     ) -> None:
         """
@@ -102,7 +99,7 @@ class Moderation(commands.Cog):
             bot_has_guild_permissions(manage_channels)
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             base_channel (Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]): The base channel
                 to source permissions from.
             base_permission_owner (Union[discord.Role, discord.Member]): The role or member whose permissions should
@@ -132,7 +129,7 @@ class Moderation(commands.Cog):
     @commands.has_guild_permissions(manage_roles=True)
     @commands.bot_has_guild_permissions(manage_roles=True)
     @commands.command(name='bulkadd', help='Adds a specified role to a large number of users at once.')
-    async def bulk_add_roles(self, ctx: commands.Context, role: discord.Role, *members: DefaultMemberConverter):
+    async def bulk_add_roles(self, ctx: Context, role: discord.Role, *members: DefaultMemberConverter):
         """
         A method to bulk add a role to members.
         Uses a special converter that attempts to remove whitespace errors and defaults to returning the member's name
@@ -143,7 +140,7 @@ class Moderation(commands.Cog):
             bot_has_permissions(manage_roles): Whether the bot can manage roles.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             role (discord.Role): The role to add to the members.
             *members (discord.Member): A variadic argument representing the members to add the role to.
 
@@ -180,7 +177,7 @@ class Moderation(commands.Cog):
     @commands.has_guild_permissions(manage_roles=True)
     @commands.command(name='getdefaultrole', aliases=['gdr'],
                       help='Displays the role (if any) users are auto-granted on joining the guild.')
-    async def get_default_role(self, ctx: commands.Context) -> None:
+    async def get_default_role(self, ctx: Context) -> None:
         """
         A method for checking which role (if any) will be auto-granted to new users joining the guild.
 
@@ -188,7 +185,7 @@ class Moderation(commands.Cog):
             has_guild_permissions(manage_guild): Whether the invoking user can manage the guild.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Output:
             A message detailing the default role for the guild.
@@ -211,7 +208,7 @@ class Moderation(commands.Cog):
                       help='Sets the role users are auto-granted on joining.'
                            '\nTo remove the default role, simply call this command without passing a role.'
                            '\nNote: The role selected must be lower than the bot\'s role and lower than your role.')
-    async def set_default_role(self, ctx: commands.Context, role: discord.Role = None) -> None:
+    async def set_default_role(self, ctx: Context, role: discord.Role = None) -> None:
         """
         A method for checking which role (if any) will be auto-granted to new users joining the guild.
 
@@ -221,7 +218,7 @@ class Moderation(commands.Cog):
                 Whether the invoking user can manage the guild and roles.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             role (discord.Role): The role to set as the default role. Could be None.
 
         Output:

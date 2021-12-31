@@ -23,7 +23,6 @@ SOFTWARE.
 """
 
 from discord.ext import commands
-from discord import TextChannel, HTTPException, Message, Embed, RawReactionActionEvent
 from discord.abc import Messageable
 from io import StringIO
 from contextlib import redirect_stdout
@@ -39,6 +38,9 @@ from utils.database_utils import execute_query, retrieve_query
 from aiosqlite import Error as aiosqliteError
 from datetime import datetime
 from asyncio import TimeoutError
+from utils.context import Context
+from copy import copy
+import discord
 
 
 class Admin(commands.Cog):
@@ -56,18 +58,21 @@ class Admin(commands.Cog):
 
         Parameters:
             bot (commands.Bot): The Discord bot.
+
+        Returns:
+            None.
         """
 
         self.bot = bot
         self._last_result = None
 
-    async def cog_check(self, ctx: commands.Context) -> bool:
+    async def cog_check(self, ctx: Context) -> bool:
         """
         A method that registers a cog-wide check.
         Requires the invoking user to be the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             (boolean): Whether the invoking user is the bot's owner.
@@ -76,7 +81,7 @@ class Admin(commands.Cog):
         return await self.bot.is_owner(ctx.author)
 
     @commands.command(name='admin_help', aliases=['ahelp', 'adminhelp'], hidden=True)
-    async def admin_help_command(self, ctx: commands.Context) -> None:
+    async def admin_help_command(self, ctx: Context) -> None:
         """
         A command to generate help information for the Admin cog.
         The native help command will not generate information for the Admin cog, since all commands are hidden.
@@ -85,7 +90,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Output:
             Help information for admin-only commands.
@@ -107,7 +112,7 @@ class Admin(commands.Cog):
         await ctx.send(help_string)
 
     @commands.command(name='reload', aliases=['load'], hidden=True)
-    async def reload(self, ctx: commands.Context, module: str) -> None:
+    async def reload(self, ctx: Context, module: str) -> None:
         """
         A command to reload a module.
         If the reload fails, the previous state of module is maintained.
@@ -117,7 +122,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             module (str): The module to be reloaded.
 
         Output:
@@ -135,7 +140,7 @@ class Admin(commands.Cog):
             await ctx.send(f'Loaded Module: `{module}`')
 
     @commands.command(name='unload', hidden=True)
-    async def unload(self, ctx: commands.Context, module: str) -> None:
+    async def unload(self, ctx: Context, module: str) -> None:
         """
         A command to unload a module.
 
@@ -143,7 +148,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             module (str): The module to be unloaded.
 
         Output:
@@ -165,7 +170,7 @@ class Admin(commands.Cog):
             await ctx.send(f'Could Not Unload Module: `{module}`')
 
     @commands.command(name='logout', aliases=['shutdown'], hidden=True)
-    async def logout(self, ctx: commands.Context) -> None:
+    async def logout(self, ctx: Context) -> None:
         """
         A command to stop (close/logout) the bot.
         The command must be confirmed to complete the logout.
@@ -174,7 +179,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Output:
            A confirmation message.
@@ -187,7 +192,7 @@ class Admin(commands.Cog):
         await self.bot.close()
 
     @commands.command(name='eval', hidden=True)
-    async def _eval(self, ctx: commands.Context, _ev: str) -> None:
+    async def _eval(self, ctx: Context, _ev: str) -> None:
         """
         A command to evaluate a python statement.
         Should the evaluation encounter an exception, the output will be the exception details.
@@ -196,7 +201,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             _ev (str): The statement to be evaluated.
 
         Output:
@@ -215,7 +220,7 @@ class Admin(commands.Cog):
         await ctx.send(output)
 
     @commands.command(name='sql', hidden=True)
-    async def sql(self, ctx: commands.Context, *, query: str) -> None:
+    async def sql(self, ctx: Context, *, query: str) -> None:
         """
         A command to execute a sqlite3 statement.
         If the statement type is 'SELECT', successful executions will send the result.
@@ -225,7 +230,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             query (str): The statement to be executed.
 
         Output:
@@ -248,7 +253,7 @@ class Admin(commands.Cog):
             await ctx.send(f'Error: {e}')
 
     @commands.command(name='reloadprefixes', aliases=['rp'], hidden=True)
-    async def reload_prefixes(self, ctx: commands.Context) -> None:
+    async def reload_prefixes(self, ctx: Context) -> None:
         """
         A command to reload the bot's store prefixes.
         Prefixes are normally reloaded when explicitly changed.
@@ -257,7 +262,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Output:
             Success: 'Reloaded Prefixes'.
@@ -271,7 +276,7 @@ class Admin(commands.Cog):
         await ctx.send('Reloaded Prefixes.')
 
     @commands.command(name='resetcooldown', aliases=['rc'], hidden=True)
-    async def reset_cooldown(self, ctx: commands.Context, command: str) -> None:
+    async def reset_cooldown(self, ctx: Context, command: str) -> None:
         """
         A command to reset the cooldown of a command.
 
@@ -279,7 +284,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             command (str): The command for which the cooldown will be reset.
 
         Output:
@@ -293,7 +298,7 @@ class Admin(commands.Cog):
         await ctx.send(f'Reset cooldown of Command: `{command}`')
 
     @commands.command(name='exec', aliases=['execute'], hidden=True)
-    async def _exec(self, ctx: commands.Context, *, body: str) -> None:
+    async def _exec(self, ctx: Context, *, body: str) -> None:
         """
         A command to execute a Python code block and output the result, if any.
 
@@ -301,7 +306,7 @@ class Admin(commands.Cog):
             is_owner(): Whether the invoking user is the bot's owner.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             body (str): The block of code to be executed.
 
         Output:
@@ -363,12 +368,12 @@ class Admin(commands.Cog):
 
     @ensure_git_credentials()
     @commands.group(name='git', hidden=True)
-    async def git(self, ctx: commands.Context) -> None:
+    async def git(self, ctx: Context) -> None:
         """
         Parent command that handles git related commands.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -378,12 +383,12 @@ class Admin(commands.Cog):
             await ctx.send_help('git')
 
     @git.command(name='pull', aliases=['p'], hidden=True)
-    async def git_pull(self, ctx: commands.Context) -> None:
+    async def git_pull(self, ctx: Context) -> None:
         """
         Pulls the latest commit from master.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -393,7 +398,7 @@ class Admin(commands.Cog):
         actual_result = [x for x in result if x]
 
         if not actual_result:
-            await ctx.send('The bot is already up to date.')
+            await ctx.send('The bot is already up-to-date.')
             return
 
         output = '\n'.join(x.decode() for x in actual_result)
@@ -402,14 +407,14 @@ class Admin(commands.Cog):
         try:
             await confirmation.add_reaction('✅')
             await confirmation.add_reaction('❌')
-        except HTTPException:
+        except discord.HTTPException:
             await ctx.send("Couldn't add confirmation reactions. Aborting.")
             return
 
         owner_id = self.bot.owner_id
 
         # noinspection PyMissingOrEmptyDocstring
-        def reaction_check(pl: RawReactionActionEvent):
+        def reaction_check(pl: discord.RawReactionActionEvent):
             if pl.event_type == 'REACTION_REMOVE':
                 return
             return pl.message_id == confirmation.id and pl.member.id == owner_id
@@ -428,12 +433,12 @@ class Admin(commands.Cog):
             await ctx.send('Continuing')
 
     @git.command(name='dry_run', aliases=['dry', 'd'], hidden=True)
-    async def dry_run(self, ctx: commands.Context) -> None:
+    async def dry_run(self, ctx: Context) -> None:
         """
         Performs a dry run of git pull. Equivalent to git fetch && git diff --stat origin/master.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -445,12 +450,12 @@ class Admin(commands.Cog):
         await ctx.send(f'**Pulling would modify the following the following files:**\n```\n{output}```')
 
     @git.command(name='branches', aliases=['branch', 'b'], hidden=True)
-    async def git_branches(self, ctx: commands.Context) -> None:
+    async def git_branches(self, ctx: Context) -> None:
         """
         Fetches a list of branches from the bot's repository.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -481,7 +486,7 @@ class Admin(commands.Cog):
         except (KeyError, TypeError):
             thumbnail = 'https://pbs.twimg.com/profile_images/1414990564408262661/r6YemvF9_400x400.jpg'
 
-        embed = Embed(
+        embed = discord.Embed(
             title=f"Overview of **{self.bot.git['git_repo']}**",
             colour=0x58a6ff,
             url=f"https://github.com/{self.bot.git['git_user']}/{self.bot.git['git_repo']}"
@@ -498,14 +503,36 @@ class Admin(commands.Cog):
 
         await ctx.send(embed=embed)
 
+    @commands.command(name='as', hidden=True)
+    async def execute_command_as(
+            self, ctx: Context, invoker: Union[discord.Member, discord.User], *, command: str
+    ) -> None:
+        """
+        Executes a command as the specified user.
+
+        Parameters:
+            ctx (Context): The invocation context.
+            invoker (Union[discord.Member, discord.User]): The user to perform the command as.
+            command (str): The name of the command to execute.
+
+        Returns:
+            None.
+        """
+
+        message = copy(ctx.message)
+        message.author = invoker
+        message.content = ctx.prefix + command
+        context = await self.bot.get_context(message)
+        await self.bot.invoke(context)
+
     @commands.command(name='archive', hidden=True)
-    async def archive(self, ctx: commands.Context, target: int) -> None:
+    async def archive(self, ctx: Context, target: int) -> None:
         """
         Archives a channel as efficiently as possible. Places messages without attachments, files, or embeds into a
         buffer and sends the buffer when the message character limit is exceeded.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             target (int): The beginning channel id (archive this channel).
 
         Returns:
@@ -517,7 +544,7 @@ class Admin(commands.Cog):
         # try to create the new archive channel
         category = await ctx.guild.create_category(name=target.name)
 
-        if isinstance(target, TextChannel):
+        if isinstance(target, discord.TextChannel):
             channel_list = [target]
         else:
             channel_list = target.channels
@@ -528,7 +555,7 @@ class Admin(commands.Cog):
 
         # otherwise, begin the archive process
         else:
-            for base_channel in [channel for channel in channel_list if isinstance(channel, TextChannel)]:
+            for base_channel in [channel for channel in channel_list if isinstance(channel, discord.TextChannel)]:
                 # reset buffer after each channel
                 buffer = ''
                 channel = await category.create_text_channel(name=base_channel.name)
@@ -551,14 +578,14 @@ class Admin(commands.Cog):
                                         message.content += '\n'
                                     message.content += '\n'.join(bad_attachments)
 
-                            except HTTPException:
+                            except discord.HTTPException:
                                 pass
 
                         # check for embeds and if any, save the first one (shouldn't have multiple embeds)
                         if len(message.embeds) > 0:
                             try:
                                 embeds = ([embed for embed in message.embeds])[0]
-                            except HTTPException:
+                            except discord.HTTPException:
                                 pass
 
                         # case 1: attachments or embeds with a non-empty buffer
@@ -611,7 +638,7 @@ class Admin(commands.Cog):
                         await try_to_send_buffer(channel, buffer, True)
 
 
-async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool = False) -> Union[Message, str]:
+async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool = False) -> Union[discord.Message, str]:
     """
     Parses a string buffer and either sends or returns the buffer in an optimal break point.
 

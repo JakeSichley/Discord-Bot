@@ -28,6 +28,7 @@ from sys import stderr
 from traceback import print_exception, format_exception
 from dreambot import DreamBot
 from aiohttp import ClientResponseError
+from utils.context import Context
 import logging
 
 
@@ -50,14 +51,14 @@ class Exceptions(commands.Cog):
         self.bot = bot
 
     @commands.Cog.listener()
-    async def on_command_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
+    async def on_command_error(self, ctx: Context, error: commands.CommandError) -> None:
         """
         A listener method that is called whenever a command encounters an error.
         Most user-facing exceptions output a message detailing why the command invocation failed.
         Other exceptions are either handled silently or logged.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             error (Exception): The encountered error.
 
         Output:

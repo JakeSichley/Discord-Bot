@@ -27,12 +27,13 @@ from utils.utils import localize_time, readable_flags
 from utils.defaults import MessageReply
 from utils.network_utils import network_request, NetworkReturnType
 from utils.database_utils import execute_query, retrieve_query
+from utils.context import Context
 from typing import Optional
 from re import findall
-from inspect import Parameter
 from dreambot import DreamBot
 from aiosqlite import Error as aiosqliteError
 from aiohttp import ClientResponseError
+from discord.ext.commands.default import Author
 import datetime
 import pytz
 import discord
@@ -57,14 +58,15 @@ class Utility(commands.Cog):
         self.bot = bot
 
     @commands.command(name='time', help='Responds with the current time. Can be supplied with a timezone.\nFor a full '
-                      'list of supported timezones, see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones')
-    async def current_time(self, ctx: commands.Context, timezone: str = 'UTC') -> None:
+                                        'list of supported timezones, see '
+                                        'https://en.wikipedia.org/wiki/List_of_tz_database_time_zones')
+    async def current_time(self, ctx: Context, timezone: str = 'UTC') -> None:
         """
         A method to output the current time in a specified timezone.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
-            timezone (str): A support pytz timezone. Default: 'UTC'.
+            ctx (Context): The invocation context.
+            timezone (str): A supported tz timezone. Default: 'UTC'.
 
         Output:
             The time in the specified timezone.
@@ -80,13 +82,13 @@ class Utility(commands.Cog):
         await ctx.send(f'{ctx.author.mention}, the current time is {printable_format}')
 
     @commands.command(name='devserver', help='Responds with an invite link to the development server. Useful for '
-                      'getting assistance with a bug, or requesting a new feature!')
-    async def dev_server(self, ctx: commands.Context) -> None:
+                                             'getting assistance with a bug, or requesting a new feature!')
+    async def dev_server(self, ctx: Context) -> None:
         """
         A method to output a link to the DreamBot development server.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Output:
             A link to the development server.
@@ -102,7 +104,7 @@ class Utility(commands.Cog):
     @commands.has_permissions(administrator=True)
     @commands.guild_only()
     @commands.command(name='setprefix', help='Sets the bot\'s prefix for this guild. Administrator use only.')
-    async def set_prefix(self, ctx: commands.Context, prefix: str) -> None:
+    async def set_prefix(self, ctx: Context, prefix: str) -> None:
         """
         A method to change the command prefix for a guild. Only usable by a guild's administrators.
 
@@ -112,7 +114,7 @@ class Utility(commands.Cog):
             guild_only(): Whether the command was invoked from a guild. No direct messages.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             prefix (str): The new prefix to use.
 
         Output:
@@ -137,7 +139,7 @@ class Utility(commands.Cog):
             await ctx.send('Failed to change the guild\'s prefix.')
 
     @commands.command(name='getprefix', aliases=['prefix'], help='Gets the bot\'s prefix for this guild.')
-    async def get_prefix(self, ctx: commands.Context) -> None:
+    async def get_prefix(self, ctx: Context) -> None:
         """
         A method that outputs the command prefix for a guild.
 
@@ -145,7 +147,7 @@ class Utility(commands.Cog):
             guild_only(): Whether the command was invoked from a guild. No direct messages.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Output:
             Success: The prefix assigned to the guild.
@@ -173,12 +175,12 @@ class Utility(commands.Cog):
             await ctx.send('Could not retrieve the guild\'s prefix.')
 
     @commands.command(name='uptime', help='Returns current bot uptime.')
-    async def uptime(self, ctx: commands.Context) -> None:
+    async def uptime(self, ctx: Context) -> None:
         """
         A method that outputs the uptime of the bot.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Output:
             The date and time the bot was started, as well as the duration the bot has been online.
@@ -198,12 +200,12 @@ class Utility(commands.Cog):
     @commands.guild_only()
     @commands.command(name='userinfo', aliases=['ui'],
                       help='Generates an embed detailing information about the specified user')
-    async def user_info(self, ctx: commands.Context, user: discord.Member = None) -> None:
+    async def user_info(self, ctx: Context, user: discord.Member = Author) -> None:
         """
         A method that outputs user information.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             user (Optional[discord.Member]): The member to generate information about. Defaults to command invoker.
 
         Output:
@@ -212,9 +214,6 @@ class Utility(commands.Cog):
         Returns:
             None.
         """
-
-        if not user:
-            user = ctx.author
 
         embed = discord.Embed(title=f'{str(user)}\'s User Information', color=0x1dcaff)
         if user.nick:
@@ -233,12 +232,12 @@ class Utility(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name='unicodeemoji', aliases=['ue', 'eu'])
-    async def unicode_emoji(self, ctx: commands.Context, emoji: str):
+    async def unicode_emoji(self, ctx: Context, emoji: str):
         """
         A method to convert emojis to their respective unicode string.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             emoji (str): The emoji to encode.
 
         Output:
@@ -253,13 +252,13 @@ class Utility(commands.Cog):
     @commands.has_guild_permissions(manage_emojis=True)
     @commands.bot_has_guild_permissions(manage_emojis=True)
     @commands.command(name='raw_yoink', aliases=['rawyoink'], help='Yoinks an emoji based on its id.')
-    async def raw_yoink_emoji(self, ctx: commands.Context,  source: int, name: Optional[str] = None,
+    async def raw_yoink_emoji(self, ctx: Context, source: int, name: Optional[str] = None,
                               animated: Optional[bool] = False) -> None:
         """
         A method to "yoink" an emoji. Retrieves the emoji as an asset and uploads it to the current guild.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             source (int): The ID of the emoji.
             name (Optional[str]): The name of the emoji.
             animated (Optional[bool]): Whether the emoji is animated.
@@ -279,22 +278,25 @@ class Utility(commands.Cog):
         name = name if name else str(source)
 
         try:
-            await ctx.guild.create_custom_emoji(name=name, image=emoji_asset, reason=f'Yoink\'d by {ctx.author}')
+            created_emoji = await ctx.guild.create_custom_emoji(
+                name=name, image=emoji_asset, reason=f'Yoink\'d by {ctx.author}'
+            )
+            try:
+                await ctx.react(created_emoji, raise_exceptions=True)
+            except discord.HTTPException:
+                await ctx.tick()
         except discord.HTTPException as e:
             await ctx.send(f'**{name}** failed with `{e.text}`')
-            return
-
-        await ctx.send(f'Successfully yoink\'d the following emoji:\n```{name}```')
 
     @commands.has_guild_permissions(manage_emojis=True)
     @commands.bot_has_guild_permissions(manage_emojis=True)
     @commands.command(name='yoink', help='Yoinks emojis from the specified message.')
-    async def yoink_emoji(self, ctx: commands.Context, source: discord.Message = MessageReply) -> None:
+    async def yoink_emoji(self, ctx: Context, source: discord.Message = MessageReply) -> None:
         """
         A method to "yoink" an emoji. Retrieves the emoji as an asset and uploads it to the current guild.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             source (Optional[discord.Message]): The message to extract emojis from (can be a message reply).
 
         Output:
@@ -303,9 +305,6 @@ class Utility(commands.Cog):
         Returns:
             None.
         """
-
-        if not isinstance(source, discord.Message):
-            raise commands.MissingRequiredArgument(Parameter('message_source', Parameter.POSITIONAL_ONLY))
 
         emojis = findall(r'<(?P<animated>a?):(?P<name>[a-zA-Z0-9_]{2,32}):(?P<id>[0-9]{18,22})>', source.content)
 
@@ -352,23 +351,26 @@ class Utility(commands.Cog):
                 continue
 
             try:
-                await ctx.guild.create_custom_emoji(
+                created_emoji = await ctx.guild.create_custom_emoji(
                     name=emoji[1], image=emoji_asset, reason=f'Yoink\'d by {ctx.author}'
                 )
+                try:
+                    await ctx.react(created_emoji, raise_exceptions=True)
+                except discord.HTTPException:
+                    success.append(emoji[1])
             except discord.HTTPException as e:
                 failed.append(f'**{emoji[1]}** failed with `{e.text}`')
-                continue
 
-            success.append(emoji[1])
+        response = ''
 
-        response = f'Successfully yoink\'d the following emoji:\n' \
-                   f'```{", ".join(success) if success else "None"}```'
+        if success:
+            response += f'Successfully yoink\'d the following emoji:\n```{", ".join(success)}```\n'
 
         if failed:
-            response += f'\nFailed to yoink the following emoji:\n' \
-                        f'```{", ".join(failed) if failed else "None"}```'
+            response += f'Failed to yoink the following emoji:\n```{", ".join(failed)}```'
 
-        await ctx.send(response)
+        if response:
+            await ctx.send(response)
 
 
 def setup(bot: DreamBot) -> None:
