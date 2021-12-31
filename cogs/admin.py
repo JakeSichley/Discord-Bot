@@ -23,7 +23,6 @@ SOFTWARE.
 """
 
 from discord.ext import commands
-from discord import TextChannel, HTTPException, Message, Embed, RawReactionActionEvent
 from discord.abc import Messageable
 from io import StringIO
 from contextlib import redirect_stdout
@@ -40,6 +39,8 @@ from aiosqlite import Error as aiosqliteError
 from datetime import datetime
 from asyncio import TimeoutError
 from utils.context import Context
+from copy import copy
+import discord
 
 
 class Admin(commands.Cog):
@@ -406,14 +407,14 @@ class Admin(commands.Cog):
         try:
             await confirmation.add_reaction('✅')
             await confirmation.add_reaction('❌')
-        except HTTPException:
+        except discord.HTTPException:
             await ctx.send("Couldn't add confirmation reactions. Aborting.")
             return
 
         owner_id = self.bot.owner_id
 
         # noinspection PyMissingOrEmptyDocstring
-        def reaction_check(pl: RawReactionActionEvent):
+        def reaction_check(pl: discord.RawReactionActionEvent):
             if pl.event_type == 'REACTION_REMOVE':
                 return
             return pl.message_id == confirmation.id and pl.member.id == owner_id
@@ -485,7 +486,7 @@ class Admin(commands.Cog):
         except (KeyError, TypeError):
             thumbnail = 'https://pbs.twimg.com/profile_images/1414990564408262661/r6YemvF9_400x400.jpg'
 
-        embed = Embed(
+        embed = discord.Embed(
             title=f"Overview of **{self.bot.git['git_repo']}**",
             colour=0x58a6ff,
             url=f"https://github.com/{self.bot.git['git_user']}/{self.bot.git['git_repo']}"
@@ -501,6 +502,28 @@ class Admin(commands.Cog):
         embed.set_footer(text="Please report any issues to my owner!")
 
         await ctx.send(embed=embed)
+
+    @commands.command(name='as', hidden=True)
+    async def execute_command_as(
+            self, ctx: Context, invoker: Union[discord.Member, discord.User], *, command: str
+    ) -> None:
+        """
+        Executes a command as the specified user.
+
+        Parameters:
+            ctx (Context): The invocation context.
+            invoker (Union[discord.Member, discord.User]): The user to perform the command as.
+            command (str): The name of the command to execute.
+
+        Returns:
+            None.
+        """
+
+        message = copy(ctx.message)
+        message.author = invoker
+        message.content = ctx.prefix + command
+        context = await self.bot.get_context(message)
+        await self.bot.invoke(context)
 
     @commands.command(name='archive', hidden=True)
     async def archive(self, ctx: Context, target: int) -> None:
@@ -521,7 +544,7 @@ class Admin(commands.Cog):
         # try to create the new archive channel
         category = await ctx.guild.create_category(name=target.name)
 
-        if isinstance(target, TextChannel):
+        if isinstance(target, discord.TextChannel):
             channel_list = [target]
         else:
             channel_list = target.channels
@@ -532,7 +555,7 @@ class Admin(commands.Cog):
 
         # otherwise, begin the archive process
         else:
-            for base_channel in [channel for channel in channel_list if isinstance(channel, TextChannel)]:
+            for base_channel in [channel for channel in channel_list if isinstance(channel, discord.TextChannel)]:
                 # reset buffer after each channel
                 buffer = ''
                 channel = await category.create_text_channel(name=base_channel.name)
@@ -555,14 +578,14 @@ class Admin(commands.Cog):
                                         message.content += '\n'
                                     message.content += '\n'.join(bad_attachments)
 
-                            except HTTPException:
+                            except discord.HTTPException:
                                 pass
 
                         # check for embeds and if any, save the first one (shouldn't have multiple embeds)
                         if len(message.embeds) > 0:
                             try:
                                 embeds = ([embed for embed in message.embeds])[0]
-                            except HTTPException:
+                            except discord.HTTPException:
                                 pass
 
                         # case 1: attachments or embeds with a non-empty buffer
@@ -615,7 +638,7 @@ class Admin(commands.Cog):
                         await try_to_send_buffer(channel, buffer, True)
 
 
-async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool = False) -> Union[Message, str]:
+async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool = False) -> Union[discord.Message, str]:
     """
     Parses a string buffer and either sends or returns the buffer in an optimal break point.
 
