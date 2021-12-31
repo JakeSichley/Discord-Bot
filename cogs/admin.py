@@ -28,7 +28,7 @@ from io import StringIO
 from contextlib import redirect_stdout
 from textwrap import indent
 from traceback import format_exc
-from utils.utils import localize_time, pairs, run_in_subprocess
+from utils.utils import localize_time, pairs, run_in_subprocess, cleanup
 from re import finditer
 from typing import Union
 from dreambot import DreamBot
@@ -39,7 +39,10 @@ from aiosqlite import Error as aiosqliteError
 from datetime import datetime
 from utils.context import Context
 from copy import copy
+from importlib import reload
 import discord
+import sys
+import re
 
 
 class Admin(commands.Cog):
@@ -393,7 +396,7 @@ class Admin(commands.Cog):
             None.
         """
 
-        result = await run_in_subprocess('git fetch && git diff --stat origin/Git-Pull')
+        result = await run_in_subprocess('git fetch && git diff --stat origin/master')
         actual_result = [x for x in result if x]
 
         if not actual_result:
@@ -408,6 +411,111 @@ class Admin(commands.Cog):
         if not confirmation:
             await ctx.send('Aborting Pull.')
             return
+
+        git_message = await ctx.send('Performing `git pull` now.')
+        git_result = await run_in_subprocess('git pull -f origin master')
+        git_actual = [x.decode() for x in git_result if x]
+        if 'Already up to date'.lower() in git_actual[0].lower():
+            await git_message.edit(content='`git pull` determined the repository to be up-to-date.')
+            return
+
+        await git_message.delete()
+
+        changes = output.replace('\n ', '\n').strip(' ')
+
+        cogs = re.findall(r'(?<=cogs/)([A-z]+)(?=\.py)', changes, re.MULTILINE)
+        utils = re.findall(r'(?<=utils/)([A-z]+)(?=\.py)', changes, re.MULTILINE)
+        core = [match.group() for match in re.finditer(r'^(?:(?!/).)*[A-z]+(?=\.py)', changes, re.MULTILINE)]
+        library = []
+
+        if 'requirements.txt' in changes:
+            pip_message = await ctx.send('Performing `pip install` now.')
+            core.append('requirements')
+            lib_output = await run_in_subprocess('pip install -r requirements.txt')
+            lib_actual = '\n'.join(x.decode() for x in lib_output if x)
+            packages = re.findall(r'successfully installed (.+)', lib_actual, re.IGNORECASE | re.MULTILINE)
+            library = packages[0].split(' ') if packages else []
+            await pip_message.delete()
+
+        fields = {
+            'Cogs': cogs,
+            'Utils': utils,
+            'Core': core,
+            'Library': library
+        }
+
+        embed = discord.Embed(title='Git Pull Changes', color=0x00bbff)
+        embed.url = f"https://github.com/{self.bot.git['git_user']}/{self.bot.git['git_repo']}"
+        embed.set_thumbnail(url=self.bot.user.avatar_url)
+        for field, value in fields.items():
+            if value:
+                embed.add_field(name=field, value='\n'.join(value))
+        embed.set_footer(text='Please report any issues to my owner!')
+
+        if core:
+            embed.description = 'Core files were modified. No reloads will be performed.' \
+                                '\nPlease perform a full restart to apply changes.'
+            await ctx.send(embed=embed)
+            return
+        else:
+            embed.description = 'Attempting to perform the following updates now.'
+            await ctx.send(embed=embed)
+
+        util_statuses, cog_statuses = [], []
+
+        # -- utils --
+        ordered_reloads = []
+
+        for file in utils:
+            if file in ['utils', 'context', 'network_utils']:
+                ordered_reloads.insert(0, f'utils.{file}')
+            else:
+                ordered_reloads.append(f'utils.{file}')
+
+        for file in ordered_reloads:
+            try:
+                module = sys.modules[file]
+            except KeyError:
+                util_statuses.append(f'{file} - Imported')
+            else:
+                # noinspection PyBroadException
+                try:
+                    reload(module)
+                except Exception as e:
+                    util_statuses.append(f'{file} - Error: {e}')
+                else:
+                    util_statuses.append(f'{file} - Reloaded')
+
+        # -- cogs --
+        for cog in cogs:
+            try:
+                try:
+                    self.bot.reload_extension(f'cogs.{cog}')
+                except commands.ExtensionNotLoaded:
+                    try:
+                        self.bot.load_extension(f'cogs.{cog}')
+                    except commands.ExtensionFailed:
+                        raise
+                    else:
+                        cog_statuses.append(f'{cog} - Loaded')
+                else:
+                    cog_statuses.append(f'{cog} - Reloaded')
+            except commands.ExtensionFailed:
+                cog_statuses.append(f'{cog} - Failed')
+
+        # -- summary --
+        output = '**Update Summary**\n```'
+
+        if util_statuses:
+            output += '----- Utils -----\n'
+            output += '\n'.join(util_statuses)
+
+        if cog_statuses:
+            output += '\n\n----- Cogs -----\n' if util_statuses else '----- Cogs -----\n'
+            output += '\n'.join(cog_statuses)
+
+        output += '\n```'
+        await ctx.send(output)
 
     @git.command(name='dry_run', aliases=['dry', 'd'], hidden=True)
     async def dry_run(self, ctx: Context) -> None:
