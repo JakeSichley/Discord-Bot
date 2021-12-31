@@ -28,7 +28,7 @@ from io import StringIO
 from contextlib import redirect_stdout
 from textwrap import indent
 from traceback import format_exc
-from utils.utils import localize_time, pairs, run_in_subprocess, cleanup
+from utils.utils import localize_time, pairs, run_in_subprocess
 from re import finditer
 from typing import Union
 from dreambot import DreamBot
@@ -529,7 +529,7 @@ class Admin(commands.Cog):
             None.
         """
 
-        result = await run_in_subprocess('git fetch && git diff --stat origin/Git-Pull')
+        result = await run_in_subprocess('git fetch && git diff --stat origin/master')
         actual_result = [x for x in result if x]
 
         if not actual_result:
