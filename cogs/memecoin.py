@@ -28,6 +28,7 @@ from utils.database_utils import execute_query, retrieve_query
 from utils.checks import check_memecoin_channel
 from typing import Optional
 from dreambot import DreamBot
+from utils.context import Context
 import discord
 
 
@@ -123,7 +124,7 @@ class MemeCoin(commands.Cog):
 
     @check_memecoin_channel()
     @commands.command(name='coins', help='Checks you how many of those sweet, sweet Meme Coins you own!')
-    async def coins(self, ctx: commands.Context) -> None:
+    async def coins(self, ctx: Context) -> None:
         """
         A method that outputs the number of Meme Coins a user currently owns.
 
@@ -131,7 +132,7 @@ class MemeCoin(commands.Cog):
             check_memecoin_channel(): Whether the command is invoked in the proper channel.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Output:
             Success: The number of coins the user currently owns.
@@ -152,7 +153,7 @@ class MemeCoin(commands.Cog):
     @check_memecoin_channel()
     @commands.command(name='leaderboard', help='Displays a list of highest rollers in Meme Coin Town!',
                       aliases=['leaderboards'])
-    async def leaderboard(self, ctx: commands.Context) -> None:
+    async def leaderboard(self, ctx: Context) -> None:
         """
         A method that outputs an embed, detailing the top and bottom Meme Coin owners.
 
@@ -161,7 +162,7 @@ class MemeCoin(commands.Cog):
             check_memecoin_channel(): Whether the command is invoked in the proper channel.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Output:
             Success: An embed with (at most) the top and bottom 5 Meme Coin owners.

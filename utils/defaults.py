@@ -26,6 +26,7 @@ SOFTWARE.
 from discord.ext import commands
 from discord import Message
 from typing import Any, Optional
+from utils.context import Context
 
 
 class MessageReply(commands.CustomDefault):
@@ -46,12 +47,12 @@ class MessageReply(commands.CustomDefault):
 
         self.required = required
 
-    async def default(self, ctx: commands.Context, param: Any) -> Optional[Message]:
+    async def default(self, ctx: Context, param: Any) -> Optional[Message]:
         """
         Attempts to default the argument into a discord.Message object.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             param (Any): The arg to be converted.
 
         Returns:

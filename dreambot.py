@@ -28,6 +28,7 @@ from datetime import datetime
 from typing import Optional, List, Any, Dict
 from utils.database_utils import retrieve_query
 from aiosqlite import Error as aiosqliteError
+from utils.context import Context
 import discord
 import logging
 
@@ -44,6 +45,7 @@ class DreamBot(Bot):
         default_prefix (str): The default prefix to use if a guild has not specified one.
         environment (str): Environment string. Disable features (such as firebase logging) when not 'PROD'.
         wavelink (wavelink.Client): The bot's wavelink client. This initialization prevents attr errors in 'Music'.
+        disabled_cogs (List[str]): A list of cogs the bot should not load on initialization.
         _status_type (Optional[int]): The discord.ActivityType to set the bot's status to.
         _status_text (Optional[str]): The text of the bot's status.
     """
@@ -83,7 +85,7 @@ class DreamBot(Bot):
         # optionals
         self._status_type = options.pop('status_type', discord.ActivityType(1))
         self._status_text = options.pop('status_text', None)
-        disabled_cogs = options.pop('disabled_cogs', [])
+        self.disabled_cogs = options.pop('disabled_cogs', [])
 
         # git optionals
         self.git = options.pop('git', None)
@@ -91,7 +93,7 @@ class DreamBot(Bot):
         # load our cogs
         for cog in listdir(path.join(getcwd(), 'cogs')):
             # only load python files that we haven't explicitly disabled
-            if cog.endswith('.py') and cog[:-3] not in disabled_cogs:
+            if cog.endswith('.py') and cog[:-3] not in self.disabled_cogs:
                 try:
                     self.load_extension(f'cogs.{cog[:-3]}')
                 except ExtensionError as e:
@@ -118,22 +120,6 @@ class DreamBot(Bot):
             self.initialized = True
 
             logging.log(logging.INFO, 'DreamBot Ready: Prefixes and Presence initialized')
-
-    async def on_message(self, message: discord.Message) -> None:
-        """
-        A Client.event() method that is called when a discord.Message is created and sent.
-
-        Parameters:
-            message (discord.Message): The message that was sent.
-
-        Returns:
-            None.
-        """
-
-        if message.author == self.user:
-            return
-
-        await self.process_commands(message)
 
     async def retrieve_prefixes(self) -> None:
         """
@@ -171,6 +157,20 @@ class DreamBot(Bot):
         """
 
         super().run(token)
+
+    async def get_context(self, message: discord.Message, *, cls: classmethod = Context) -> Context:
+        """
+        Creates a Context instance for the current command invocation.
+
+        Parameters:
+            message (discord.Message): The message to generate a context instance for.
+            cls (classmethod): The classmethod to generate the context instance with.
+
+        Returns:
+            (Context): The custom context instance.
+        """
+
+        return await super().get_context(message, cls=cls)
 
 
 async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:

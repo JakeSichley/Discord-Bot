@@ -30,6 +30,7 @@ from asyncio import sleep
 from typing import List
 from dreambot import DreamBot
 from utils.prompts import prompt_user_for_voice_channel, prompt_user_for_role
+from utils.context import Context
 import discord
 
 
@@ -54,12 +55,12 @@ class VoiceRoles(commands.Cog):
         self.recently_changed = []
 
     @commands.group(name='voicerole', aliases=['vr', 'voiceroles'])
-    async def voice_role(self, ctx: commands.Context) -> None:
+    async def voice_role(self, ctx: Context) -> None:
         """
         Parent command that handles the reaction role commands.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -77,13 +78,13 @@ class VoiceRoles(commands.Cog):
                                          ' role name in order for it to be properly parsed ("my role").\nYou can also'
                                          ' use this method to change the role of an existing voice role channel.'
                                          ' Specify the same channel and simply supply a new role!')
-    async def add_voice_role(self, ctx: commands.Context, channel: discord.VoiceChannel = None,
+    async def add_voice_role(self, ctx: Context, channel: discord.VoiceChannel = None,
                              role: discord.Role = None) -> None:
         """
         Adds a voice role to a specified channel.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             channel (discord.VoiceChannel): The base channel for the voice role. Could be None.
             role: (discord.Role): The role to grant/remove when a user joins/leaves the channel. Could be None.
 
@@ -158,12 +159,12 @@ class VoiceRoles(commands.Cog):
                                             ' command without a supplying a channel, you will be prompted for one.\nIf'
                                             ' you wish to change the role associated with a specific channel, consider'
                                             ' using "add" instead!')
-    async def remove_voice_role(self, ctx: commands.Context, channel: discord.VoiceChannel = None) -> None:
+    async def remove_voice_role(self, ctx: Context, channel: discord.VoiceChannel = None) -> None:
         """
         Removes a voice role from a specified channel.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             channel (discord.VoiceChannel): The base channel for the voice role. Could be None.
 
         Returns:
@@ -207,12 +208,12 @@ class VoiceRoles(commands.Cog):
 
     @commands.has_permissions(manage_roles=True)
     @voice_role.command(name='check', help='Checks a channel for an existing voice role.')
-    async def check_voice_role(self, ctx: commands.Context, channel: discord.VoiceChannel = None) -> None:
+    async def check_voice_role(self, ctx: Context, channel: discord.VoiceChannel = None) -> None:
         """
         Checks for a voice role for a specified channel.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             channel (discord.VoiceChannel): The base channel for the voice role. Could be None.
 
         Returns:
@@ -296,14 +297,19 @@ class VoiceRoles(commands.Cog):
 
                 if add_role:
                     try:
-                        await member.add_roles(add_role, reason=f'Reaction Roles [CHANNEL ID: {after.channel.id}]')
+                        await member.add_roles(
+                            add_role,
+                            reason=f'Voice Roles - Join [Channel ID: {after.channel.id} ("{after.channel.name}")]'
+                        )
                     except discord.HTTPException:
                         pass
 
                 if remove_roles:
                     try:
-                        await member.remove_roles(*remove_roles,
-                                                  reason=f'Reaction Roles [CHANNEL ID: {after.channel.id}]')
+                        await member.remove_roles(
+                            *remove_roles,
+                            reason=f'Voice Roles - Leave [Channel ID: {after.channel.id} ("{after.channel.name}")]'
+                        )
                     except discord.HTTPException:
                         pass
 
@@ -314,8 +320,7 @@ class VoiceRoles(commands.Cog):
 
                 if remove_roles:
                     try:
-                        await member.remove_roles(*remove_roles,
-                                                  reason=f'Reaction Roles [DISCONNECT]')
+                        await member.remove_roles(*remove_roles, reason=f'Voice Roles - Disconnect')
                     except discord.HTTPException:
                         pass
 

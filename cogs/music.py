@@ -24,6 +24,7 @@ from discord.ext import commands, menus
 from typing import Optional
 from os import getenv
 from dreambot import DreamBot
+from utils.context import Context
 import asyncio
 import async_timeout
 import copy
@@ -104,7 +105,7 @@ class Player(wavelink.Player):
         node (wavelink.node.Node): The node the player belongs to.
         volume (int): The players volume.
         channel_id (int): The channel the player is connected to. Could be None if the player is not connected.
-        context (commands.Context): The invocation context for the player. Could be None if the player is not connected.
+        context (Context): The invocation context for the player. Could be None if the player is not connected.
         dj (Union[discord.User, discord.Member]): The user that invoked the player.
         queue (asyncio.Queue[Track]): An asynchronous queue containing the tracks.
         spotify (tekore.Spotify): The Spotify class used to query Spotify API data.
@@ -129,7 +130,7 @@ class Player(wavelink.Player):
 
         super().__init__(*args, **kwargs)
 
-        self.context: commands.Context = kwargs.get('context', None)
+        self.context: Context = kwargs.get('context', None)
         if self.context:
             self.dj: discord.Member = self.context.author
 
@@ -323,7 +324,7 @@ class InteractiveController(menus.Menu):
         self.embed = embed
         self.player = player
 
-    def update_context(self, payload: discord.RawReactionActionEvent) -> commands.Context:
+    def update_context(self, payload: discord.RawReactionActionEvent) -> Context:
         """
         A method that update our context with the user who reacted.
 
@@ -331,7 +332,7 @@ class InteractiveController(menus.Menu):
             payload (discord.RawReactionActionEvent): The reaction payload event details.
 
         Returns:
-            ctx (commands.Context): The updated context with the new author.
+            ctx (Context): The updated context with the new author.
         """
 
         ctx = copy.copy(self.ctx)
@@ -364,12 +365,12 @@ class InteractiveController(menus.Menu):
 
         return payload.emoji in self.buttons
 
-    async def send_initial_message(self, ctx: commands.Context, channel: discord.TextChannel) -> discord.Message:
+    async def send_initial_message(self, ctx: Context, channel: discord.TextChannel) -> discord.Message:
         """
         Sends the initial menu message.
 
         Parameters:
-            ctx (commands.Context): The context to send the initial message with.
+            ctx (Context): The context to send the initial message with.
             channel (discord.TextChannel): The channel to send the initial message to.
 
         Returns:
@@ -731,12 +732,12 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         elif after.channel == channel and player.dj not in channel.members:
             player.dj = member
 
-    async def cog_command_error(self, ctx: commands.Context, error: Exception) -> None:
+    async def cog_command_error(self, ctx: Context, error: Exception) -> None:
         """
         A cog-wide error handler.
 
         Parameters:
-            ctx (commands.Context): The invocation context that resulted in an exception.
+            ctx (Context): The invocation context that resulted in an exception.
             error: (Exception): The exception that arose.
 
         Returns:
@@ -750,13 +751,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             await ctx.send('You must be in a voice channel or provide one to connect to.')
             return
 
-    async def cog_check(self, ctx: commands.Context) -> bool:
+    async def cog_check(self, ctx: Context) -> bool:
         """
         A cog-wide command check.
         Disables the use of commands in DMs.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             (bool): Whether the command should execute.
@@ -768,13 +769,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
         return True
 
-    async def cog_before_invoke(self, ctx: commands.Context) -> None:
+    async def cog_before_invoke(self, ctx: Context) -> None:
         """
         A cog-wide before-invoke hook.
         Mainly used to check whether the user is in the player's controller channel.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -809,13 +810,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                 await ctx.send(f'{ctx.author.mention}, you must be in `{channel.name}` to use voice commands.')
                 raise IncorrectChannelError
 
-    async def cog_after_invoke(self, ctx: commands.Context) -> None:
+    async def cog_after_invoke(self, ctx: Context) -> None:
         """
         A cog-wide after-invoke hook.
         Mainly used to clear invoking messages for commands.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -829,12 +830,12 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         except discord.HTTPException:
             pass
 
-    def required(self, ctx: commands.Context) -> int:
+    def required(self, ctx: Context) -> int:
         """
         A method which returns required votes based on amount of members in a channel.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             required (int): The required number of votes necessary for non-privileged command execution.
@@ -850,12 +851,12 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
         return required
 
-    def is_privileged(self, ctx: commands.Context) -> bool:
+    def is_privileged(self, ctx: Context) -> bool:
         """
         A method that checks Whether the invoking user is an Admin or a DJ.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             (bool): Whether the invoking user has kick permissions or is a DJ.
@@ -866,12 +867,12 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         return player.dj == ctx.author or ctx.author.guild_permissions.kick_members
 
     @commands.command()
-    async def connect(self, ctx: commands.Context, *, channel: discord.VoiceChannel = None) -> None:
+    async def connect(self, ctx: Context, *, channel: discord.VoiceChannel = None) -> None:
         """
         A command that connects the player to a voice channel.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             channel (discord.VoiceChannel): The channel to connect to. Default: None.
 
         Returns:
@@ -890,12 +891,12 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         await player.connect(channel.id)
 
     @commands.command()
-    async def play(self, ctx: commands.Context, *, query: str) -> None:
+    async def play(self, ctx: Context, *, query: str) -> None:
         """
         A command to play or queue a song with the given query.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             query (str): The query to play.
 
         Returns:
@@ -941,13 +942,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             await player.do_next()
 
     @commands.command()
-    async def pause(self, ctx: commands.Context) -> None:
+    async def pause(self, ctx: Context) -> None:
         """
         A command to pause the current song.
         If the invoking user is not privileged, voting is required.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -976,13 +977,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             await ctx.send(f'{ctx.author.mention} has voted to pause the player.', delete_after=15)
 
     @commands.command()
-    async def resume(self, ctx: commands.Context) -> None:
+    async def resume(self, ctx: Context) -> None:
         """
         A command to resume the current song.
         If the invoking user is not privileged, voting is required.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -1011,13 +1012,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             await ctx.send(f'{ctx.author.mention} has voted to resume the player.', delete_after=15)
 
     @commands.command()
-    async def skip(self, ctx: commands.Context) -> None:
+    async def skip(self, ctx: Context) -> None:
         """
         A command to skip the current song.
         If the invoking user is not privileged, voting is required.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -1053,13 +1054,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             await ctx.send(f'{ctx.author.mention} has voted to skip the song.', delete_after=15)
 
     @commands.command()
-    async def stop(self, ctx: commands.Context) -> None:
+    async def stop(self, ctx: Context) -> None:
         """
         A command to stop the player and clear all internal states/caches.
         If the invoking user is not privileged, voting is required.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -1085,13 +1086,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             await ctx.send(f'{ctx.author.mention} has voted to stop the player.', delete_after=15)
 
     @commands.command(aliases=['v', 'vol'])
-    async def volume(self, ctx: commands.Context, *, vol: int) -> None:
+    async def volume(self, ctx: Context, *, vol: int) -> None:
         """
         A command to change the player's volume.
         If the invoking user is not privileged, the command will not execute.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             vol (int): The volume level to player should be set to.
 
         Returns:
@@ -1115,13 +1116,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         await ctx.send(f'Set the volume to **{vol}**%', delete_after=7)
 
     @commands.command(aliases=['loop'])
-    async def repeat(self, ctx: commands.Context) -> None:
+    async def repeat(self, ctx: Context) -> None:
         """
         A command to repeat the current song.
         If the invoking user is not privileged, voting is required.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -1157,13 +1158,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             await ctx.send(f'{ctx.author.mention} has voted to repeat the current track.', delete_after=15)
 
     @commands.command(aliases=['mix'])
-    async def shuffle(self, ctx: commands.Context) -> None:
+    async def shuffle(self, ctx: Context) -> None:
         """
         A command to shuffle the current queue.
         If the invoking user is not privileged, voting is required.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -1199,13 +1200,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             await ctx.send(f'{ctx.author.mention} has voted to shuffle the playlist.', delete_after=15)
 
     @commands.command(hidden=True)
-    async def vol_up(self, ctx: commands.Context) -> None:
+    async def vol_up(self, ctx: Context) -> None:
         """
         A command to increase the player's volume.
         If the invoking user is not privileged, the command will not execute.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -1225,13 +1226,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         await player.set_volume(vol)
 
     @commands.command(hidden=True)
-    async def vol_down(self, ctx: commands.Context) -> None:
+    async def vol_down(self, ctx: Context) -> None:
         """
         A command to decrease the player's volume.
         If the invoking user is not privileged, the command will not execute.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -1251,13 +1252,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         await player.set_volume(vol)
 
     @commands.command(aliases=['eq'])
-    async def equalizer(self, ctx: commands.Context, *, equalizer: str) -> None:
+    async def equalizer(self, ctx: Context, *, equalizer: str) -> None:
         """
         A command to change the player's equalizer.
         If the invoking user is not privileged, the command will not execute.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             equalizer (str): The equalizer to change to.
 
         Returns:
@@ -1289,12 +1290,12 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         await player.set_eq(eq)
 
     @commands.command(aliases=['q', 'que'])
-    async def queue(self, ctx: commands.Context) -> None:
+    async def queue(self, ctx: Context) -> None:
         """
         A command to display the player's queue of songs.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -1318,12 +1319,12 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         await paginator.start(ctx)
 
     @commands.command(aliases=['np', 'current'])
-    async def now_playing(self, ctx: commands.Context):
+    async def now_playing(self, ctx: Context):
         """
         A command to refresh the player's controller embed.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
 
         Returns:
             None.
@@ -1337,12 +1338,12 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         await player.invoke_controller()
 
     @commands.command(aliases=['swap'])
-    async def swap_dj(self, ctx: commands.Context, *, member: discord.Member = None) -> None:
+    async def swap_dj(self, ctx: Context, *, member: discord.Member = None) -> None:
         """
         A command to swap the DJ to different member currently in the voice channel.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             member (discord.Member): The member to swap the DJ position to. Default: None.
 
         Returns:
@@ -1413,6 +1414,22 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
         # assign new queue to the player queue
         player.queue = new_queue
+
+    def cog_unload(self) -> None:
+        """
+        A method detailing custom extension unloading procedures.
+        Destroys the wavelink client.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
+        self.bot.wavelink = None
+
+        print('Completed Unload for Cog: Music')
 
 
 def setup(bot: DreamBot) -> None:

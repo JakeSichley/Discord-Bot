@@ -34,6 +34,7 @@ from json.decoder import JSONDecodeError
 from functools import reduce
 from aiohttp import ClientResponseError
 from utils.network_utils import network_request, NetworkReturnType
+from utils.context import Context
 
 
 class DDO(commands.Cog):
@@ -73,12 +74,12 @@ class DDO(commands.Cog):
         self.query_ddo_audit.start()
 
     @commands.command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')
-    async def roll(self, ctx: commands.Context, *, pattern: str) -> None:
+    async def roll(self, ctx: Context, *, pattern: str) -> None:
         """
         A method to simulate the rolling of dice.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             pattern (str): The die pattern to roll. Example: 9d6 -> Nine Six-Sided die.
 
         Output:
@@ -175,12 +176,12 @@ class DDO(commands.Cog):
 
     @commands.command(name='ddoitem', help='Pulls basic information about an item in Dungeons & Dragons Online '
                                            'from the wiki')
-    async def ddo_item(self, ctx: commands.Context, *, item: str) -> None:
+    async def ddo_item(self, ctx: Context, *, item: str) -> None:
         """
         A method that outputs an embed detailing the properties of an item on the DDOWiki.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             item (str): The name of the item to return details on.
 
         Output:
@@ -292,12 +293,12 @@ class DDO(commands.Cog):
                                         f' include Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis,'
                                         f' and Wayfinder\nInformation is populated from \'DDO Audit\' every '
                                         f'{QUERY_INTERVAL} seconds.')
-    async def ddo_lfms(self, ctx: commands.Context, server: str = 'Khyber') -> None:
+    async def ddo_lfms(self, ctx: Context, server: str = 'Khyber') -> None:
         """
         A method that outputs a list of all active groups on a server.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             server (str): The name of the server to return lfms for. Default: 'Khyber'.
 
         Output:
@@ -347,12 +348,12 @@ class DDO(commands.Cog):
                                          f' server.\nValid servers include Argonnessen, Cannith, Ghallanda, Khyber,'
                                          f' Orien, Sarlona, Thelanis, Wayfinder, and Hardcore.\nInformation is '
                                          f'populated from \'DDO Audit\' every {QUERY_INTERVAL} seconds.')
-    async def ddo_filter_lfms(self, ctx: commands.Context, *args: str) -> None:
+    async def ddo_filter_lfms(self, ctx: Context, *args: str) -> None:
         """
         A method that outputs a list of all active groups on a server that match the specified filters.
 
         Parameters:
-            ctx (commands.Context): The invocation context.
+            ctx (Context): The invocation context.
             args (str): The filter options. Options include Type, Difficulty, Level, and a non-optional Server.
 
         Output:
@@ -453,13 +454,14 @@ class DDO(commands.Cog):
                 self.reconnect_tries = 0
 
             except (ClientResponseError, JSONDecodeError) as e:
-                print(f'DDOAudit Query Error: {e}')
+                print(f'DDOAudit Query[{server}] Error: {e}')
                 self.api_data[server] = None
                 self.reconnect_tries += 1
 
-                # if the query fails 5 times in a row, delay querying the API for an hour
+                # if the query fails whatever number of times this is in a row, delay querying the API for an hour
                 if self.reconnect_tries >= (len(self.SERVERS) - 1) * 2:
                     self.reconnect_tries = 0
+                    self.api_data = {server: None for server in self.SERVERS}
                     await sleep(3600)
 
             finally:
