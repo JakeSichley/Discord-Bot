@@ -26,6 +26,7 @@ from os import getenv
 from sys import version
 from dotenv import load_dotenv
 from dreambot import DreamBot
+from utils.logging_formatter import BotLoggingFormatter
 import logging
 import discord
 
@@ -35,10 +36,16 @@ def main() -> None:
     Driver method.
     """
 
-    print(f'Current Python Version: {version}')
-    print(f'Current Discord Version: {discord.__version__}')
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(levelname)s:%(name)s: %(message)s',
-                        datefmt='%I:%M %p on %A, %B %d, %Y')
+    # logging setup
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(BotLoggingFormatter())
+    logger.addHandler(handler)
+
+    logging.info(f'Current Python Version: {version}')
+    logging.info(f'Current Discord Version: {discord.__version__}')
 
     load_dotenv()
 

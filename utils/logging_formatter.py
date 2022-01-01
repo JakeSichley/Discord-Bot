@@ -42,7 +42,7 @@ class BotLoggingFormatter(logging.Formatter):
         None.
     """
 
-    blue = 'x1b[36m'
+    blue = '\x1b[36m'
     yellow = '\x1b[33;20m'
     red = '\x1b[31;20m'
     reset = '\x1b[0m'
