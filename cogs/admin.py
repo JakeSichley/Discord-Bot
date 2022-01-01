@@ -387,7 +387,7 @@ class Admin(commands.Cog):
     @git.command(name='pull', aliases=['p'], hidden=True)
     async def git_pull(self, ctx: Context) -> None:
         """
-        Pulls the latest commit from master.
+        Pulls the latest changes from master.
 
         Parameters:
             ctx (Context): The invocation context.
