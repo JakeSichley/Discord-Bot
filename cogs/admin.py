@@ -43,6 +43,7 @@ from importlib import reload
 import discord
 import sys
 import re
+import logging
 
 
 class Admin(commands.Cog):
@@ -786,4 +787,4 @@ def setup(bot: DreamBot) -> None:
     """
 
     bot.add_cog(Admin(bot))
-    print('Completed Setup for Cog: Admin')
+    logging.info('Completed Setup for Cog: Admin')

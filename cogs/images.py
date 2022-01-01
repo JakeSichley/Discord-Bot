@@ -29,6 +29,7 @@ from utils.defaults import MessageReply
 from typing import Union
 from utils.context import Context
 import discord
+import logging
 
 
 class Images(commands.Cog):
@@ -131,4 +132,4 @@ def setup(bot: DreamBot) -> None:
     """
 
     bot.add_cog(Images(bot))
-    print('Completed Setup for Cog: Images')
+    logging.info('Completed Setup for Cog: Images')

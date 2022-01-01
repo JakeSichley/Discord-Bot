@@ -38,9 +38,9 @@ def main() -> None:
 
     # logging setup
     logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     handler = logging.StreamHandler()
-    handler.setLevel(logging.DEBUG)
+    handler.setLevel(logging.INFO)
     handler.setFormatter(BotLoggingFormatter())
     logger.addHandler(handler)
 

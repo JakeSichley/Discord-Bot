@@ -31,6 +31,7 @@ from dreambot import DreamBot
 from utils.context import Context as discord_Context
 import asyncio
 import twitchio
+import logging
 
 # https://github.com/TwitchIO/TwitchIO/issues/130
 
@@ -155,7 +156,7 @@ class Twitch(discord_commands.Cog):
         """
 
         asyncio.run_coroutine_threadsafe(self.bot.stop(), self.discord_bot.loop)
-        print('Completed Unload for Cog: Twitch')
+        logging.info('Completed Unload for Cog: Twitch')
 
 
 def setup(bot: DreamBot):
@@ -170,4 +171,4 @@ def setup(bot: DreamBot):
     """
 
     bot.add_cog(Twitch(bot))
-    print('Completed Setup for Cog: Twitch')
+    logging.info('Completed Setup for Cog: Twitch')

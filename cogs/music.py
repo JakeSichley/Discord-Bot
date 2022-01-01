@@ -35,6 +35,7 @@ import random
 import re
 import wavelink
 import tekore as tk
+import logging
 
 
 # URL matching REGEX
@@ -669,7 +670,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             None.
         """
 
-        print(f'Node {node.identifier} is ready!')
+        logging.info(f'Node {node.identifier} is ready!')
 
     # noinspection PyUnusedLocal
     @wavelink.WavelinkMixin.listener('on_track_stuck')
@@ -1429,7 +1430,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
         self.bot.wavelink = None
 
-        print('Completed Unload for Cog: Music')
+        logging.info('Completed Unload for Cog: Music')
 
 
 def setup(bot: DreamBot) -> None:
@@ -1444,4 +1445,4 @@ def setup(bot: DreamBot) -> None:
     """
 
     bot.add_cog(Music(bot))
-    print('Completed Setup for Cog: Music')
+    logging.info('Completed Setup for Cog: Music')
