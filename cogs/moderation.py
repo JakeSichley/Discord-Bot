@@ -30,6 +30,7 @@ from utils.converters import DefaultMemberConverter
 from aiosqlite import Error as aiosqliteError
 from utils.context import Context
 import discord
+import logging
 
 CHANNEL_OBJECT = Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]
 PERMISSIONS_PARENT = Union[discord.Role, discord.Member]
@@ -328,4 +329,4 @@ def setup(bot: DreamBot) -> None:
     """
 
     bot.add_cog(Moderation(bot))
-    print('Completed Setup for Cog: Moderation')
+    logging.info('Completed Setup for Cog: Moderation')

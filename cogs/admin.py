@@ -43,6 +43,7 @@ from importlib import reload
 import discord
 import sys
 import re
+import logging
 
 
 class Admin(commands.Cog):
@@ -387,7 +388,7 @@ class Admin(commands.Cog):
     @git.command(name='pull', aliases=['p'], hidden=True)
     async def git_pull(self, ctx: Context) -> None:
         """
-        Pulls the latest commit from master.
+        Pulls the latest changes from master.
 
         Parameters:
             ctx (Context): The invocation context.
@@ -786,4 +787,4 @@ def setup(bot: DreamBot) -> None:
     """
 
     bot.add_cog(Admin(bot))
-    print('Completed Setup for Cog: Admin')
+    logging.info('Completed Setup for Cog: Admin')

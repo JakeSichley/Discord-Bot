@@ -31,6 +31,7 @@ from dreambot import DreamBot
 from aiosqlite import Error as aiosqliteError
 from utils.context import Context
 import discord
+import logging
 
 
 class Audit(commands.Cog):
@@ -67,10 +68,10 @@ class Audit(commands.Cog):
         """
 
         # retrieve logging information
-        if logging := (await retrieve_query(self.bot.database,
-                                            'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
-                                            (member.guild.id,))):
-            await log_to_channel(self.bot, LoggingActions.USER_JOINED, logging[0][1], logging[0][0],
+        if logging_info := (await retrieve_query(self.bot.database,
+                                                 'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
+                                                 (member.guild.id,))):
+            await log_to_channel(self.bot, LoggingActions.USER_JOINED, logging_info[0][1], logging_info[0][0],
                                  f'**{str(member)}** joined the guild.')
 
     @commands.Cog.listener()
@@ -89,10 +90,10 @@ class Audit(commands.Cog):
         """
 
         # retrieve logging information
-        if logging := (await retrieve_query(self.bot.database,
-                                            'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
-                                            (member.guild.id,))):
-            await log_to_channel(self.bot, LoggingActions.USER_LEFT, logging[0][1], logging[0][0],
+        if logging_info := (await retrieve_query(self.bot.database,
+                                                 'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
+                                                 (member.guild.id,))):
+            await log_to_channel(self.bot, LoggingActions.USER_LEFT, logging_info[0][1], logging_info[0][0],
                                  f'**{str(member)}** left the guild.')
 
     @commands.Cog.listener()
@@ -112,10 +113,10 @@ class Audit(commands.Cog):
         """
 
         # retrieve logging information
-        if logging := (await retrieve_query(self.bot.database,
-                                            'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
-                                            (guild.id,))):
-            await log_to_channel(self.bot, LoggingActions.USER_BANNED, logging[0][1], logging[0][0],
+        if logging_info := (await retrieve_query(self.bot.database,
+                                                 'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
+                                                 (guild.id,))):
+            await log_to_channel(self.bot, LoggingActions.USER_BANNED, logging_info[0][1], logging_info[0][0],
                                  f'**{str(member)}** was banned from the guild.')
 
     @commands.Cog.listener()
@@ -135,10 +136,10 @@ class Audit(commands.Cog):
         """
 
         # retrieve logging information
-        if logging := (await retrieve_query(self.bot.database,
-                                            'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
-                                            (guild.id,))):
-            await log_to_channel(self.bot, LoggingActions.USER_UNBANNED, logging[0][1], logging[0][0],
+        if logging_info := (await retrieve_query(self.bot.database,
+                                                 'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
+                                                 (guild.id,))):
+            await log_to_channel(self.bot, LoggingActions.USER_UNBANNED, logging_info[0][1], logging_info[0][0],
                                  f'**{str(member)}** was unbanned from the guild.')
 
     @commands.group(name='auditaction', aliases=['aa', 'auditactions'])
@@ -171,10 +172,10 @@ class Audit(commands.Cog):
             None.
         """
 
-        if logging := (await retrieve_query(self.bot.database,
-                                            'SELECT BITS FROM LOGGING WHERE GUILD_ID=?',
-                                            (ctx.guild.id,))):
-            await ctx.send(embed=build_actions_embed(LoggingActions.all_actions((logging[0][0]))))
+        if logging_info := (await retrieve_query(self.bot.database,
+                                                 'SELECT BITS FROM LOGGING WHERE GUILD_ID=?',
+                                                 (ctx.guild.id,))):
+            await ctx.send(embed=build_actions_embed(LoggingActions.all_actions((logging_info[0][0]))))
         else:
             await ctx.send('You must first set an audit channel before viewing audit actions.'
                            '\n_See `auditactions setchannel` for more information._')
@@ -200,10 +201,10 @@ class Audit(commands.Cog):
             None.
         """
 
-        if logging := (await retrieve_query(self.bot.database,
-                                            'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
-                                            (ctx.guild.id,))):
-            bits = int(logging[0][1])
+        if logging_info := (await retrieve_query(self.bot.database,
+                                                 'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
+                                                 (ctx.guild.id,))):
+            bits = int(logging_info[0][1])
 
             # create an asyncio.Condition to allow for concurrency checking
             condition = Condition()
@@ -638,4 +639,4 @@ def setup(bot: DreamBot) -> None:
     """
 
     bot.add_cog(Audit(bot))
-    print('Completed Setup for Cog: Audit')
+    logging.info('Completed Setup for Cog: Audit')

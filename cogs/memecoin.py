@@ -30,6 +30,7 @@ from typing import Optional
 from dreambot import DreamBot
 from utils.context import Context
 import discord
+import logging
 
 
 class MemeCoin(commands.Cog):
@@ -239,7 +240,7 @@ async def check_coin_requirements(
             return None
 
     except HTTPException as e:
-        print(f'Check Coin Requirements Error: {e}')
+        logging.warning(f'Check Coin Requirements Error: {e}')
         return None
 
     if reaction_author.bot or message_author.bot:
@@ -265,4 +266,4 @@ def setup(bot: DreamBot) -> None:
     """
 
     bot.add_cog(MemeCoin(bot))
-    print('Completed Setup for Cog: MemeCoin')
+    logging.info('Completed Setup for Cog: MemeCoin')

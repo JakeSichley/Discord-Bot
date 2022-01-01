@@ -29,6 +29,7 @@ from google.oauth2 import service_account
 from datetime import datetime
 from dreambot import DreamBot
 import discord
+import logging
 # noinspection PyTypeChecker
 
 
@@ -137,4 +138,4 @@ def setup(bot: DreamBot) -> None:
     """
 
     bot.add_cog(Firestore(bot))
-    print('Completed Setup for Cog: Firestore')
+    logging.info('Completed Setup for Cog: Firestore')

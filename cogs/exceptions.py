@@ -80,7 +80,7 @@ class Exceptions(commands.Cog):
         )
 
         if not isinstance(error, ignored):
-            logging.log(logging.WARNING, f'Ignoring exception in command {ctx.command}:')
+            logging.warning(f'Ignoring exception in command {ctx.command}:')
             print_exception(type(error), error, error.__traceback__, file=stderr)
 
         permissions = (commands.NotOwner, commands.MissingPermissions)
@@ -162,4 +162,4 @@ def setup(bot: DreamBot) -> None:
     """
 
     bot.add_cog(Exceptions(bot))
-    print('Completed Setup for Cog: Exceptions')
+    logging.info('Completed Setup for Cog: Exceptions')

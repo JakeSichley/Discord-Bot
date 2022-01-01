@@ -32,6 +32,7 @@ from dreambot import DreamBot
 from utils.prompts import prompt_user_for_voice_channel, prompt_user_for_role
 from utils.context import Context
 import discord
+import logging
 
 
 class VoiceRoles(commands.Cog):
@@ -337,4 +338,4 @@ def setup(bot: DreamBot) -> None:
     """
 
     bot.add_cog(VoiceRoles(bot))
-    print('Completed Setup for Cog: VoiceRoles')
+    logging.info('Completed Setup for Cog: VoiceRoles')

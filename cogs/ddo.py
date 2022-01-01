@@ -35,6 +35,7 @@ from functools import reduce
 from aiohttp import ClientResponseError
 from utils.network_utils import network_request, NetworkReturnType
 from utils.context import Context
+import logging
 
 
 class DDO(commands.Cog):
@@ -449,17 +450,18 @@ class DDO(commands.Cog):
             try:
                 self.api_data[server] = await network_request(
                     f'https://www.playeraudit.com/api/groups?s={server}',
-                    return_type=NetworkReturnType.JSON, ssl=False, encoding='utf-8-sig'
+                    return_type=NetworkReturnType.JSON, ssl=False
                 )
                 self.reconnect_tries = 0
 
             except (ClientResponseError, JSONDecodeError) as e:
-                print(f'DDOAudit Query[{server}] Error: {e}')
+                logging.warning(f'DDOAudit Query[{server}] Error: {e}')
                 self.api_data[server] = None
                 self.reconnect_tries += 1
 
                 # if the query fails whatever number of times this is in a row, delay querying the API for an hour
                 if self.reconnect_tries >= (len(self.SERVERS) - 1) * 2:
+                    logging.error(f'DDOAudit Reconnect Tries Exceeded. Backing off for 3600 seconds')
                     self.reconnect_tries = 0
                     self.api_data = {server: None for server in self.SERVERS}
                     await sleep(3600)
@@ -498,7 +500,7 @@ class DDO(commands.Cog):
         self.query_ddo_audit.cancel()
         self.api_data = None
 
-        print('Completed Unload for Cog: DDO')
+        logging.info('Completed Unload for Cog: DDO')
 
 
 def setup(bot: DreamBot) -> None:
@@ -513,4 +515,4 @@ def setup(bot: DreamBot) -> None:
     """
 
     bot.add_cog(DDO(bot))
-    print('Completed Setup for Cog: DDO')
+    logging.info('Completed Setup for Cog: DDO')

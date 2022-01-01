@@ -33,6 +33,7 @@ from typing import Union, Optional, List, Tuple
 from math import ceil
 from dreambot import DreamBot
 import discord
+import logging
 
 
 class ReactionRoles(commands.Cog):
@@ -733,4 +734,4 @@ def setup(bot: DreamBot) -> None:
     """
 
     bot.add_cog(ReactionRoles(bot))
-    print('Completed Setup for Cog: Reactions')
+    logging.info('Completed Setup for Cog: Reactions')

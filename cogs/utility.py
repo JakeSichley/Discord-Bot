@@ -37,6 +37,7 @@ from discord.ext.commands.default import Author
 import datetime
 import pytz
 import discord
+import logging
 
 
 class Utility(commands.Cog):
@@ -385,4 +386,4 @@ def setup(bot: DreamBot) -> None:
     """
 
     bot.add_cog(Utility(bot))
-    print('Completed Setup for Cog: UtilityFunctions')
+    logging.info('Completed Setup for Cog: UtilityFunctions')
