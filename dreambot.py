@@ -97,7 +97,7 @@ class DreamBot(Bot):
                 try:
                     self.load_extension(f'cogs.{cog[:-3]}')
                 except ExtensionError as e:
-                    print(e)
+                    logging.error(f'Failed Setup for Cog: {cog[:-3].capitalize()}. {e}')
 
     async def on_ready(self):
         """
