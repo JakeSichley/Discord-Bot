@@ -29,6 +29,8 @@ from typing import Optional, List, Any, Dict
 from utils.database_utils import retrieve_query
 from aiosqlite import Error as aiosqliteError
 from utils.context import Context
+from utils.utils import run_in_subprocess
+from re import search
 import discord
 import logging
 
@@ -83,7 +85,7 @@ class DreamBot(Bot):
         self.environment = environment
 
         # optionals
-        self._status_type = options.pop('status_type', discord.ActivityType(1))
+        self._status_type = options.pop('status_type', discord.ActivityType(0))
         self._status_text = options.pop('status_text', None)
         self.disabled_cogs = options.pop('disabled_cogs', [])
 
@@ -114,12 +116,12 @@ class DreamBot(Bot):
         """
 
         if not self.initialized:
-            await self.change_presence(status=discord.Status.online, activity=discord.Activity(name=self._status_text,
-                                       type=self._status_type))
+            activity = await generate_activity(self._status_text, self._status_type)
+            await self.change_presence(status=discord.Status.online, activity=activity)
             await self.retrieve_prefixes()
             self.initialized = True
 
-            logging.log(logging.INFO, 'DreamBot Ready: Prefixes and Presence initialized')
+            logging.info('DreamBot Ready: Prefixes and Presence initialized')
 
     async def retrieve_prefixes(self) -> None:
         """
@@ -171,6 +173,32 @@ class DreamBot(Bot):
         """
 
         return await super().get_context(message, cls=cls)
+
+
+async def generate_activity(status_text: str, status_type: discord.ActivityType) -> discord.Activity:
+    """
+    Generates a custom activity. Attempts to add the latest git version information to the status text.
+
+    Parameters:
+        status_text (str): The default/base activity text.
+        status_type (discord.ActivityType): The type of activity.
+
+    Returns:
+        (discord.Activity): The custom generated activity.
+    """
+
+    result = await run_in_subprocess('git show')
+
+    try:
+        git_status = result[0].decode()
+        git_commit = search(r'(?<=commit )([A-z0-9]{6})', git_status).group()
+        git_description = search(r'(?<=JakeSichley/)([A-z0-9-]+)', git_status).group()
+    except AttributeError:
+        return discord.Activity(name=status_text, type=status_type)
+    else:
+        git_text = f'Version {git_commit} - {git_description}'
+        padding = "\u3000" * (126 - len(status_text) - len(git_text))
+        return discord.Activity(name=f'{status_text}\n{padding}{git_text}', type=status_type)
 
 
 async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:
