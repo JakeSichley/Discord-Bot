@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2021 Jake Sichley
+Copyright (c) 2022 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -101,13 +101,28 @@ class Utility(commands.Cog):
         await ctx.send('_Need help with bugs or want to request a feature? Join the Discord!_'
                        '\nhttps://discord.gg/fgHEWdt')
 
-    @commands.cooldown(1, 10, commands.BucketType.guild)
-    @commands.has_permissions(administrator=True)
-    @commands.guild_only()
-    @commands.command(name='setprefix', help='Sets the bot\'s prefix for this guild. Administrator use only.')
-    async def set_prefix(self, ctx: Context, prefix: str) -> None:
+    @commands.group(name='prefix', aliases=['pre'])
+    async def prefix(self, ctx: Context) -> None:
         """
-        A method to change the command prefix for a guild. Only usable by a guild's administrators.
+        Parent command that handles prefix related commands.
+
+        Parameters:
+            ctx (Context): The invocation context.
+
+        Returns:
+            None.
+        """
+
+        if ctx.invoked_subcommand is None:
+            await ctx.invoke(self.bot.get_command('prefix get'))
+
+    @commands.cooldown(1, 10, commands.BucketType.guild)
+    @commands.has_permissions(manage_guild=True)
+    @commands.guild_only()
+    @prefix.command(name='add', aliases=['set'])
+    async def add_prefix(self, ctx: Context, prefix: str) -> None:
+        """
+        A method to add a command prefix for the guild.
 
         Checks:
             cooldown(): Whether the command is on cooldown. Can be used (1) time per (10) seconds per (Guild).
@@ -126,23 +141,42 @@ class Utility(commands.Cog):
             None.
         """
 
+        prefixes = self.bot.prefixes.get(ctx.guild.id, [])
+
+        if len(prefixes) >= 3:
+            await ctx.send('This guild has reached the maximum number of prefixes.')
+            return
+
+        if prefix in prefixes:
+            await ctx.send('The desired prefix already exists for this guild.')
+            return
+
+        prefix = prefix.strip()
+
+        if len(prefix) > 16:
+            await ctx.send('The maximum length for a prefix is 16 characters.')
+            return
+
         try:
             await execute_query(
                 self.bot.database,
-                'INSERT INTO PREFIXES (GUILD_ID, PREFIX) VALUES (?, ?) '
-                'ON CONFLICT(GUILD_ID) DO UPDATE SET PREFIX=EXCLUDED.PREFIX',
+                'INSERT INTO PREFIXES (GUILD_ID, PREFIX) VALUES (?, ?)',
                 (ctx.guild.id, prefix)
             )
-            self.bot.prefixes[ctx.guild.id] = prefix
-            await ctx.send(f'Updated the prefix to `{prefix}`.')
-
         except aiosqliteError:
-            await ctx.send('Failed to change the guild\'s prefix.')
+            await ctx.send(f'Failed to add `{prefix}`.')
+        else:
+            if ctx.guild.id in self.bot.prefixes:
+                self.bot.prefixes[ctx.guild.id].append(prefix)
+            else:
+                self.bot.prefixes[ctx.guild.id] = [prefix]
 
-    @commands.command(name='getprefix', aliases=['prefix'], help='Gets the bot\'s prefix for this guild.')
+            await ctx.send(f'Added `{prefix}` as a prefix for this guild.')
+
+    @prefix.command(name='get')
     async def get_prefix(self, ctx: Context) -> None:
         """
-        A method that outputs the command prefix for a guild.
+        A method that outputs the current prefixes for the guild.
 
         Checks:
             guild_only(): Whether the command was invoked from a guild. No direct messages.
@@ -162,18 +196,15 @@ class Utility(commands.Cog):
             await ctx.send(f'Prefix: `{self.bot.default_prefix}`')
             return
 
-        try:
-            result = await retrieve_query(
-                self.bot.database,
-                'SELECT PREFIX FROM PREFIXES WHERE GUILD_ID=?',
-                (ctx.guild.id,)
+        if ctx.guild.id not in self.bot.prefixes:
+            await ctx.send(
+                f'You can use {self.bot.user.mention} or `{self.bot.default_prefix}` to invoke commands in this guild.'
             )
-            prefix = result[0][0] if result else self.bot.default_prefix
-
-            await ctx.send(f'Prefix: `{prefix}`')
-
-        except aiosqliteError:
-            await ctx.send('Could not retrieve the guild\'s prefix.')
+        else:
+            prefixes = [f'`{x}`' for x in self.bot.prefixes[ctx.guild.id]]
+            await ctx.send(
+                f'You can use {self.bot.user.mention} or {" or ".join(prefixes)} to invoke commands in this guild.'
+            )
 
     @commands.command(name='uptime', help='Returns current bot uptime.')
     async def uptime(self, ctx: Context) -> None:
@@ -316,8 +347,7 @@ class Utility(commands.Cog):
         guild_emoji_names = [x.name for x in ctx.guild.emojis]
         guild_emoji_ids = [x.id for x in ctx.guild.emojis]
 
-        unique_emojis = []
-        non_unique_emoji = []
+        unique_emoji, non_unique_emoji = [], []
 
         for emoji in emojis:
             if int(emoji[2]) in guild_emoji_ids:
@@ -325,21 +355,21 @@ class Utility(commands.Cog):
             elif emoji[1] in guild_emoji_names:
                 non_unique_emoji.append(f'_{emoji[1]}_ failed with `DuplicateName`')
             else:
-                unique_emojis.append(emoji)
+                unique_emoji.append(emoji)
 
-        if not unique_emojis:
+        if not unique_emoji:
             await ctx.send(f'No unique emojis found. The potential emoji are either from this server or have the '
                            f'same name as an existing emoji.\n\n**Failure Reasons:**\n{", ".join(non_unique_emoji)}')
             return
 
-        if ctx.guild.emoji_limit < len(ctx.guild.emojis) + len(unique_emojis):
+        if ctx.guild.emoji_limit < len(ctx.guild.emojis) + len(unique_emoji):
             await ctx.send(f'You do not have enough emoji slots to upload all of these emojis. '
                            f'You have {ctx.guild.emoji_limit - len(ctx.guild.emojis)} remaining slots.')
             return
 
         success, failed = [], []
 
-        for emoji in unique_emojis:
+        for emoji in unique_emoji:
             extension = 'gif' if emoji[0] else 'png'
 
             try:

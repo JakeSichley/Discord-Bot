@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2021 Jake Sichley
+Copyright (c) 202 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 from os import getcwd, listdir, path
-from discord.ext.commands import ExtensionError, Bot, when_mentioned_or
+from discord.ext.commands import ExtensionError, Bot, when_mentioned
 from datetime import datetime
 from typing import Optional, List, Any, Dict
 from utils.database_utils import retrieve_query
@@ -140,8 +140,11 @@ class DreamBot(Bot):
             self.prefixes.clear()
             result = await retrieve_query(self.database, 'SELECT * FROM PREFIXES')
 
-            if result:
-                self.prefixes = {int(guild): prefix for guild, prefix in result}
+            for guild, prefix in result:
+                if int(guild) in self.prefixes:
+                    self.prefixes[int(guild)].append(prefix)
+                else:
+                    self.prefixes[int(guild)] = [prefix]
 
         except aiosqliteError:
             self.prefixes = current_prefixes
@@ -191,7 +194,7 @@ async def generate_activity(status_text: str, status_type: discord.ActivityType)
 
     try:
         git_status = result[0].decode()
-        git_commit = search(r'(?<=commit )([A-z0-9]{6})', git_status).group()
+        git_commit = search(r'(?<=commit )([A-z0-9]{7})', git_status).group()
         git_description = search(r'(?<=JakeSichley/)([A-z0-9-]+)', git_status).group()
     except AttributeError:
         return discord.Activity(name=status_text, type=status_type)
@@ -214,5 +217,7 @@ async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:
     """
 
     guild_id = message.guild.id if message.guild else None
+    mentions = when_mentioned(bot, message)
+    additional_prefixes = list(bot.prefixes.get(guild_id, bot.default_prefix))
 
-    return when_mentioned_or(bot.prefixes.get(guild_id, bot.default_prefix))(bot, message)
+    return mentions + additional_prefixes
