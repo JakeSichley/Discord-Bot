@@ -165,8 +165,8 @@ class Moderation(commands.Cog):
             return
 
         async with ctx.typing():
-            matches = findall(r'[0-9]{15,19}|[^\s].{1,31}?#[0-9]{4}', members)
-            remaining = sub(r'[0-9]{15,19}|[^\s].{1,31}?#[0-9]{4}', '', members)
+            matches = findall(r'(?<=<@!)?(?<=<@)?[0-9]{15,19}(?=>)?|[^\s].{1,31}?#[0-9]{4}', members)
+            remaining = sub(r'(<@!)?(<@)?[0-9]{15,19}>?|[^\s].{1,31}?#[0-9]{4}', '', members)
             potential_members = matches + [x for x in remaining.split('\n') if x and x.strip()]
             converted = [await AggressiveDefaultMemberConverter().convert(ctx, member) for member in potential_members]
 
@@ -183,10 +183,13 @@ class Moderation(commands.Cog):
             else:
                 failed.append(str(member))
 
-        await ctx.send(f'Successfully added the role to the following members:\n'
-                       f'```{", ".join(success) if success else "None"}```\n'
-                       f'Failed to add the role to the following members:\n'
-                       f'```{", ".join(failed) if failed else "None"}```')
+        await ctx.send(
+            f'Successfully added {role.mention} to the following members:\n'
+            f'```{", ".join(success) if success else "None"}```\n'
+            f'Failed to add {role.mention} to the following members:\n'
+            f'```{", ".join(failed) if failed else "None"}```',
+            allowed_mentions=discord.AllowedMentions.none()
+        )
 
     @commands.has_guild_permissions(manage_roles=True)
     @commands.command(name='getdefaultrole', aliases=['gdr'],
