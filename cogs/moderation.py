@@ -26,9 +26,10 @@ from discord.ext import commands
 from utils.database_utils import execute_query, retrieve_query
 from typing import Union
 from dreambot import DreamBot
-from utils.converters import DefaultMemberConverter
+from utils.converters import AggressiveDefaultMemberConverter
 from aiosqlite import Error as aiosqliteError
 from utils.context import Context
+from re import findall, sub
 import discord
 import logging
 
@@ -129,12 +130,16 @@ class Moderation(commands.Cog):
 
     @commands.has_guild_permissions(manage_roles=True)
     @commands.bot_has_guild_permissions(manage_roles=True)
-    @commands.command(name='bulkadd', help='Adds a specified role to a large number of users at once.')
-    async def bulk_add_roles(self, ctx: Context, role: discord.Role, *members: DefaultMemberConverter):
+    @commands.command(name='bulkadd')
+    async def bulk_add_roles(self, ctx: Context, role: discord.Role, *, members: str) -> None:
         """
+        Special Note:
+            If you are passing strictly IDs or Name#Discriminator arguments, these arguments can be seperated by only
+            a space. If you are mixing IDs, Name#Discriminator, and nickname arguments, arguments must be seperated
+            by a newline to ensure proper matching.
+
         A method to bulk add a role to members.
-        Uses a special converter that attempts to remove whitespace errors and defaults to returning the member's name
-            if conversion fails.
+        Uses a special converter that aggressively attempts to match arguments.
 
         Checks:
             has_permissions(manage_roles): Whether the invoking user can manage roles.
@@ -143,7 +148,7 @@ class Moderation(commands.Cog):
         Parameters:
             ctx (Context): The invocation context.
             role (discord.Role): The role to add to the members.
-            *members (discord.Member): A variadic argument representing the members to add the role to.
+            members (str): A variadic argument representing the members to add the role to.
 
         Returns:
             None.
@@ -159,21 +164,32 @@ class Moderation(commands.Cog):
             await ctx.send('You specified a role equal to or higher than mine or your top role.')
             return
 
+        async with ctx.typing():
+            matches = findall(r'(?<=<@!)?(?<=<@)?[0-9]{15,19}(?=>)?|[^\s].{1,31}?#[0-9]{4}', members)
+            remaining = sub(r'(<@!)?(<@)?[0-9]{15,19}>?|[^\s].{1,31}?#[0-9]{4}', '', members)
+            potential_members = matches + [x for x in remaining.split('\n') if x and x.strip()]
+            converted = [await AggressiveDefaultMemberConverter().convert(ctx, member) for member in potential_members]
+
         success, failed = [], []
-        for member in members:
-            try:
-                # noinspection PyUnresolvedReferences
-                await member.add_roles(role, reason=f'Bulk Added by {str(ctx.author)}')
-                success.append(str(member))
-            # since we used a special converter that returns the member's name (as a str) if conversation fails,
-            # type 'str' won't have an add_roles method
-            except (discord.HTTPException, AttributeError):
+
+        for member in converted:
+            if isinstance(member, discord.Member):
+                try:
+                    await member.add_roles(role, reason=f'Bulk Added by {str(ctx.author)}')
+                except discord.HTTPException:
+                    failed.append(str(member))
+                else:
+                    success.append(str(member))
+            else:
                 failed.append(str(member))
 
-        await ctx.send(f'Successfully added the role to the following members:\n'
-                       f'```{", ".join(success) if success else "None"}```\n'
-                       f'Failed to add the role to the following members:\n'
-                       f'```{", ".join(failed) if failed else "None"}```')
+        await ctx.send(
+            f'Successfully added {role.mention} to the following members:\n'
+            f'```{", ".join(success) if success else "None"}```\n'
+            f'Failed to add {role.mention} to the following members:\n'
+            f'```{", ".join(failed) if failed else "None"}```',
+            allowed_mentions=discord.AllowedMentions.none()
+        )
 
     @commands.has_guild_permissions(manage_roles=True)
     @commands.command(name='getdefaultrole', aliases=['gdr'],
