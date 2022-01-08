@@ -26,12 +26,10 @@ from discord.ext import commands
 from utils.utils import localize_time, readable_flags
 from utils.defaults import MessageReply
 from utils.network_utils import network_request, NetworkReturnType
-from utils.database_utils import execute_query, retrieve_query
 from utils.context import Context
 from typing import Optional
 from re import findall
 from dreambot import DreamBot
-from aiosqlite import Error as aiosqliteError
 from aiohttp import ClientResponseError
 from discord.ext.commands.default import Author
 import datetime
@@ -100,111 +98,6 @@ class Utility(commands.Cog):
 
         await ctx.send('_Need help with bugs or want to request a feature? Join the Discord!_'
                        '\nhttps://discord.gg/fgHEWdt')
-
-    @commands.group(name='prefix', aliases=['pre'])
-    async def prefix(self, ctx: Context) -> None:
-        """
-        Parent command that handles prefix related commands.
-
-        Parameters:
-            ctx (Context): The invocation context.
-
-        Returns:
-            None.
-        """
-
-        if ctx.invoked_subcommand is None:
-            await ctx.invoke(self.bot.get_command('prefix get'))
-
-    @commands.cooldown(1, 10, commands.BucketType.guild)
-    @commands.has_permissions(manage_guild=True)
-    @commands.guild_only()
-    @prefix.command(name='add', aliases=['set'])
-    async def add_prefix(self, ctx: Context, prefix: str) -> None:
-        """
-        A method to add a command prefix for the guild.
-
-        Checks:
-            cooldown(): Whether the command is on cooldown. Can be used (1) time per (10) seconds per (Guild).
-            has_permissions(administrator): Whether the invoking user is an administrator.
-            guild_only(): Whether the command was invoked from a guild. No direct messages.
-
-        Parameters:
-            ctx (Context): The invocation context.
-            prefix (str): The new prefix to use.
-
-        Output:
-            Success: Confirmation that the prefix changed.
-            Failure: An error noting the change was not completed.
-
-        Returns:
-            None.
-        """
-
-        prefixes = self.bot.prefixes.get(ctx.guild.id, [])
-
-        if len(prefixes) >= 3:
-            await ctx.send('This guild has reached the maximum number of prefixes.')
-            return
-
-        if prefix in prefixes:
-            await ctx.send('The desired prefix already exists for this guild.')
-            return
-
-        prefix = prefix.strip()
-
-        if len(prefix) > 16:
-            await ctx.send('The maximum length for a prefix is 16 characters.')
-            return
-
-        try:
-            await execute_query(
-                self.bot.database,
-                'INSERT INTO PREFIXES (GUILD_ID, PREFIX) VALUES (?, ?)',
-                (ctx.guild.id, prefix)
-            )
-        except aiosqliteError:
-            await ctx.send(f'Failed to add `{prefix}`.')
-        else:
-            if ctx.guild.id in self.bot.prefixes:
-                self.bot.prefixes[ctx.guild.id].append(prefix)
-            else:
-                self.bot.prefixes[ctx.guild.id] = [prefix]
-
-            await ctx.send(f'Added `{prefix}` as a prefix for this guild.')
-
-    @prefix.command(name='get')
-    async def get_prefix(self, ctx: Context) -> None:
-        """
-        A method that outputs the current prefixes for the guild.
-
-        Checks:
-            guild_only(): Whether the command was invoked from a guild. No direct messages.
-
-        Parameters:
-            ctx (Context): The invocation context.
-
-        Output:
-            Success: The prefix assigned to the guild.
-            Failure: An error noting the prefix could not be fetched.
-
-        Returns:
-            None.
-        """
-
-        if not ctx.guild:
-            await ctx.send(f'Prefix: `{self.bot.default_prefix}`')
-            return
-
-        if ctx.guild.id not in self.bot.prefixes:
-            await ctx.send(
-                f'You can use {self.bot.user.mention} or `{self.bot.default_prefix}` to invoke commands in this guild.'
-            )
-        else:
-            prefixes = [f'`{x}`' for x in self.bot.prefixes[ctx.guild.id]]
-            await ctx.send(
-                f'You can use {self.bot.user.mention} or {" or ".join(prefixes)} to invoke commands in this guild.'
-            )
 
     @commands.command(name='uptime', help='Returns current bot uptime.')
     async def uptime(self, ctx: Context) -> None:
