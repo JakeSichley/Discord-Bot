@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2021 Jake Sichley
+Copyright (c) 2019-2022 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -397,7 +397,7 @@ class Admin(commands.Cog):
             None.
         """
 
-        result = await run_in_subprocess('git fetch && git diff --stat origin/master')
+        result = await run_in_subprocess('git fetch && git diff --stat HEAD origin/master')
         actual_result = [x for x in result if x]
 
         if not actual_result:
@@ -524,7 +524,7 @@ class Admin(commands.Cog):
     @git.command(name='dry_run', aliases=['dry', 'd'], hidden=True)
     async def dry_run(self, ctx: Context) -> None:
         """
-        Performs a dry run of git pull. Equivalent to git fetch && git diff --stat origin/master.
+        Performs a dry run of git pull. Equivalent to git fetch && git diff --stat HEAD origin/master.
 
         Parameters:
             ctx (Context): The invocation context.
@@ -533,7 +533,7 @@ class Admin(commands.Cog):
             None.
         """
 
-        result = await run_in_subprocess('git fetch && git diff --stat origin/master')
+        result = await run_in_subprocess('git fetch && git diff --stat HEAD origin/master')
         actual_result = [x for x in result if x]
 
         if not actual_result:
