@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2021 Jake Sichley
+Copyright (c) 2022 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,7 @@ SOFTWARE.
 from typing import Any
 from enum import Enum
 import aiohttp
+import logging
 
 
 class NetworkReturnType(Enum):
@@ -64,11 +65,16 @@ async def network_request(url: str, **options) -> Any:
     raise_errors = options.pop('raise_errors', True)
     ssl = options.pop('ssl', None)
 
-    async with aiohttp.ClientSession(raise_for_status=raise_errors) as session:
-        async with session.get(url, headers=header, ssl=ssl) as r:
-            if return_type == NetworkReturnType.JSON:
-                return await r.json(encoding=encoding)
-            elif return_type == NetworkReturnType.BYTES:
-                return await r.read()
-            else:
-                return await r.text(encoding=encoding)
+    try:
+        async with aiohttp.ClientSession(raise_for_status=raise_errors) as session:
+            async with session.get(url, headers=header, ssl=ssl) as r:
+                if return_type == NetworkReturnType.JSON:
+                    return await r.json(encoding=encoding)
+                elif return_type == NetworkReturnType.BYTES:
+                    return await r.read()
+                else:
+                    return await r.text(encoding=encoding)
+    except aiohttp.ClientResponseError as e:
+        logging.error(f'Network Request Error. ("{url}"). {e.status}. {e.message}')
+        if raise_errors:
+            raise

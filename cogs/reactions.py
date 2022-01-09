@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2021 Jake Sichley
+Copyright (c) 2022 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -157,7 +157,8 @@ class ReactionRoles(commands.Cog):
             # try to add the reaction the base message
             try:
                 await message.add_reaction(payload.emoji)
-            except discord.HTTPException:
+            except discord.HTTPException as e:
+                logging.warning(f'Reaction Role Reaction Addition Error. {e.status}. {e.text}')
                 cleanup_messages.append(await ctx.send("I wasn't able to add the reaction to the base message. If you"
                                                        " have not already done so, please add the reaction for me!"))
         except TimeoutError:
@@ -285,8 +286,8 @@ class ReactionRoles(commands.Cog):
                     # try to remove the deleted reaction
                     try:
                         await message.clear_reaction(to_remove[0])
-                    except discord.HTTPException:
-                        pass
+                    except discord.HTTPException as e:
+                        logging.warning(f'Reaction Role Reaction Removal Error. {e.status}. {e.text}')
 
                     await ctx.send('Removed the specified reaction role from the message.')
                 else:
@@ -364,8 +365,8 @@ class ReactionRoles(commands.Cog):
                         if reaction.me:
                             try:
                                 await message.remove_reaction(reaction, ctx.me)
-                            except discord.HTTPException:
-                                pass
+                            except discord.HTTPException as e:
+                                logging.warning(f'Reaction Role Reaction Clear Error. {e.status}. {e.text}')
                     await ctx.send('Removed all reaction roles from the specified message.')
                 else:
                     raise commands.BadArgument
@@ -531,8 +532,8 @@ class ReactionRoles(commands.Cog):
                         await member.add_roles(
                             role, reason=f'Reaction Roles - Add [Message ID: {payload.message_id}]'
                         )
-                    except discord.HTTPException:
-                        pass
+                    except discord.HTTPException as e:
+                        logging.error(f'Reaction Role - Role Addition Failure. {e.status}. {e.text}')
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent) -> None:
@@ -564,8 +565,8 @@ class ReactionRoles(commands.Cog):
                         await member.remove_roles(
                             role, reason=f'Reaction Roles - Remove [Message ID: {payload.message_id}]'
                         )
-                    except discord.HTTPException:
-                        pass
+                    except discord.HTTPException as e:
+                        logging.error(f'Reaction Role - Role Removal Error. {e.status}. {e.text}')
 
 
 class ReactionRolePagination:

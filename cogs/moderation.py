@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2021 Jake Sichley
+Copyright (c) 2022 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -126,6 +126,7 @@ class Moderation(commands.Cog):
             await ctx.send(f"**{base_channel.name}**[`{base_permission_owner}`] --> "
                            f"**{target_channel.name}**[`{target_permission_owner}`]")
         except Exception as e:
+            logging.error(f'Overwrites Duplication Error. {e}')
             await ctx.send(f"Failed to duplicate overwrites ({e})")
 
     @commands.has_guild_permissions(manage_roles=True)
@@ -299,7 +300,8 @@ class Moderation(commands.Cog):
 
             try:
                 await member.add_roles(role, reason='Default Role Assignment')
-            except discord.HTTPException:
+            except discord.HTTPException as e:
+                logging.error(f'Role Addition Failure. {e.status}. {e.text}')
                 await execute_query(self.bot.database, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                                     (member.guild.id,))
 
@@ -326,11 +328,12 @@ class Moderation(commands.Cog):
 
                 try:
                     await after.add_roles(role, reason='Default Role [Membership Screening] Assignment')
-                except discord.HTTPException:
+                except discord.HTTPException as e:
+                    logging.error(f'Role Addition Failure. {e.status}. {e.text}')
                     try:
                         await after.guild.system_channel.send(f'Failed to add the default role to `{str(after)}`.')
                     except discord.HTTPException:
-                        pass
+                        logging.error(f'Role Addition Alert Failure. {e.status}. {e.text}')
 
 
 def setup(bot: DreamBot) -> None:

@@ -145,7 +145,7 @@ class Prefixes(commands.Cog):
             return
 
         if prefix not in prefixes:
-            await ctx.send(f'`{prefix} is not one of custom prefixes for this guild.`')
+            await ctx.send(f'`{prefix}` is not one of custom prefixes for this guild.')
             return
 
         try:
