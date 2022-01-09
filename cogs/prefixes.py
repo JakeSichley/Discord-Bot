@@ -29,8 +29,6 @@ from dreambot import DreamBot
 from aiosqlite import Error as aiosqliteError
 import logging
 
-# TODO: Remove, Replace, Clear
-
 
 class Prefixes(commands.Cog):
     """
@@ -42,7 +40,7 @@ class Prefixes(commands.Cog):
 
     def __init__(self, bot: DreamBot) -> None:
         """
-        The constructor for the UtilityFunctions class.
+        The constructor for the Prefixes class.
 
         Parameters:
            bot (DreamBot): The Discord bot.
@@ -50,7 +48,7 @@ class Prefixes(commands.Cog):
 
         self.bot = bot
 
-    @commands.group(name='prefix', aliases=['pre'])
+    @commands.group(name='prefix', aliases=['pre', 'prefixes'])
     async def prefix(self, ctx: Context) -> None:
         """
         Parent command that handles prefix related commands.
@@ -65,7 +63,7 @@ class Prefixes(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.invoke(self.bot.get_command('prefix get'))
 
-    @commands.cooldown(1, 10, commands.BucketType.guild)
+    @commands.cooldown(1, 2, commands.BucketType.guild)
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
     @prefix.command(name='add', aliases=['set'])
@@ -74,17 +72,13 @@ class Prefixes(commands.Cog):
         A method to add a command prefix for the guild.
 
         Checks:
-            cooldown(): Whether the command is on cooldown. Can be used (1) time per (10) seconds per (Guild).
-            has_permissions(administrator): Whether the invoking user is an administrator.
+            cooldown(): Whether the command is on cooldown. Can be used (1) time per (2) seconds per (Guild).
+            has_permissions(manage_guild): Whether the invoking user can manage the guild.
             guild_only(): Whether the command was invoked from a guild. No direct messages.
 
         Parameters:
             ctx (Context): The invocation context.
             prefix (str): The new prefix to use.
-
-        Output:
-            Success: Confirmation that the prefix changed.
-            Failure: An error noting the change was not completed.
 
         Returns:
             None.
@@ -122,6 +116,151 @@ class Prefixes(commands.Cog):
 
             await ctx.send(f'Added `{prefix}` as a prefix for this guild.')
 
+    @commands.cooldown(1, 2, commands.BucketType.guild)
+    @commands.has_permissions(manage_guild=True)
+    @commands.guild_only()
+    @prefix.command(name='remove', aliases=['delete', 'del'])
+    async def remove_prefix(self, ctx: Context, prefix: str) -> None:
+        """
+        A method to remove a command prefix for the guild.
+
+        Checks:
+            cooldown(): Whether the command is on cooldown. Can be used (1) time per (2) seconds per (Guild).
+            has_permissions(manage_guild): Whether the invoking user can manage the guild.
+            guild_only(): Whether the command was invoked from a guild. No direct messages.
+
+        Parameters:
+            ctx (Context): The invocation context.
+            prefix (str): The prefix to remove.
+
+        Returns:
+            None.
+        """
+
+        prefixes = self.bot.prefixes.get(ctx.guild.id, None)
+        prefix = prefix.strip()
+
+        if prefixes is None:
+            await ctx.send(f'This guild has no custom prefixes. Cannot remove `{prefix}`.')
+            return
+
+        if prefix not in prefixes:
+            await ctx.send(f'`{prefix} is not one of custom prefixes for this guild.`')
+            return
+
+        try:
+            await execute_query(
+                self.bot.database,
+                'DELETE FROM PREFIXES WHERE GUILD_ID=? AND PREFIX=?',
+                (ctx.guild.id, prefix)
+            )
+        except aiosqliteError:
+            await ctx.send(f'Failed to remove `{prefix}`.')
+        else:
+            self.bot.prefixes[ctx.guild.id].remove(prefix)
+
+            if not self.bot.prefixes[ctx.guild.id]:
+                del self.bot.prefixes[ctx.guild.id]
+
+            await ctx.send(f'Removed `{prefix}` as a prefix for this guild.')
+
+    @commands.cooldown(1, 2, commands.BucketType.guild)
+    @commands.has_permissions(manage_guild=True)
+    @commands.guild_only()
+    @prefix.command(name='replace', aliases=['swap', 'switch'])
+    async def replace_prefix(self, ctx: Context, old_prefix: str, new_prefix: str) -> None:
+        """
+        A method to replace an existing command prefix for the guild.
+
+        Checks:
+            cooldown(): Whether the command is on cooldown. Can be used (1) time per (2) seconds per (Guild).
+            has_permissions(manage_guild): Whether the invoking user can manage the guild.
+            guild_only(): Whether the command was invoked from a guild. No direct messages.
+
+        Parameters:
+            ctx (Context): The invocation context.
+            old_prefix (str): The prefix to remove.
+            new_prefix (str): The prefix to add.
+
+        Returns:
+            None.
+        """
+
+        prefixes = self.bot.prefixes.get(ctx.guild.id, None)
+        old_prefix, new_prefix = old_prefix.strip(), new_prefix.strip()
+
+        if prefixes is None:
+            await ctx.send(f'This guild has no custom prefixes. Cannot replace `{old_prefix}`.')
+            return
+
+        if new_prefix == old_prefix:
+            await ctx.send(f'The old and new prefix are identical.')
+            return
+
+        if old_prefix not in prefixes:
+            await ctx.send(f'`{old_prefix} is not one of custom prefixes for this guild.`')
+            return
+
+        try:
+            await execute_query(
+                self.bot.database,
+                'UPDATE PREFIXES SET PREFIX=? WHERE GUILD_ID=? AND PREFIX=?',
+                (new_prefix, ctx.guild.id, old_prefix)
+            )
+        except aiosqliteError:
+            await ctx.send(f'Failed to replace `{old_prefix}` with `{new_prefix}`.')
+        else:
+            self.bot.prefixes[ctx.guild.id].remove(old_prefix)
+            self.bot.prefixes[ctx.guild.id].append(new_prefix)
+
+            await ctx.send(f'Replaced `{old_prefix}` with `{new_prefix}` as a prefix for this guild.')
+
+    @commands.cooldown(1, 2, commands.BucketType.guild)
+    @commands.has_permissions(manage_guild=True)
+    @commands.guild_only()
+    @prefix.command(name='clear')
+    async def clear_prefixes(self, ctx: Context) -> None:
+        """
+        A method to remove all existing command prefixes for the guild.
+
+        Checks:
+            cooldown(): Whether the command is on cooldown. Can be used (1) time per (2) seconds per (Guild).
+            has_permissions(manage_guild): Whether the invoking user can manage the guild.
+            guild_only(): Whether the command was invoked from a guild. No direct messages.
+
+        Parameters:
+            ctx (Context): The invocation context.
+
+        Returns:
+            None.
+        """
+
+        prefixes = self.bot.prefixes.get(ctx.guild.id, None)
+
+        if prefixes is None:
+            await ctx.send(f'This guild has no custom prefixes. Cannot clear prefixes.')
+            return
+
+        confirmation = await ctx.confirmation_prompt('Are you sure you wish to clear all prefixes from this guild?')
+
+        if not confirmation:
+            await ctx.send('Aborting Clear Prefixes.')
+            return
+
+        try:
+            await execute_query(
+                self.bot.database,
+                'DELETE FROM PREFIXES WHERE GUILD_ID=?',
+                (ctx.guild.id,)
+            )
+        except aiosqliteError:
+            await ctx.send(f'Failed to clear prefixes.')
+        else:
+            del self.bot.prefixes[ctx.guild.id]
+
+            await ctx.send(f'Cleared all prefixes for the guild.')
+
+    @commands.cooldown(1, 2, commands.BucketType.guild)
     @prefix.command(name='get')
     async def get_prefix(self, ctx: Context) -> None:
         """
