@@ -23,6 +23,7 @@ SOFTWARE.
 """
 
 from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable
+from re import search
 import discord
 import datetime
 import pytz
@@ -154,3 +155,29 @@ async def run_in_subprocess(command: str) -> Tuple[bytes, bytes]:
     except NotImplementedError:
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return await asyncio.get_running_loop().run_in_executor(None, process.communicate)
+
+
+async def generate_activity(status_text: str, status_type: discord.ActivityType) -> discord.Activity:
+    """
+    Generates a custom activity. Attempts to add the latest git version information to the status text.
+
+    Parameters:
+        status_text (str): The default/base activity text.
+        status_type (discord.ActivityType): The type of activity.
+
+    Returns:
+        (discord.Activity): The custom generated activity.
+    """
+
+    result = await run_in_subprocess('git show')
+
+    try:
+        git_status = result[0].decode()
+        git_commit = search(r'(?<=commit )([A-z0-9]{7})', git_status).group()
+        git_description = search(r'(?<=JakeSichley/)([A-z0-9-]+)', git_status).group()
+    except AttributeError:
+        return discord.Activity(name=status_text, type=status_type)
+    else:
+        git_text = f'Version {git_commit} - {git_description}'
+        padding = "\u3000" * (126 - len(status_text) - len(git_text))
+        return discord.Activity(name=f'{status_text}\n{padding}{git_text}', type=status_type)

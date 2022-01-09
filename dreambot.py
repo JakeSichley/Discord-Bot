@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 202 Jake Sichley
+Copyright (c) 2022 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,8 +29,7 @@ from typing import Optional, List, Any, Dict
 from utils.database_utils import retrieve_query
 from aiosqlite import Error as aiosqliteError
 from utils.context import Context
-from utils.utils import run_in_subprocess
-from re import search
+from utils.utils import generate_activity
 import discord
 import logging
 
@@ -176,32 +175,6 @@ class DreamBot(Bot):
         """
 
         return await super().get_context(message, cls=cls)
-
-
-async def generate_activity(status_text: str, status_type: discord.ActivityType) -> discord.Activity:
-    """
-    Generates a custom activity. Attempts to add the latest git version information to the status text.
-
-    Parameters:
-        status_text (str): The default/base activity text.
-        status_type (discord.ActivityType): The type of activity.
-
-    Returns:
-        (discord.Activity): The custom generated activity.
-    """
-
-    result = await run_in_subprocess('git show')
-
-    try:
-        git_status = result[0].decode()
-        git_commit = search(r'(?<=commit )([A-z0-9]{7})', git_status).group()
-        git_description = search(r'(?<=JakeSichley/)([A-z0-9-]+)', git_status).group()
-    except AttributeError:
-        return discord.Activity(name=status_text, type=status_type)
-    else:
-        git_text = f'Version {git_commit} - {git_description}'
-        padding = "\u3000" * (126 - len(status_text) - len(git_text))
-        return discord.Activity(name=f'{status_text}\n{padding}{git_text}', type=status_type)
 
 
 async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:
