@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2021 Jake Sichley
+Copyright (c) 2022 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -30,6 +30,7 @@ import pytz
 import functools
 import asyncio
 import subprocess
+import logging
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.TextChannel) -> None:
@@ -47,11 +48,12 @@ async def cleanup(messages: List[discord.Message], channel: discord.TextChannel)
 
     try:
         await channel.delete_messages(messages)
-    except discord.Forbidden:
+    except discord.Forbidden as e:
+        logging.warning(f'Message Cleanup Error. {e.status}. {e.text}')
         while messages:
             await messages.pop().delete()
-    except discord.DiscordException:
-        pass
+    except discord.HTTPException as e:
+        logging.error(f'Message Cleanup Error. {e.status}. {e.text}')
 
 
 def localize_time(time: datetime.datetime) -> str:

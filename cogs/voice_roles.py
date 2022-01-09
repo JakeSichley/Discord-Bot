@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2021 Jake Sichley
+Copyright (c) 2022 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -302,8 +302,8 @@ class VoiceRoles(commands.Cog):
                             add_role,
                             reason=f'Voice Roles - Join [Channel ID: {after.channel.id} ("{after.channel.name}")]'
                         )
-                    except discord.HTTPException:
-                        pass
+                    except discord.HTTPException as e:
+                        logging.error(f'Voice Role - Role Addition Error. {e.status}. {e.text}')
 
                 if remove_roles:
                     try:
@@ -311,8 +311,8 @@ class VoiceRoles(commands.Cog):
                             *remove_roles,
                             reason=f'Voice Roles - Leave [Channel ID: {after.channel.id} ("{after.channel.name}")]'
                         )
-                    except discord.HTTPException:
-                        pass
+                    except discord.HTTPException as e:
+                        logging.error(f'Voice Role - Role Removal Error. {e.status}. {e.text}')
 
             else:
                 remove_roles = []
@@ -322,8 +322,8 @@ class VoiceRoles(commands.Cog):
                 if remove_roles:
                     try:
                         await member.remove_roles(*remove_roles, reason=f'Voice Roles - Disconnect')
-                    except discord.HTTPException:
-                        pass
+                    except discord.HTTPException as e:
+                        logging.error(f'Voice Role - Role Removal Error. {e.status}. {e.text}')
 
 
 def setup(bot: DreamBot) -> None:

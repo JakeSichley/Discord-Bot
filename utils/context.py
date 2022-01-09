@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2021 Jake Sichley
+Copyright (c) 2022 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ from typing import Any, Union, Optional
 from uuid import uuid4
 from asyncio import TimeoutError
 import discord
+import logging
 
 
 class Context(commands.Context):
@@ -66,7 +67,8 @@ class Context(commands.Context):
 
         try:
             await self.message.add_reaction(emoji)
-        except discord.HTTPException:
+        except discord.HTTPException as e:
+            logging.warning(f'Context React Error. {e.status}. {e.text}')
             if raise_exceptions:
                 raise
 

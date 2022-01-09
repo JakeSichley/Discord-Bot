@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2021 Jake Sichley
+Copyright (c) 2022 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -78,12 +78,14 @@ class Images(commands.Cog):
                 await ctx.send('The supplied image is too large. Bots are limited to images of size < 8 Megabytes.')
                 return
             except discord.HTTPException as e:
+                logging.error(f'File Download Failure. {e.status}. {e.text}')
                 await ctx.send(f'Could not download image. Details: [Status {e.status} | {e.text}]')
                 return
 
             try:
                 await ctx.send(file=discord.File(inverted, filename="inverted.png"))
             except discord.HTTPException as e:
+                logging.error(f'File Send Failure. {e.status}. {e.text}')
                 await ctx.send(f'Could not send image. Details: [Status {e.status} | {e.text}]')
                 return
 
@@ -116,6 +118,7 @@ class Images(commands.Cog):
             try:
                 await ctx.send(file=discord.File(buffer, filename="iasip.png"))
             except discord.HTTPException as e:
+                logging.error(f'File Send Failure. {e.status}. {e.text}')
                 await ctx.send(f'Could not send image. Details: [Status {e.status} | {e.text}]')
                 return
 

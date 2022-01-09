@@ -208,9 +208,11 @@ class Utility(commands.Cog):
             )
             try:
                 await ctx.react(created_emoji, raise_exceptions=True)
-            except discord.HTTPException:
+            except discord.HTTPException as e:
+                logging.warning(f'Raw Yoink Add Reaction Error. {e.status}. {e.text}')
                 await ctx.tick()
         except discord.HTTPException as e:
+            logging.error(f'Raw Yoink Creation Error. {e.status}. {e.text}')
             await ctx.send(f'**{name}** failed with `{e.text}`')
 
     @commands.has_guild_permissions(manage_emojis=True)
@@ -280,9 +282,11 @@ class Utility(commands.Cog):
                 )
                 try:
                     await ctx.react(created_emoji, raise_exceptions=True)
-                except discord.HTTPException:
+                except discord.HTTPException as e:
+                    logging.warning(f'Yoink Add Reaction Error. {e.status}. {e.text}')
                     success.append(emoji[1])
             except discord.HTTPException as e:
+                logging.error(f'Yoink Creation Error. {e.status}. {e.text}')
                 failed.append(f'**{emoji[1]}** failed with `{e.text}`')
 
         response = ''

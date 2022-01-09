@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2021 Jake Sichley
+Copyright (c) 2022 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,7 @@ SOFTWARE.
 
 from typing import List, Tuple, Any, Optional
 import aiosqlite
+import logging
 
 
 async def execute_query(database_name: str, query: str, values: Tuple[Any, ...] = None) -> Optional[int]:
@@ -49,7 +50,7 @@ async def execute_query(database_name: str, query: str, values: Tuple[Any, ...] 
             return affected.rowcount
 
     except aiosqlite.Error as error:
-        print(f'aiosqlite execute error\n{query=}\n{error=}')
+        logging.error(f'Execute Query ("{query}"). {error}.')
         raise error
 
 
@@ -75,5 +76,5 @@ async def retrieve_query(database_name: str, query: str, values: Tuple[Any, ...]
                 return await cursor.fetchall()
 
     except aiosqlite.Error as error:
-        print(f'aiosqlite retrieve error\n{query=}\n{error=}')
+        logging.error(f'Retrieve Query ("{query}"). {error}.')
         raise error
