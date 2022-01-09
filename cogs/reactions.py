@@ -108,6 +108,10 @@ class ReactionRoles(commands.Cog):
                               'Message Link!'
             cleanup_messages, message = await prompt_user_for_message(self.bot, ctx, initial_message)
 
+            if not message:
+                await cleanup(cleanup_messages, ctx.channel)
+                return
+
         # check to make sure the message is from this guild (full message link check)
         if message.guild.id != ctx.guild.id:
             await ctx.send("That message doesn't belong to this guild.")
@@ -126,6 +130,14 @@ class ReactionRoles(commands.Cog):
 
             messages, role = await prompt_user_for_role(self.bot, ctx, bot_role, invoker_role, initial_message)
             cleanup_messages.extend(messages)
+
+            if not role:
+                await cleanup(cleanup_messages, ctx.channel)
+                return
+
+        if role.guild.id != role.guild.id:
+            await ctx.send("That role doesn't belong to this guild.")
+            return
 
         # reaction role setup should have the base message and a role
         # if the user passed in a role at the start, check the hierarchy
@@ -202,6 +214,10 @@ class ReactionRoles(commands.Cog):
                               'click on a message and send either the Message ID or you can also send the entire ' \
                               'Message Link!'
             cleanup_messages, message = await prompt_user_for_message(self.bot, ctx, initial_message)
+
+            if not message:
+                await cleanup(cleanup_messages, ctx.channel)
+                return
 
         # check to make sure the message is from this guild (full message link check)
         if message.guild.id != ctx.guild.id:
@@ -326,6 +342,10 @@ class ReactionRoles(commands.Cog):
                               'click on a message and send either the Message ID or you can also send the entire ' \
                               'Message Link!'
             cleanup_messages, message = await prompt_user_for_message(self.bot, ctx, initial_message)
+
+            if not message:
+                await cleanup(cleanup_messages, ctx.channel)
+                return
 
         # check to make sure the message is from this guild (full message link check)
         if message.guild.id != ctx.guild.id:
