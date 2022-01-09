@@ -28,7 +28,7 @@ from io import StringIO
 from contextlib import redirect_stdout
 from textwrap import indent
 from traceback import format_exc
-from utils.utils import localize_time, pairs, run_in_subprocess
+from utils.utils import localize_time, pairs, run_in_subprocess, generate_activity
 from re import finditer
 from typing import Union
 from dreambot import DreamBot
@@ -516,6 +516,9 @@ class Admin(commands.Cog):
             output += '\n'.join(cog_statuses)
 
         output += '\n```'
+
+        # -- finalize --
+        await self.bot.change_presence(activity=await generate_activity(self.bot._status_text, self.bot._status_type))
         await ctx.send(output)
 
     @git.command(name='dry_run', aliases=['dry', 'd'], hidden=True)

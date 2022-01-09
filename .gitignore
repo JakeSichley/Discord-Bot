@@ -128,11 +128,7 @@ dmypy.json
 
 # Project Files
 cogs/disabled/*
-.idea/misc.xml
-.idea/modules.xml
-.idea/inspectionProfiles/profiles_settings.xml
-tests.py
-cogs/test.py
-BotDatabase
+test*.py
+BotDatabase*
 firebase-auth.json
 */assets/*

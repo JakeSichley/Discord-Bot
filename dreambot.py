@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2021 Jake Sichley
+Copyright (c) 2022 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,12 +23,13 @@ SOFTWARE.
 """
 
 from os import getcwd, listdir, path
-from discord.ext.commands import ExtensionError, Bot, when_mentioned_or
+from discord.ext.commands import ExtensionError, Bot, when_mentioned
 from datetime import datetime
 from typing import Optional, List, Any, Dict
 from utils.database_utils import retrieve_query
 from aiosqlite import Error as aiosqliteError
 from utils.context import Context
+from utils.utils import generate_activity
 import discord
 import logging
 
@@ -83,7 +84,7 @@ class DreamBot(Bot):
         self.environment = environment
 
         # optionals
-        self._status_type = options.pop('status_type', discord.ActivityType(1))
+        self._status_type = options.pop('status_type', discord.ActivityType(0))
         self._status_text = options.pop('status_text', None)
         self.disabled_cogs = options.pop('disabled_cogs', [])
 
@@ -97,7 +98,7 @@ class DreamBot(Bot):
                 try:
                     self.load_extension(f'cogs.{cog[:-3]}')
                 except ExtensionError as e:
-                    print(e)
+                    logging.error(f'Failed Setup for Cog: {cog[:-3].capitalize()}. {e}')
 
     async def on_ready(self):
         """
@@ -114,12 +115,12 @@ class DreamBot(Bot):
         """
 
         if not self.initialized:
-            await self.change_presence(status=discord.Status.online, activity=discord.Activity(name=self._status_text,
-                                       type=self._status_type))
+            activity = await generate_activity(self._status_text, self._status_type)
+            await self.change_presence(status=discord.Status.online, activity=activity)
             await self.retrieve_prefixes()
             self.initialized = True
 
-            logging.log(logging.INFO, 'DreamBot Ready: Prefixes and Presence initialized')
+            logging.info('DreamBot Ready: Prefixes and Presence initialized')
 
     async def retrieve_prefixes(self) -> None:
         """
@@ -138,8 +139,11 @@ class DreamBot(Bot):
             self.prefixes.clear()
             result = await retrieve_query(self.database, 'SELECT * FROM PREFIXES')
 
-            if result:
-                self.prefixes = {int(guild): prefix for guild, prefix in result}
+            for guild, prefix in result:
+                if int(guild) in self.prefixes:
+                    self.prefixes[int(guild)].append(prefix)
+                else:
+                    self.prefixes[int(guild)] = [prefix]
 
         except aiosqliteError:
             self.prefixes = current_prefixes
@@ -186,5 +190,7 @@ async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:
     """
 
     guild_id = message.guild.id if message.guild else None
+    mentions = when_mentioned(bot, message)
+    additional_prefixes = list(bot.prefixes.get(guild_id, bot.default_prefix))
 
-    return when_mentioned_or(bot.prefixes.get(guild_id, bot.default_prefix))(bot, message)
+    return mentions + additional_prefixes
