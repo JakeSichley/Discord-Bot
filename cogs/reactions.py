@@ -307,9 +307,9 @@ class ReactionRoles(commands.Cog):
 
     @commands.bot_has_permissions(manage_roles=True)
     @commands.has_permissions(manage_roles=True)
-    @reaction_role.command(name='clear', help='Begins the process of removing an existing Reaction Role.\nIf you invoke'
-                                              ' this command without a supplying a message, you will be prompted for'
-                                              ' one.\nIf you wish to remove only a single reaction role, consider'
+    @reaction_role.command(name='clear', help='Begins the process of clearing all existing Reaction Roles.\nIf you'
+                                              ' invoke this command without a supplying a message, you will be prompted'
+                                              ' for one.\nIf you wish to remove only a single reaction role, consider'
                                               ' using "remove" instead!')
     async def clear_reaction_roles(self, ctx: Context, message: discord.Message = None) -> None:
         """
