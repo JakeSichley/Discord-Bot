@@ -184,13 +184,13 @@ class Moderation(commands.Cog):
             else:
                 failed.append(str(member))
 
-        await ctx.send(
-            f'Successfully added {role.mention} to the following members:\n'
-            f'```{", ".join(success) if success else "None"}```\n'
-            f'Failed to add {role.mention} to the following members:\n'
-            f'```{", ".join(failed) if failed else "None"}```',
-            allowed_mentions=discord.AllowedMentions.none()
-        )
+        summary = f'Successfully added {role.mention} to the following members:\n'\
+                  f'```{", ".join(success) if success else "None"}```\n'
+
+        if failed:
+            summary += f'Failed to add {role.mention} to the following members:\n```{", ".join(failed)}```',
+
+        await ctx.send(summary, allowed_mentions=discord.AllowedMentions.none())
 
     @commands.has_guild_permissions(manage_roles=True)
     @commands.command(name='getdefaultrole', aliases=['gdr'],

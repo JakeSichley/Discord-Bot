@@ -109,6 +109,10 @@ class ReactionRoles(commands.Cog):
             cleanup_messages, message = await prompt_user_for_message(self.bot, ctx, initial_message)
 
         # check to make sure the message is from this guild (full message link check)
+        if not message:
+            await ctx.send('No Message')
+            return
+
         if message.guild.id != ctx.guild.id:
             await ctx.send("That message doesn't belong to this guild.")
             return
