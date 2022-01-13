@@ -28,6 +28,7 @@ from uuid import uuid4
 from asyncio import TimeoutError
 import discord
 import logging
+import io
 
 
 class Context(commands.Context):
@@ -152,3 +153,26 @@ class Context(commands.Context):
                 await prompt.delete()
             return result
 
+    async def send(
+            self, content=None, *, tts=False, embed=None, file=None, files=None, delete_after=None, nonce=None,
+            allowed_mentions=None, reference=None, mention_author=None, safe_send=True, escape_mentions=False
+    ) -> discord.Message:
+        """
+        # todo: docstring
+        """
+
+        if escape_mentions:
+            content = discord.utils.escape_mentions(content)
+
+        if len(content) > 2000:
+            fp = io.BytesIO(content.encode())
+            return await self.channel.send(
+                file=discord.File(fp, filename='long_content.txt'),
+                tts=tts, embed=embed, delete_after=delete_after, nonce=nonce, allowed_mentions=allowed_mentions,
+                reference=reference, mention_author=mention_author
+            )
+        else:
+            return await self.channel.send(
+                content, file=file, files=files, tts=tts, embed=embed, delete_after=delete_after, nonce=nonce,
+                allowed_mentions=allowed_mentions, reference=reference, mention_author=mention_author
+            )
