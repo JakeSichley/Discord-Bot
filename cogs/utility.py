@@ -32,6 +32,7 @@ from re import findall
 from dreambot import DreamBot
 from aiohttp import ClientResponseError
 from discord.ext.commands.default import Author
+from inspect import ismethod
 import datetime
 import pytz
 import discord
@@ -55,6 +56,24 @@ class Utility(commands.Cog):
         """
 
         self.bot = bot
+
+    @commands.command(name='dump')
+    async def dump_command(self, ctx: Context):
+        from pprint import pprint
+        from inspect import getmembers
+        from types import FunctionType
+
+        def attributes(obj):
+            disallowed_names = {
+                name for name, value in getmembers(type(obj))
+                if isinstance(value, FunctionType)
+            }
+
+            return {
+                name: getattr(obj, name) for name in dir(obj) if name[0] != '_' and name not in disallowed_names and hasattr(obj, name)
+            }
+
+        pprint(attributes(ctx))
 
     @commands.command(name='time', help='Responds with the current time. Can be supplied with a timezone.\nFor a full '
                                         'list of supported timezones, see '

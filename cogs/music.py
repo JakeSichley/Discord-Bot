@@ -648,9 +648,9 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                 await node.destroy()
 
         # noinspection HttpUrlsUsage
-        nodes = {'MAIN': {'host': '127.0.0.50',
+        nodes = {'MAIN': {'host': '127.0.0.40',
                           'port': 2333,
-                          'rest_uri': 'http://127.0.0.50:2333',
+                          'rest_uri': 'http://127.0.0.40:2333',
                           'password': getenv('LAVALINK_TOKEN'),
                           'identifier': 'DREAM-BOT-MUSIC',
                           'region': 'us_west'
