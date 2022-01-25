@@ -191,7 +191,7 @@ class Context(commands.Context):
             (discord.Message): The message that was sent.
         """
 
-        if len(content) > 2000 and safe_send:
+        if safe_send and content and len(content) > 2000:
             fp = io.BytesIO(content.encode())
             return await self.channel.send(
                 file=discord.File(fp, filename='content.txt'),
