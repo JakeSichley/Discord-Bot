@@ -81,6 +81,10 @@ class Moderation(commands.Cog):
             None.
         """
 
+        if limit > 10:
+            if not await ctx.confirmation_prompt(f'Are you sure you want to delete {limit} messages?'):
+                return
+
         if user is None:
             await ctx.channel.purge(limit=limit + 1)
         else:
