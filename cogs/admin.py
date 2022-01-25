@@ -773,7 +773,7 @@ async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool =
 
     # depending on parameters, either send or return the remaining portion of the buffer
     if force:
-        return await messagable.send(str(buffer[break_index:]))
+        return await messagable.send(str(buffer[break_index:]), allowed_mentions=discord.AllowedMentions.none())
     else:
         return str(buffer[break_index:])
 

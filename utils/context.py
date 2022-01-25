@@ -158,7 +158,7 @@ class Context(commands.Context):
             files: List[discord.File] = None, delete_after: float = None, nonce: int = None,
             allowed_mentions: discord.AllowedMentions = None,
             reference: Union[discord.Message, discord.MessageReference] = None, mention_author: bool = None,
-            safe_send: bool = False, escape_mentions: bool = False
+            safe_send: bool = False
     ) -> discord.Message:
         """
         Sends a message to the destination with the content given.
@@ -186,15 +186,10 @@ class Context(commands.Context):
                 allowed_mentions.
             safe_send (Optional[bool]): If the content length exceeds 2000 characters, whether to send the content as a
                 file instead. Defaults to false.
-            escape_mentions (Optional[bool]): Whether mentions in the message content should be escaped.
-                Defaults to false.
 
         Returns:
             (discord.Message): The message that was sent.
         """
-
-        if escape_mentions:
-            content = discord.utils.escape_mentions(content)
 
         if len(content) > 2000 and safe_send:
             fp = io.BytesIO(content.encode())
