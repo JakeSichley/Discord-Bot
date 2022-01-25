@@ -697,7 +697,10 @@ class Admin(commands.Cog):
                                 buffer = await try_to_send_buffer(channel, buffer)
 
                             # send the remaining portion of the buffer, attachments or embeds, and clear the buffer
-                            await channel.send(content=buffer, embed=embeds, files=attachments)
+                            await channel.send(
+                                content=buffer, embed=embeds, files=attachments,
+                                allowed_mentions=discord.AllowedMentions.none()
+                            )
                             buffer = ''
 
                         # case 2: attachments or embeds with an empty buffer
@@ -708,11 +711,17 @@ class Admin(commands.Cog):
 
                             # if the current message contents don't exceed the limit, send everything
                             if len(buffer) <= 2000:
-                                await channel.send(content=buffer, embed=embeds, files=attachments)
+                                await channel.send(
+                                    content=buffer, embed=embeds, files=attachments,
+                                    allowed_mentions=discord.AllowedMentions.none()
+                                )
                             # otherwise, break up the buffer where appropriate, then send everything
                             else:
                                 buffer = await try_to_send_buffer(channel, buffer)
-                                await channel.send(content=buffer, embed=embeds, files=attachments)
+                                await channel.send(
+                                    content=buffer, embed=embeds, files=attachments,
+                                    allowed_mentions=discord.AllowedMentions.none()
+                                )
 
                             # reset the buffer
                             buffer = ''
@@ -748,7 +757,7 @@ async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool =
 
     # if the buffer is within our limit, no special calculations are needed
     if len(buffer) <= 2000:
-        return await messagable.send(buffer)
+        return await messagable.send(buffer, allowed_mentions=discord.AllowedMentions.none())
 
     # default break index to 1800
     break_index = 1800
@@ -769,7 +778,7 @@ async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool =
                 break
 
     # once all checks are performed, send the first portion of the buffer
-    await messagable.send(str(buffer[:break_index]))
+    await messagable.send(str(buffer[:break_index]), allowed_mentions=discord.AllowedMentions.none())
 
     # depending on parameters, either send or return the remaining portion of the buffer
     if force:
