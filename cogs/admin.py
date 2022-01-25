@@ -220,7 +220,7 @@ class Admin(commands.Cog):
         except Exception as e:
             output = e
 
-        await ctx.send(output)
+        await ctx.send(output, safe_send=True)
 
     @commands.command(name='sql', hidden=True)
     async def sql(self, ctx: Context, *, query: str) -> None:
@@ -346,7 +346,7 @@ class Admin(commands.Cog):
         try:
             exec(to_compile, env)
         except Exception as e:
-            await ctx.send(f'```py\n{e.__class__.__name__}: {e}\n```')
+            await ctx.send(f'```py\n{e.__class__.__name__}: {e}\n```', safe_send=True)
             return
 
         func = env['func']
@@ -358,16 +358,16 @@ class Admin(commands.Cog):
 
         except Exception:
             value = stdout.getvalue()
-            await ctx.send(f'```py\n{value}{format_exc()}\n```')
+            await ctx.send(f'```py\n{value}{format_exc()}\n```', safe_send=True)
         else:
             value = stdout.getvalue()
 
             if ret is None:
                 if value:
-                    await ctx.send(f'```py\n{value}\n```')
+                    await ctx.send(f'```py\n{value}\n```', safe_send=True)
             else:
                 self._last_result = ret
-                await ctx.send(f'```py\n{value}{ret}\n```')
+                await ctx.send(f'```py\n{value}{ret}\n```', safe_send=True)
 
     @ensure_git_credentials()
     @commands.group(name='git', hidden=True)
