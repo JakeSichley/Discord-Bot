@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 from discord.ext import commands
-from typing import Any, Union, Optional
+from typing import Any, Union, Optional, List
 from uuid import uuid4
 from asyncio import TimeoutError
 import discord
@@ -154,20 +154,52 @@ class Context(commands.Context):
             return result
 
     async def send(
-            self, content=None, *, tts=False, embed=None, file=None, files=None, delete_after=None, nonce=None,
-            allowed_mentions=None, reference=None, mention_author=None, safe_send=True, escape_mentions=False
+            self, content: str = None, *, tts: bool = False, embed: discord.Embed = None, file: discord.File = None,
+            files: List[discord.File] = None, delete_after: float = None, nonce: int = None,
+            allowed_mentions: discord.AllowedMentions = None,
+            reference: Union[discord.Message, discord.MessageReference] = None, mention_author: bool = None,
+            safe_send: bool = False, escape_mentions: bool = False
     ) -> discord.Message:
         """
-        # todo: docstring
+        Sends a message to the destination with the content given.
+
+        Parameters:
+            content (str): The content of the message to send.
+            tts (bool): Indicates if the message should be sent using text-to-speech.
+            embed (discord.Embed): The rich embed for the content.
+            file (discord.File): The file to upload.
+            files (List[discord.File]): A list of files to upload. Must be a maximum of 10.
+            nonce (int): The nonce to use for sending this message. If the message was successfully sent, then the
+                message will have a nonce with this value.
+            delete_after (float): If provided, the number of seconds to wait in the background before deleting the
+                message we just sent. If the deletion fails, then it is silently ignored.
+            allowed_mentions (discord.AllowedMentions): Controls the mentions being processed in this message. If this
+                is passed, then the object is merged with discord.Client.allowed_mentions. The merging behaviour only
+                overrides attributes that have been explicitly passed to the object, otherwise it uses the attributes
+                set in discord.Client.allowed_mentions. If no object is passed at all then the defaults given by
+                discord.Client.allowed_mentions are used instead.
+            reference (Union[discord.Message, discord.MessageReference]): A reference to the discord.Message to which
+                you are replying, this can be created using discord.Message.to_reference or passed directly as a
+                discord.Message. You can control whether this mentions the author of the referenced message using the
+                discord.AllowedMentions.replied_user attribute of allowed_mentions or by setting mention_author.
+            mention_author (Optional[bool]): If set, overrides the discord.AllowedMentions.replied_user attribute of
+                allowed_mentions.
+            safe_send (Optional[bool]): If the content length exceeds 2000 characters, whether to send the content as a
+                file instead. Defaults to false.
+            escape_mentions (Optional[bool]): Whether mentions in the message content should be escaped.
+                Defaults to false.
+
+        Returns:
+            (discord.Message): The message that was sent.
         """
 
         if escape_mentions:
             content = discord.utils.escape_mentions(content)
 
-        if len(content) > 2000:
+        if len(content) > 2000 and safe_send:
             fp = io.BytesIO(content.encode())
             return await self.channel.send(
-                file=discord.File(fp, filename='long_content.txt'),
+                file=discord.File(fp, filename='content.txt'),
                 tts=tts, embed=embed, delete_after=delete_after, nonce=nonce, allowed_mentions=allowed_mentions,
                 reference=reference, mention_author=mention_author
             )
