@@ -27,10 +27,10 @@ from utils.database_utils import execute_query, retrieve_query
 from aiosqlite import Error as aiosqliteError
 from utils.utils import cleanup
 from asyncio import sleep
-from typing import List
 from dreambot import DreamBot
 from utils.prompts import prompt_user_for_voice_channel, prompt_user_for_role
 from utils.context import Context
+from cache import ExpiringCache
 import discord
 import logging
 
@@ -39,10 +39,15 @@ class VoiceRoles(commands.Cog):
     """
     A Cogs class that implements voice roles.
 
+    Constants:
+        CACHE_TTL (int): The expiring cache's time to live (in seconds).
+
     Attributes:
         bot (DreamBot): The Discord bot.
-        recently_changed (List[int]): A list of member id's that have recently had their voice state modified.
+        cache (ExpiringCache): An expiring cache of member id's that have recently had their voice state modified.
     """
+
+    CACHE_TTL = 3
 
     def __init__(self, bot: DreamBot) -> None:
         """
@@ -53,7 +58,7 @@ class VoiceRoles(commands.Cog):
         """
 
         self.bot = bot
-        self.recently_changed = []
+        self.cache = ExpiringCache(self.CACHE_TTL)
 
     @commands.group(name='voicerole', aliases=['vr', 'voiceroles'])
     async def voice_role(self, ctx: Context) -> None:
@@ -269,16 +274,12 @@ class VoiceRoles(commands.Cog):
             None.
         """
 
-        if member.bot:
-            return
+        self.cache[member.id] = None  # value is irrelevant for our purposes
 
-        self.recently_changed.append(member.id)
-        await sleep(3)
-        if self.recently_changed.count(member.id) > 1:
-            self.recently_changed.remove(member.id)
+        await sleep(self.CACHE_TTL)
+
+        if member.id in self.cache:
             return
-        else:
-            self.recently_changed.remove(member.id)
 
         if data := await retrieve_query(
                 self.bot.database,

@@ -453,7 +453,7 @@ class Admin(commands.Cog):
                 embed.add_field(name=field, value='\n'.join(value))
         embed.set_footer(text='Please report any issues to my owner!')
 
-        if core:
+        if core or 'context.py' in changes:
             embed.description = 'Core files were modified. No reloads will be performed.' \
                                 '\nPlease perform a full restart to apply changes.'
             await ctx.send(embed=embed)
@@ -468,7 +468,7 @@ class Admin(commands.Cog):
         ordered_reloads = []
 
         for file in utils:
-            if file in ['utils', 'context', 'network_utils']:
+            if file in ['utils', 'network_utils']:
                 ordered_reloads.insert(0, f'utils.{file}')
             else:
                 ordered_reloads.append(f'utils.{file}')
