@@ -175,26 +175,26 @@ class Moderation(commands.Cog):
             potential_members = matches + [x for x in remaining.split('\n') if x and x.strip()]
             converted = [await AggressiveDefaultMemberConverter().convert(ctx, member) for member in potential_members]
 
-        success, failed = [], []
+            success, failed = [], []
 
-        for member in converted:
-            if isinstance(member, discord.Member):
-                try:
-                    await member.add_roles(role, reason=f'Bulk Added by {str(ctx.author)}')
-                except discord.HTTPException:
-                    failed.append(str(member))
+            for member in converted:
+                if isinstance(member, discord.Member):
+                    try:
+                        await member.add_roles(role, reason=f'Bulk Added by {str(ctx.author)}')
+                    except discord.HTTPException:
+                        failed.append(str(member))
+                    else:
+                        success.append(str(member))
                 else:
-                    success.append(str(member))
-            else:
-                failed.append(str(member))
+                    failed.append(str(member))
 
-        summary = f'Successfully added {role.mention} to the following members:\n'\
-                  f'```{", ".join(success) if success else "None"}```\n'
+            summary = f'Successfully added {role.mention} to the following members:\n'\
+                      f'```{", ".join(success) if success else "None"}```\n'
 
-        if failed:
-            summary += f'Failed to add {role.mention} to the following members:\n```{", ".join(failed)}```',
+            if failed:
+                summary += f'Failed to add {role.mention} to the following members:\n```{", ".join(failed)}```'
 
-        await ctx.send(summary, allowed_mentions=discord.AllowedMentions.none())
+            await ctx.send(summary, allowed_mentions=discord.AllowedMentions.none())
 
     @commands.has_guild_permissions(manage_roles=True)
     @commands.command(name='getdefaultrole', aliases=['gdr'],
