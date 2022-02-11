@@ -183,7 +183,7 @@ class Tags(commands.Cog):
             try:
                 await execute_query(
                     self.bot.database,
-                    'DELETE FROM TAGS WHERE TAG_NAME=? AND GUILD_ID=?',
+                    'DELETE FROM TAGS WHERE NAME=? AND GUILD_ID=?',
                     (tag_name.lower(), ctx.guild.id)
                 )
             except aiosqliteError:
@@ -233,7 +233,7 @@ async def increment_tag_count(database: str, tag_name: str, guild_id: int) -> No
     try:
         await execute_query(
             database,
-            'UPDATE TAGS SET USES=USES+1 WHERE TAG_NAME=? AND GUILD_ID=?',
+            'UPDATE TAGS SET USES=USES+1 WHERE NAME=? AND GUILD_ID=?',
             (tag_name.lower(), guild_id)
         )
     except aiosqliteError:
