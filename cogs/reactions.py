@@ -26,7 +26,7 @@ from discord.ext import commands
 from asyncio import TimeoutError
 from utils.database_utils import execute_query, retrieve_query
 from utils.converters import GuildConverter
-from utils.prompts import prompt_user_for_role, prompt_user_for_message
+from utils.prompts import prompt_user_for_role, prompt_user_for_discord_message
 from utils.utils import cleanup
 from utils.context import Context
 from typing import Union, Optional, List, Tuple
@@ -106,7 +106,7 @@ class ReactionRoles(commands.Cog):
             initial_message = 'Please specify the message you want to set up Reaction Roles for!\nYou can right ' \
                               'click on a message and send either the Message ID or you can also send the entire ' \
                               'Message Link!'
-            cleanup_messages, message = await prompt_user_for_message(self.bot, ctx, initial_message)
+            cleanup_messages, message = await prompt_user_for_discord_message(self.bot, ctx, initial_message)
 
             if not message:
                 await cleanup(cleanup_messages, ctx.channel)
@@ -217,7 +217,7 @@ class ReactionRoles(commands.Cog):
             initial_message = 'Please specify the message you want to set up Reaction Roles for!\nYou can right ' \
                               'click on a message and send either the Message ID or you can also send the entire ' \
                               'Message Link!'
-            cleanup_messages, message = await prompt_user_for_message(self.bot, ctx, initial_message)
+            cleanup_messages, message = await prompt_user_for_discord_message(self.bot, ctx, initial_message)
 
             if not message:
                 await cleanup(cleanup_messages, ctx.channel)
@@ -345,7 +345,7 @@ class ReactionRoles(commands.Cog):
             initial_message = 'Please specify the message you want to set up Reaction Roles for!\nYou can right ' \
                               'click on a message and send either the Message ID or you can also send the entire ' \
                               'Message Link!'
-            cleanup_messages, message = await prompt_user_for_message(self.bot, ctx, initial_message)
+            cleanup_messages, message = await prompt_user_for_discord_message(self.bot, ctx, initial_message)
 
             if not message:
                 await cleanup(cleanup_messages, ctx.channel)
