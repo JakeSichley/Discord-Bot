@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Optional, Union, Any
+from typing import Optional, Union, Any, Callable
 from discord.ext import commands
 from utils.context import Context
 from dreambot import DreamBot
@@ -274,3 +274,39 @@ class AggressiveDefaultMemberConverter(commands.IDConverter):
                 return argument
 
         return result if result else argument
+
+
+class StringConverter(commands.Converter):
+    """
+    Converts an argument to a string and applies the specified mutation.
+
+    While this converter does little actual conversion, it is designed to help synchronize argument formats across
+    groups or cogs when this behavior is desirable.
+    """
+
+    def __init__(self, mutator: Callable):
+        """
+        The constructor for the StringConverter class.
+
+        Parameters:
+            mutator (Callable): The mutation to apply during conversions.
+        """
+
+        self.mutator = mutator
+
+    async def convert(self, ctx: Context, argument: str) -> str:
+        """
+        Attempts to convert the argument to a string. If successful, attempts to apply to specified mutator.
+
+        Parameters:
+            ctx (Context): The invocation context.
+            argument (Any): The arg to be converted.
+
+        Returns:
+            (str): The mutated string.
+        """
+
+        try:
+            return self.mutator(str(argument))
+        except AttributeError:
+            raise commands.BadArgument(f'Could not coerce {argument} to string.')

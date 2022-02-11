@@ -164,6 +164,7 @@ class Tags(commands.Cog):
     async def delete_tag(self, ctx: Context, *, tag_name: str) -> None:
         """
         Attempts to delete a tag with the specified name.
+        A user must either own the tag or have the ability to manage messages (guild-wide) to delete the tag.
 
         Parameters:
             ctx (Context): The invocation context.
