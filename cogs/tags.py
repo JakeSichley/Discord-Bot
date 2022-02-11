@@ -179,7 +179,7 @@ class Tags(commands.Cog):
             await ctx.send(f'Tag `{tag_name}` does not exist.')
             return
 
-        if tag.owner_id == ctx.author.id or ctx.author.guild_permissions.guild_permissions:
+        if tag.owner_id == ctx.author.id or ctx.author.guild_permissions.manage_messages:
             try:
                 await execute_query(
                     self.bot.database,
@@ -252,4 +252,4 @@ def setup(bot: DreamBot) -> None:
     """
 
     bot.add_cog(Tags(bot))
-    logging.info('Completed Setup for Cog: Exceptions')
+    logging.info('Completed Setup for Cog: Tags')
