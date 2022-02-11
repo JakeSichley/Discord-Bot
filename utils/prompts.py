@@ -56,7 +56,9 @@ async def prompt_user_for_voice_channel(
         # give the user multiple attempts to pass a valid argument
         while True:
             # wait for them to respond
-            response = await bot.wait_for('message', timeout=30.0, check=lambda m: m.author == ctx.author)
+            response = await bot.wait_for(
+                'message', timeout=30.0, check=lambda m: m.author == ctx.author and m.channel == ctx.channel
+            )
             # try to convert their response to a VoiceChannel object
             try:
                 channel = await commands.VoiceChannelConverter().convert(ctx, response.content)
@@ -98,7 +100,9 @@ async def prompt_user_for_role(
         # give the user multiple attempts to pass a valid argument
         while True:
             # wait for them to respond
-            response = await bot.wait_for('message', timeout=30.0, check=lambda m: m.author == ctx.author)
+            response = await bot.wait_for(
+                'message', timeout=30.0, check=lambda m: m.author == ctx.author and m.channel == ctx.channel
+            )
             # try to convert their response to a role object
             try:
                 role = await commands.RoleConverter().convert(ctx, response.content)
@@ -124,7 +128,7 @@ async def prompt_user_for_role(
         return sent_messages, None
 
 
-async def prompt_user_for_message(
+async def prompt_user_for_discord_message(
         bot: DreamBot, ctx: Context, initial_prompt: Optional[str] = None
 ) -> Tuple[List[discord.Message], Optional[discord.Message]]:
     """
@@ -149,7 +153,9 @@ async def prompt_user_for_message(
         # give the user multiple attempts to pass a valid argument
         while True:
             # wait for them to respond
-            response = await bot.wait_for('message', timeout=30.0, check=lambda m: m.author == ctx.author)
+            response = await bot.wait_for(
+                'message', timeout=30.0, check=lambda m: m.author == ctx.author and m.channel == ctx.channel
+            )
             # try to convert their response to a message object
             try:
                 message = await commands.MessageConverter().convert(ctx, response.content)
@@ -157,6 +163,50 @@ async def prompt_user_for_message(
             except (commands.CommandError, commands.BadArgument):
                 sent_messages.append(
                     await ctx.send("I wasn't able to extract a message from your response. Please try again!")
+                )
+    except TimeoutError:
+        await ctx.send("Didn't receive a response in time. You can restart the command whenever you're ready!")
+        return sent_messages, None
+
+
+async def prompt_user_for_content(
+        bot: DreamBot, ctx: Context, initial_prompt: Optional[str] = None
+) -> Tuple[List[discord.Message], Optional[str]]:
+    """
+    A method to fetch message content from a user.
+
+    Parameters:
+        bot (DreamBot): The discord bot.
+        ctx (Context): The invocation context.
+        initial_prompt (Optional[str]): The initial message to send during the prompt.
+
+    Output:
+        Command State Information.
+
+    Returns:
+        Tuple[List[discord.Message], Optional[discord.Message]]
+    """
+
+    sent_messages = [await ctx.send(initial_prompt)] if initial_prompt else []
+
+    # wrap the entire operation in a try -> break this with timeout
+    try:
+        # give the user multiple attempts to pass a valid argument
+        while True:
+            # wait for them to respond
+            response = await bot.wait_for(
+                'message', timeout=30.0, check=lambda m: m.author == ctx.author and m.channel == ctx.channel
+            )
+            # try to convert their response to a message object
+            try:
+                content = response.content.strip()
+                if content:
+                    return sent_messages, content
+                else:
+                    raise commands.BadArgument
+            except (commands.CommandError, commands.BadArgument):
+                sent_messages.append(
+                    await ctx.send("I wasn't able to extract message content from your response. Please try again!")
                 )
     except TimeoutError:
         await ctx.send("Didn't receive a response in time. You can restart the command whenever you're ready!")
