@@ -32,7 +32,17 @@ from dataclasses import dataclass
 from typing import Optional
 from utils.utils import cleanup
 from utils.prompts import prompt_user_for_content
+from utils.converters import StringConverter
 import logging
+
+ReservedTags = (
+    'tag', 'create', 'add', 'get', 'fetch', 'alias', 'random', 'delete', 'del', 'remove', 'r', 'g', 'a'
+)
+
+TagName = StringConverter(
+    lambda x: x.strip().lower(),
+    lambda x: x and len(x) <= 100 and x not in ReservedTags
+)
 
 
 # noinspection PyUnresolvedReferences
@@ -78,7 +88,7 @@ class Tags(commands.Cog):
         self.bot = bot
 
     @commands.group(name='tag', invoke_without_command=True)
-    async def tag(self, ctx: Context, *, tag_name: str = None) -> None:
+    async def tag(self, ctx: Context, *, tag_name: TagName = None) -> None:
         """
         Parent command that handles tag related commands.
 
@@ -97,7 +107,7 @@ class Tags(commands.Cog):
 
     @commands.guild_only()
     @tag.command(name='create', aliases=['add'])
-    async def create_tag(self, ctx: Context, *, tag_name: str) -> None:
+    async def create_tag(self, ctx: Context, *, tag_name: TagName) -> None:
         """
         Attempts to create a tag with the specified name.
 
@@ -120,13 +130,15 @@ class Tags(commands.Cog):
         prompts, content = await prompt_user_for_content(self.bot, ctx)
         await cleanup(prompts, ctx.channel)
 
-        if len(content) <= 2000:
+        content = content.strip()
+
+        if content and len(content) <= 2000:
             try:
                 await execute_query(
                     self.bot.database,
                     'INSERT INTO TAGS (NAME, CONTENT, GUILD_ID, OWNER_ID, USES, CREATED) VALUES (?, ?, ?, ?, ?, ?)',
                     (
-                        tag_name.lower(), content, ctx.guild.id, ctx.author.id, 0,
+                        tag_name, content, ctx.guild.id, ctx.author.id, 0,
                         int(datetime.now(tz=timezone.utc).timestamp())
                     )
                 )
@@ -139,7 +151,7 @@ class Tags(commands.Cog):
 
     @commands.guild_only()
     @tag.command(name='get', aliases=['fetch'])
-    async def get_tag(self, ctx: Context, *, tag_name: str) -> None:
+    async def get_tag(self, ctx: Context, *, tag_name: TagName) -> None:
         """
         Attempts to fetch a tag with the specified name.
 
@@ -160,8 +172,28 @@ class Tags(commands.Cog):
             await ctx.send(f'Tag `{tag_name}` does not exist.')
 
     @commands.guild_only()
-    @tag.command(name='delete', aliases=['remove'])
-    async def delete_tag(self, ctx: Context, *, tag_name: str) -> None:
+    @tag.command(name='random', aliases=['r'])
+    async def get_random_tag(self, ctx: Context) -> None:
+        """
+        Attempts to fetch a random tag. Does not increase usage count.
+
+        Parameters:
+            ctx (Context): The invocation context.
+
+        Returns:
+            None.
+        """
+
+        tag = await fetch_random_tag(self.bot.database, ctx.guild.id)
+
+        if tag:
+            await ctx.send(f'{tag.name}\n{tag.content}', safe_send=True)
+        else:
+            await ctx.send(f'No tags exist for this guild.')
+
+    @commands.guild_only()
+    @tag.command(name='delete', aliases=['remove', 'del'])
+    async def delete_tag(self, ctx: Context, *, tag_name: TagName) -> None:
         """
         Attempts to delete a tag with the specified name.
         A user must either own the tag or have the ability to manage messages (guild-wide) to delete the tag.
@@ -185,7 +217,7 @@ class Tags(commands.Cog):
                 await execute_query(
                     self.bot.database,
                     'DELETE FROM TAGS WHERE NAME=? AND GUILD_ID=?',
-                    (tag_name.lower(), ctx.guild.id)
+                    (tag_name, ctx.guild.id)
                 )
             except aiosqliteError:
                 await ctx.send(f'Failed to delete tag `{tag_name}`.')
@@ -209,7 +241,31 @@ async def fetch_tag(database: str, tag_name: str, guild_id: int) -> Optional[Tag
     result = await retrieve_query(
         database,
         'SELECT * FROM TAGS WHERE NAME=? AND GUILD_ID=?',
-        (tag_name.lower(), guild_id)
+        (tag_name, guild_id)
+    )
+
+    if not result:
+        return None
+
+    return Tag(*result[0])
+
+
+async def fetch_random_tag(database: str, guild_id: int) -> Optional[Tag]:
+    """
+    Attempts to fetch a random tag from the database. If successful, attempts to convert raw tag data to a Tag.
+
+    Parameters:
+        database (str): The name of the database to fetch from.
+        guild_id (int): The guild id.
+
+    Returns:
+        (Optional[Tag]).
+    """
+
+    result = await retrieve_query(
+        database,
+        'SELECT * FROM TAGS WHERE GUILD_ID=? ORDER BY RANDOM() LIMIT 1',
+        (guild_id,)
     )
 
     if not result:
@@ -235,7 +291,7 @@ async def increment_tag_count(database: str, tag_name: str, guild_id: int) -> No
         await execute_query(
             database,
             'UPDATE TAGS SET USES=USES+1 WHERE NAME=? AND GUILD_ID=?',
-            (tag_name.lower(), guild_id)
+            (tag_name, guild_id)
         )
     except aiosqliteError:
         pass

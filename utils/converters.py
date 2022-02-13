@@ -284,15 +284,17 @@ class StringConverter(commands.Converter):
     groups or cogs when this behavior is desirable.
     """
 
-    def __init__(self, mutator: Callable):
+    def __init__(self, mutator: Callable, constraint: Callable = None):
         """
         The constructor for the StringConverter class.
 
         Parameters:
             mutator (Callable): The mutation to apply during conversions.
+            constraint (Callable): The constraint to apply to the converted argument.
         """
 
         self.mutator = mutator
+        self.constraint = constraint
 
     async def convert(self, ctx: Context, argument: str) -> str:
         """
@@ -307,6 +309,12 @@ class StringConverter(commands.Converter):
         """
 
         try:
-            return self.mutator(str(argument))
+            result = self.mutator(str(argument))
+
+            if not self.constraint or (self.constraint and self.constraint(result)):
+                return result
+            else:
+                raise commands.BadArgument(f'{result} failed constraint.')
+
         except AttributeError:
             raise commands.BadArgument(f'Could not coerce {argument} to string.')
