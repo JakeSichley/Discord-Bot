@@ -34,9 +34,11 @@ from utils.utils import cleanup
 from utils.prompts import prompt_user_for_content
 from utils.converters import StringConverter
 import logging
+import discord
 
 ReservedTags = (
-    'tag', 'create', 'add', 'get', 'fetch', 'alias', 'random', 'delete', 'del', 'remove', 'r', 'g', 'a'
+    'tag', 'create', 'add', 'get', 'fetch', 'edit', 'alias', 'random', 'delete', 'del', 'remove', 'info',
+    'r', 'g', 'a', 'e', 'i', 'f'
 )
 
 TagName = StringConverter(
@@ -150,6 +152,52 @@ class Tags(commands.Cog):
             await ctx.send('Tag content cannot be empty - please restart the command.')
 
     @commands.guild_only()
+    @tag.command(name='edit', aliases=['e'])
+    async def edit_tag(self, ctx: Context, *, tag_name: TagName) -> None:
+        """
+        Attempts to edit an existing tag.
+        A user must either own the tag or have the ability to manage messages (guild-wide) to edit the tag.
+
+        Parameters:
+            ctx (Context): The invocation context.
+            tag_name (str): The name of the tag.
+
+        Returns:
+            None.
+        """
+
+        tag = await fetch_tag(self.bot.database, tag_name, ctx.guild.id)
+
+        if not tag:
+            await ctx.send(f'Tag `{tag_name}` does not exists.')
+            return
+
+        if not (tag.owner_id == ctx.author.id or ctx.author.guild_permissions.manage_messages):
+            await ctx.send('You either do not own this tag or cannot manage messages.')
+            return
+
+        await ctx.message.reply(f'What should the new content for `{tag_name}` be?', mention_author=False)
+
+        prompts, content = await prompt_user_for_content(self.bot, ctx)
+        await cleanup(prompts, ctx.channel)
+
+        content = content.strip()
+
+        if content and len(content) <= 2000:
+            try:
+                await execute_query(
+                    self.bot.database,
+                    'UPDATE TAGS SET CONTENT=? WHERE NAME=? AND GUILD_ID=?',
+                    (content, tag.name, tag.guild_id)
+                )
+            except aiosqliteError:
+                await ctx.send('Failed to edit tag.')
+            else:
+                await ctx.send(f'Successfully updated tag `{tag_name}`.')
+        else:
+            await ctx.send('Tag content cannot be empty - please restart the command.')
+
+    @commands.guild_only()
     @tag.command(name='get', aliases=['fetch'])
     async def get_tag(self, ctx: Context, *, tag_name: TagName) -> None:
         """
@@ -172,6 +220,37 @@ class Tags(commands.Cog):
             await ctx.send(f'Tag `{tag_name}` does not exist.')
 
     @commands.guild_only()
+    @tag.command(name='info', aliases=['i'])
+    async def tag_info(self, ctx: Context, *, tag_name: TagName) -> None:
+        """
+        Attempts to fetch information about a tag.
+
+        Parameters:
+            ctx (Context): The invocation context.
+            tag_name (str): The name of the tag.
+
+        Returns:
+            None.
+        """
+
+        tag = await fetch_tag(self.bot.database, tag_name, ctx.guild.id)
+
+        if tag:
+            author = await commands.MemberConverter().convert(ctx, str(tag.owner_id))
+
+            embed = discord.Embed(title='Tag Info', color=0x95fc98)
+            embed.add_field(name='Name', value=tag.name)
+            embed.add_field(name='Author', value=f'{author.mention if author else tag.owner_id}')
+            embed.add_field(name='Uses', value=str(tag.uses))
+            embed.add_field(name='Created', value=f'<t:{tag.created}:F>')
+            embed.add_field(name='Content', value=tag.content, inline=False)
+            embed.set_footer(text="Please report any issues to my owner!")
+
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send(f'Tag `{tag_name}` does not exist.')
+
+    @commands.guild_only()
     @tag.command(name='random', aliases=['r'])
     async def get_random_tag(self, ctx: Context) -> None:
         """
@@ -187,7 +266,7 @@ class Tags(commands.Cog):
         tag = await fetch_random_tag(self.bot.database, ctx.guild.id)
 
         if tag:
-            await ctx.send(f'{tag.name}\n{tag.content}', safe_send=True)
+            await ctx.send(f'**Tag `{tag.name}`**\n{tag.content}', safe_send=True)
         else:
             await ctx.send(f'No tags exist for this guild.')
 
@@ -223,6 +302,8 @@ class Tags(commands.Cog):
                 await ctx.send(f'Failed to delete tag `{tag_name}`.')
             else:
                 await ctx.send(f'Deleted tag `{tag_name}`.')
+        else:
+            await ctx.send('You either do not own this tag or cannot manage messages.')
 
 
 async def fetch_tag(database: str, tag_name: str, guild_id: int) -> Optional[Tag]:
