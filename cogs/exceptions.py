@@ -51,25 +51,33 @@ class Exceptions(commands.Cog):
         """
 
         self.bot = bot
-
-        if bot.environment == 'PROD':
-            self.__setup_error_reporting()
-
-    def __setup_error_reporting(self) -> None:
-        self.reporting_client = self.__build_reporting_client()
+        self.reporting_client = None
         self.firebase_project = getenv('FIREBASE_PROJECT')
 
-    def __build_reporting_client(self) -> error_reporting.ReportErrorsServiceAsyncClient:
-        return error_reporting.ReportErrorsServiceAsyncClient.from_service_account_file(r'firebase-auth.json')
+        if bot.environment == 'PROD':
+            self.reporting_client = error_reporting.ReportErrorsServiceAsyncClient.from_service_account_file(
+                r'firebase-auth.json'
+            )
 
     def generate_error_event(self, error: Exception) -> error_reporting.ReportErrorEventRequest:
-        message = format_exception(type(error), error, error.__traceback__)
-        event = error_reporting.ReportedErrorEvent(message)
+        """
+        Transforms an exception into a Google Cloud ReportErrorEventRequest.
 
-        return error_reporting.ReportErrorEventRequest({
-                'project_name': self.firebase_project,
-                'event': event
-            })
+        Parameters:
+            error (Exception): The encountered error.
+
+        Returns:
+            (errorreporting_v1beta1.ReportErrorEventRequest): The request payload.
+        """
+
+        event = error_reporting.ReportedErrorEvent()
+        event.message = ''.join(format_exception(type(error), error, error.__traceback__))
+
+        # noinspection PyTypeChecker
+        return error_reporting.ReportErrorEventRequest(
+                project_name=self.firebase_project,
+                event=event
+            )
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx: Context, error: commands.CommandError) -> None:
