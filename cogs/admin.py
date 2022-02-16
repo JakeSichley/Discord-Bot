@@ -195,7 +195,7 @@ class Admin(commands.Cog):
         await self.bot.close()
 
     @commands.command(name='eval', hidden=True)
-    async def _eval(self, ctx: Context, _ev: str) -> None:
+    async def _eval(self, ctx: Context, *, _ev: str) -> None:
         """
         A command to evaluate a python statement.
         Should the evaluation encounter an exception, the output will be the exception details.
@@ -216,9 +216,9 @@ class Admin(commands.Cog):
         """
 
         try:
-            output = eval(_ev)
+            output = str(eval(_ev))
         except Exception as e:
-            output = e
+            output = str(e)
 
         await ctx.send(output, safe_send=True)
 
