@@ -284,7 +284,7 @@ class StringConverter(commands.Converter):
     groups or cogs when this behavior is desirable.
     """
 
-    def __init__(self, mutator: Callable, constraint: Callable = None):
+    def __init__(self, *, mutator: Callable = None, constraint: Callable = None):
         """
         The constructor for the StringConverter class.
 
@@ -309,7 +309,7 @@ class StringConverter(commands.Converter):
         """
 
         try:
-            result = self.mutator(str(argument))
+            result = self.mutator(str(argument)) if self.mutator else str(argument)
 
             if not self.constraint or (self.constraint and self.constraint(result)):
                 return result

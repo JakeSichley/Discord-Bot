@@ -42,8 +42,8 @@ ReservedTags = (
 )
 
 TagName = StringConverter(
-    lambda x: x.strip().lower(),
-    lambda x: x and len(x) <= 100 and x not in ReservedTags
+    mutator=lambda x: x.strip().lower(),
+    constraint=lambda x: x and len(x) <= 100 and x not in ReservedTags
 )
 
 
@@ -280,7 +280,7 @@ class Tags(commands.Cog):
             None.
         """
 
-        tag = await fetch_tag(self.bot.database, tag_name, ctx.guild.id)
+        tag = await fetch_tag(self.bot.database, ctx.guild.id, tag_name)
 
         if not tag:
             await ctx.send(f'Tag `{tag_name}` does not exist.')
