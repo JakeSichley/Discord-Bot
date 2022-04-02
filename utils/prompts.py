@@ -199,9 +199,8 @@ async def prompt_user_for_content(
             )
             # try to convert their response to a message object
             try:
-                content = response.content.strip()
-                if content:
-                    return sent_messages, content
+                if response.content:
+                    return sent_messages, response.content
                 else:
                     raise commands.BadArgument
             except (commands.CommandError, commands.BadArgument):

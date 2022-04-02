@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Optional, Union, Any
+from typing import Optional, Union, Any, Callable
 from discord.ext import commands
 from utils.context import Context
 from dreambot import DreamBot
@@ -274,3 +274,47 @@ class AggressiveDefaultMemberConverter(commands.IDConverter):
                 return argument
 
         return result if result else argument
+
+
+class StringConverter(commands.Converter):
+    """
+    Converts an argument to a string and applies the specified mutation.
+
+    While this converter does little actual conversion, it is designed to help synchronize argument formats across
+    groups or cogs when this behavior is desirable.
+    """
+
+    def __init__(self, *, mutator: Callable = None, constraint: Callable = None):
+        """
+        The constructor for the StringConverter class.
+
+        Parameters:
+            mutator (Callable): The mutation to apply during conversions.
+            constraint (Callable): The constraint to apply to the converted argument.
+        """
+
+        self.mutator = mutator
+        self.constraint = constraint
+
+    async def convert(self, ctx: Context, argument: str) -> str:
+        """
+        Attempts to convert the argument to a string. If successful, attempts to apply to specified mutator.
+
+        Parameters:
+            ctx (Context): The invocation context.
+            argument (Any): The arg to be converted.
+
+        Returns:
+            (str): The mutated string.
+        """
+
+        try:
+            result = self.mutator(str(argument)) if self.mutator else str(argument)
+
+            if not self.constraint or (self.constraint and self.constraint(result)):
+                return result
+            else:
+                raise commands.BadArgument(f'{result} failed constraint.')
+
+        except AttributeError:
+            raise commands.BadArgument(f'Could not coerce {argument} to string.')

@@ -39,7 +39,7 @@ async def cleanup(messages: List[discord.Message], channel: discord.TextChannel)
     Attempts to bulk delete messages if permissions allow; otherwise messages are deleted individually.
 
     Parameters:
-        messages (list[discord.Message]): The list of messages to delete.
+        messages (List[discord.Message]): The list of messages to delete.
         channel (discord.TextChannel): The channel to delete the messages from.
 
     Returns:
@@ -183,3 +183,18 @@ async def generate_activity(status_text: str, status_type: discord.ActivityType)
         git_text = f'Version {git_commit} - {git_description}'
         padding = "\u3000" * (126 - len(status_text) - len(git_text))
         return discord.Activity(name=f'{status_text}\n{padding}{git_text}', type=status_type)
+
+
+def valid_content(content: str, max_length: int = 2000) -> bool:
+    """
+    Checks whether a piece of content is send-able via `send`.
+
+    Parameters:
+        content (str): The proposed content.
+        max_length (int): The maximum length of the content.
+
+    Returns:
+        (bool): Whether the content is valid.
+    """
+
+    return content and len(content) <= max_length
