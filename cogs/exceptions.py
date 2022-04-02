@@ -29,6 +29,8 @@ from traceback import print_exception, format_exception
 from dreambot import DreamBot
 from aiohttp import ClientResponseError
 from utils.context import Context
+from google.cloud import errorreporting_v1beta1 as error_reporting
+from os import getenv
 import logging
 
 
@@ -45,10 +47,37 @@ class Exceptions(commands.Cog):
         The constructor for the Exceptions class.
 
         Parameters:
-            bot (DreamBott): The Discord bot.
+            bot (DreamBot): The Discord bot.
         """
 
         self.bot = bot
+        self.reporting_client = None
+        self.firebase_project = getenv('FIREBASE_PROJECT')
+
+        if bot.environment == 'PROD':
+            self.reporting_client = error_reporting.ReportErrorsServiceAsyncClient.from_service_account_file(
+                r'firebase-auth.json'
+            )
+
+    def generate_error_event(self, error: Exception) -> error_reporting.ReportErrorEventRequest:
+        """
+        Transforms an exception into a Google Cloud ReportErrorEventRequest.
+
+        Parameters:
+            error (Exception): The encountered error.
+
+        Returns:
+            (errorreporting_v1beta1.ReportErrorEventRequest): The request payload.
+        """
+
+        event = error_reporting.ReportedErrorEvent()
+        event.message = ''.join(format_exception(type(error), error, error.__traceback__))
+
+        # noinspection PyTypeChecker
+        return error_reporting.ReportErrorEventRequest(
+                project_name=self.firebase_project,
+                event=event
+            )
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx: Context, error: commands.CommandError) -> None:
@@ -82,6 +111,9 @@ class Exceptions(commands.Cog):
         if not isinstance(error, ignored):
             logging.warning(f'Ignoring exception in command {ctx.command}:')
             print_exception(type(error), error, error.__traceback__, file=stderr)
+
+            if self.reporting_client:
+                await self.reporting_client.report_error_event(self.generate_error_event(error))
 
         permissions = (commands.NotOwner, commands.MissingPermissions)
         # Allows us to check for original exceptions raised and sent to CommandInvokeError

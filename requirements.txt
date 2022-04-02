@@ -2,7 +2,7 @@ aiohttp==3.6.2
 aiosqlite==0.17.0
 async_timeout==3.0.1
 beautifulsoup4==4.10.0
-Pillow==9.0.0
+Pillow==9.0.1
 protobuf==3.19.1
 python-dotenv==0.19.2
 pytz==2020.1
@@ -10,7 +10,7 @@ requests==2.24.0
 tekore==3.7.1
 twitchio==1.2.0
 wavelink==0.9.4
-firebase-admin==4.5.1
+google-cloud-error-reporting==1.4.0
 PyNaCl==1.4.0
 html5lib==1.1
 expiring-cache==1.0.0
