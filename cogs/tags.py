@@ -121,7 +121,7 @@ class Tags(commands.Cog):
             None.
         """
 
-        tag = await fetch_tag(self.bot.database, tag_name, ctx.guild.id)
+        tag = await fetch_tag(self.bot.database, ctx.guild.id, tag_name)
 
         if tag:
             await ctx.send(f'Tag `{tag_name}` already exists.')
@@ -165,7 +165,7 @@ class Tags(commands.Cog):
             None.
         """
 
-        tag = await fetch_tag(self.bot.database, tag_name, ctx.guild.id)
+        tag = await fetch_tag(self.bot.database, ctx.guild.id, tag_name)
 
         if not tag:
             await ctx.send(f'Tag `{tag_name}` does not exists.')
@@ -209,7 +209,7 @@ class Tags(commands.Cog):
             None.
         """
 
-        tag = await fetch_tag(self.bot.database, tag_name, ctx.guild.id)
+        tag = await fetch_tag(self.bot.database, ctx.guild.id, tag_name)
 
         if tag:
             await ctx.send(tag.content)
@@ -230,7 +230,7 @@ class Tags(commands.Cog):
             None.
         """
 
-        tag = await fetch_tag(self.bot.database, tag_name, ctx.guild.id)
+        tag = await fetch_tag(self.bot.database, ctx.guild.id, tag_name)
 
         if tag:
             author = await commands.MemberConverter().convert(ctx, str(tag.owner_id))
@@ -259,7 +259,7 @@ class Tags(commands.Cog):
             None.
         """
 
-        tag = await fetch_random_tag(self.bot.database, ctx.guild.id)
+        tag = await fetch_tag(self.bot.database, ctx.guild.id)
 
         if tag:
             await ctx.send(f'**Tag `{tag.name}`**\n{tag.content}', safe_send=True)
@@ -301,48 +301,28 @@ class Tags(commands.Cog):
             await ctx.send('You either do not own this tag or cannot manage messages.')
 
 
-async def fetch_tag(database: str, tag_name: str, guild_id: int) -> Optional[Tag]:
+async def fetch_tag(database: str, guild_id: int, tag_name: str = None) -> Optional[Tag]:
     """
     Attempts to fetch a tag from the database. If successful, attempts to convert raw tag data to a Tag.
+        Note: Can fetch a random tag if tag_name is None.
 
     Parameters:
         database (str): The name of the database to fetch from.
+        guild_id (int): The guild id.
         tag_name (str): The name of the tag.
-        guild_id (int): The guild id.
 
     Returns:
         (Optional[Tag]).
     """
 
-    result = await retrieve_query(
-        database,
-        'SELECT * FROM TAGS WHERE NAME=? AND GUILD_ID=?',
-        (tag_name, guild_id)
-    )
+    if tag_name:
+        query = 'SELECT * FROM TAGS WHERE NAME=? AND GUILD_ID=? LIMIT 1'
+        params = (tag_name, guild_id)
+    else:
+        query = 'SELECT * FROM TAGS WHERE GUILD_ID=? ORDER BY RANDOM() LIMIT 1'
+        params = (guild_id,)
 
-    if not result:
-        return None
-
-    return Tag(*result[0])
-
-
-async def fetch_random_tag(database: str, guild_id: int) -> Optional[Tag]:
-    """
-    Attempts to fetch a random tag from the database. If successful, attempts to convert raw tag data to a Tag.
-
-    Parameters:
-        database (str): The name of the database to fetch from.
-        guild_id (int): The guild id.
-
-    Returns:
-        (Optional[Tag]).
-    """
-
-    result = await retrieve_query(
-        database,
-        'SELECT * FROM TAGS WHERE GUILD_ID=? ORDER BY RANDOM() LIMIT 1',
-        (guild_id,)
-    )
+    result = await retrieve_query(database, query, params)
 
     if not result:
         return None
