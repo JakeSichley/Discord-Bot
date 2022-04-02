@@ -89,6 +89,7 @@ class Tags(commands.Cog):
 
         self.bot = bot
 
+    @commands.guild_only()
     @commands.group(name='tag', invoke_without_command=True)
     async def tag(self, ctx: Context, *, tag_name: TagName = None) -> None:
         """
@@ -107,7 +108,6 @@ class Tags(commands.Cog):
         elif ctx.invoked_subcommand is None:
             await ctx.send_help('tag')
 
-    @commands.guild_only()
     @tag.command(name='create', aliases=['add'])
     async def create_tag(self, ctx: Context, *, tag_name: TagName) -> None:
         """
@@ -151,7 +151,6 @@ class Tags(commands.Cog):
         else:
             await ctx.send('Tag content cannot be empty - please restart the command.')
 
-    @commands.guild_only()
     @tag.command(name='edit', aliases=['e'])
     async def edit_tag(self, ctx: Context, *, tag_name: TagName) -> None:
         """
@@ -197,7 +196,6 @@ class Tags(commands.Cog):
         else:
             await ctx.send('Tag content cannot be empty - please restart the command.')
 
-    @commands.guild_only()
     @tag.command(name='get', aliases=['fetch'])
     async def get_tag(self, ctx: Context, *, tag_name: TagName) -> None:
         """
@@ -219,7 +217,6 @@ class Tags(commands.Cog):
         else:
             await ctx.send(f'Tag `{tag_name}` does not exist.')
 
-    @commands.guild_only()
     @tag.command(name='info', aliases=['i'])
     async def tag_info(self, ctx: Context, *, tag_name: TagName) -> None:
         """
@@ -250,7 +247,6 @@ class Tags(commands.Cog):
         else:
             await ctx.send(f'Tag `{tag_name}` does not exist.')
 
-    @commands.guild_only()
     @tag.command(name='random', aliases=['r'])
     async def get_random_tag(self, ctx: Context) -> None:
         """
@@ -270,7 +266,6 @@ class Tags(commands.Cog):
         else:
             await ctx.send(f'No tags exist for this guild.')
 
-    @commands.guild_only()
     @tag.command(name='delete', aliases=['remove', 'del'])
     async def delete_tag(self, ctx: Context, *, tag_name: TagName) -> None:
         """
