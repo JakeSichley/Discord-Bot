@@ -30,7 +30,7 @@ from aiosqlite import Error as aiosqliteError
 from datetime import datetime, timezone
 from dataclasses import dataclass
 from typing import Optional
-from utils.utils import cleanup
+from utils.utils import cleanup, valid_content
 from utils.prompts import prompt_user_for_content
 from utils.converters import StringConverter
 import logging
@@ -134,7 +134,7 @@ class Tags(commands.Cog):
 
         content = content.strip()
 
-        if content and len(content) <= 2000:
+        if valid_content(content):
             try:
                 await execute_query(
                     self.bot.database,
@@ -182,7 +182,7 @@ class Tags(commands.Cog):
 
         content = content.strip()
 
-        if content and len(content) <= 2000:
+        if valid_content(content):
             try:
                 await execute_query(
                     self.bot.database,
