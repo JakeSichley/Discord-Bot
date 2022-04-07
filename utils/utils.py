@@ -185,7 +185,7 @@ async def generate_activity(status_text: str, status_type: discord.ActivityType)
         return discord.Activity(name=f'{status_text}\n{padding}{git_text}', type=status_type)
 
 
-def valid_content(content: str, max_length: int = 2000) -> bool:
+def valid_content(content: str, *, max_length: int = 2000) -> bool:
     """
     Checks whether a piece of content is send-able via `send`.
 

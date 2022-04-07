@@ -132,6 +132,10 @@ class Tags(commands.Cog):
         prompts, content = await prompt_user_for_content(self.bot, ctx)
         await cleanup(prompts, ctx.channel)
 
+        if not content:
+            await ctx.send('Failed to create tag - content cannot be empty.')
+            return
+
         content = content.strip()
 
         if valid_content(content):
@@ -179,6 +183,10 @@ class Tags(commands.Cog):
 
         prompts, content = await prompt_user_for_content(self.bot, ctx)
         await cleanup(prompts, ctx.channel)
+
+        if not content:
+            await ctx.send('Failed to edit tag - new content cannot be empty.')
+            return
 
         content = content.strip()
 
