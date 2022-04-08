@@ -29,7 +29,7 @@ from dreambot import DreamBot
 from aiosqlite import Error as aiosqliteError
 from datetime import datetime, timezone
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List
 from utils.utils import cleanup, valid_content
 from utils.prompts import prompt_user_for_content
 from utils.converters import StringConverter
@@ -37,13 +37,14 @@ import logging
 import discord
 
 ReservedTags = (
-    'tag', 'create', 'add', 'get', 'fetch', 'edit', 'alias', 'random', 'delete', 'del', 'remove', 'info',
-    'r', 'g', 'a', 'e', 'i', 'f'
+    'tag', 'create', 'add', 'get', 'fetch', 'edit', 'alias', 'random',
+    'delete', 'del', 'remove', 'info', 'search', 'list',
+    'r', 'g', 'a', 'e', 'i', 'f', 's', 'l', 'd'
 )
 
 TagName = StringConverter(
     mutator=lambda x: x.strip().lower(),
-    constraint=lambda x: x and len(x) <= 100 and x not in ReservedTags
+    constraint=lambda x: x and 3 <= len(x) <= 100 and x not in ReservedTags
 )
 
 
@@ -90,7 +91,7 @@ class Tags(commands.Cog):
         self.bot = bot
 
     @commands.guild_only()
-    @commands.group(name='tag', invoke_without_command=True)
+    @commands.group(name='tag', aliases=['tags'], invoke_without_command=True)
     async def tag(self, ctx: Context, *, tag_name: TagName = None) -> None:
         """
         Parent command that handles tag related commands.
@@ -108,7 +109,9 @@ class Tags(commands.Cog):
         elif ctx.invoked_subcommand is None:
             await ctx.send_help('tag')
 
-    @tag.command(name='create', aliases=['add'])
+    @tag.command(
+        name='create', aliases=['add'], help='Tag names must be 3-100 characters long and cannot be a reserved tag.'
+    )
     async def create_tag(self, ctx: Context, *, tag_name: TagName) -> None:
         """
         Attempts to create a tag with the specified name.
@@ -214,8 +217,36 @@ class Tags(commands.Cog):
         if tag:
             await ctx.send(tag.content)
             await increment_tag_count(self.bot.database, tag_name, ctx.guild.id)
+            return
+
+        potential_tags = await search_tags(self.bot.database, ctx.guild.id, tag_name)
+
+        if potential_tags:
+            formatted_results = '\n'.join(x.name for x in potential_tags)
+            await ctx.send(f'Did you mean... \n{formatted_results}')
         else:
             await ctx.send(f'Tag `{tag_name}` does not exist.')
+
+    @tag.command(name='search', aliases=['s'])
+    async def search_tags(self, ctx: Context, *, tag_name: TagName) -> None:
+        """
+        Attempts to search for tags with the specified name.
+
+        Parameters:
+            ctx (Context): The invocation context.
+            tag_name (str): The name of the tag.
+
+        Returns:
+            None.
+        """
+
+        potential_tags = await search_tags(self.bot.database, ctx.guild.id, tag_name)
+
+        if potential_tags:
+            formatted_results = '\n'.join(x.name for x in potential_tags)
+            await ctx.send(f'Found the following tags... \n{formatted_results}')
+        else:
+            await ctx.send(f'No tags found with name `{tag_name}`.')
 
     @tag.command(name='info', aliases=['i'])
     async def tag_info(self, ctx: Context, *, tag_name: TagName) -> None:
@@ -328,6 +359,31 @@ async def fetch_tag(database: str, guild_id: int, tag_name: str = None) -> Optio
         return None
 
     return Tag(*result[0])
+
+
+async def search_tags(database: str, guild_id: int, tag_name: str) -> Optional[List[Tag]]:
+    """
+    Attempts to search for tags with the specified name.
+
+    Parameters:
+        database (str): The name of the database to fetch from.
+        guild_id (int): The guild id.
+        tag_name (str): The name of the tag.
+
+    Returns:
+        (Optional[List[Tag]]).
+    """
+
+    try:
+        result = await retrieve_query(
+            database,
+            'SELECT * FROM TAGS WHERE NAME LIKE ? AND GUILD_ID=? LIMIT 5',
+            (f'%{tag_name}%', guild_id)
+        )
+    except aiosqliteError:
+        return None
+    else:
+        return [Tag(*x) for x in result]
 
 
 async def increment_tag_count(database: str, tag_name: str, guild_id: int) -> None:
