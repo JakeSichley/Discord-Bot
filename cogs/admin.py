@@ -248,7 +248,7 @@ class Admin(commands.Cog):
         try:
             if (query.upper()).startswith('SELECT'):
                 result = await retrieve_query(self.bot.database, query)
-                await ctx.send(str(result))
+                await ctx.send(str(result), safe_send=True)
             else:
                 affected = await execute_query(self.bot.database, query)
                 await ctx.send(f'Executed. {affected} rows affected.')
