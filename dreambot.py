@@ -30,6 +30,7 @@ from utils.database_utils import retrieve_query
 from aiosqlite import Error as aiosqliteError
 from utils.context import Context
 from utils.utils import generate_activity
+from discord.ext import tasks
 import discord
 import logging
 
@@ -100,6 +101,9 @@ class DreamBot(Bot):
                 except ExtensionError as e:
                     logging.error(f'Failed Setup for Cog: {cog[:-3].capitalize()}. {e}')
 
+        # tasks
+        self.refresh_presence.start()
+
     async def on_ready(self):
         """
         A Client.event() method that is called when the client is done preparing the data received from Discord.
@@ -115,12 +119,47 @@ class DreamBot(Bot):
         """
 
         if not self.initialized:
-            activity = await generate_activity(self._status_text, self._status_type)
-            await self.change_presence(status=discord.Status.online, activity=activity)
             await self.retrieve_prefixes()
             self.initialized = True
 
             logging.info('DreamBot Ready: Prefixes and Presence initialized')
+
+    @tasks.loop(minutes=30)
+    async def refresh_presence(self) -> None:
+        """
+        A task to refresh the bot's presence if the existing presence is dropped.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
+        # presence is a member-only attribute, need any guild to get a member instance of Bot
+        try:
+            bot_member: discord.Member = self.guilds[0].me
+        except (IndexError, AttributeError) as e:
+            logging.error(f"Couldn't get a member instance of bot. Exception type: {type(e)}.")
+            return
+
+        if bot_member.activity:
+            return
+
+        activity = await generate_activity(self._status_text, self._status_type)
+        await self.change_presence(status=discord.Status.online, activity=activity)
+        logging.info(f"Bot presence was empty. Refreshed presence.")
+
+    @refresh_presence.before_loop
+    async def before_refresh_presence_loop(self) -> None:
+        """
+        A pre-task method to ensure the bot is ready before executing.
+
+        Returns:
+            None.
+        """
+
+        await self.wait_until_ready()
 
     async def retrieve_prefixes(self) -> None:
         """
