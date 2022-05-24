@@ -454,7 +454,7 @@ class DDO(commands.Cog):
                 )
                 self.reconnect_tries = 0
 
-            except (ClientResponseError, JSONDecodeError) as e:
+            except (ClientResponseError, JSONDecodeError, UnicodeError) as e:
                 logging.warning(f'DDOAudit Query[{server}] Error: {e}')
                 self.api_data[server] = None
                 self.reconnect_tries += 1

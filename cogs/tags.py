@@ -36,6 +36,9 @@ from utils.converters import StringConverter
 import logging
 import discord
 
+# TODO: Add user profile picture to tag info
+# TODO: Make random tag embed?
+
 ReservedTags = (
     'tag', 'create', 'add', 'get', 'fetch', 'edit', 'alias', 'random',
     'delete', 'del', 'remove', 'info', 'search', 'list',

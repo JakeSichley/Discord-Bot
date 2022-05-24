@@ -595,7 +595,7 @@ class ReactionRoles(commands.Cog):
 
 class ReactionRolePagination:
     """
-    A DreamBot subclass that contains the main bot implementation.
+    A class to handle the pagination of ReactionRole data during removal.
 
     Constants:
         PAGE_SIZE (int): The number of entries to display per page.
