@@ -123,10 +123,9 @@ class DreamBot(Bot):
         """
 
         if not self.initialized:
+            logging.info('DreamBot Ready. Performing initialization.')
             await self.retrieve_prefixes()
             self.initialized = True
-
-            logging.info('DreamBot Ready: Prefixes and Presence initialized')
 
     @tasks.loop(minutes=30)
     async def refresh_presence(self) -> None:
@@ -193,20 +192,6 @@ class DreamBot(Bot):
             self.prefixes = current_prefixes
         else:
             logging.info('Completed Prefix Retrieval')
-
-    def run(self, token: str) -> None:
-        """
-        A blocking method that handles event loop initialization.
-        Note: Must be the last method called.
-
-        Parameters:
-            None.
-
-        Returns:
-            None.
-        """
-
-        super().run(token)
 
     async def get_context(self, message: discord.Message, *, cls: classmethod = Context) -> Context:
         """
