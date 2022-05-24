@@ -31,6 +31,7 @@ from aiosqlite import Error as aiosqliteError
 from utils.context import Context
 from utils.utils import generate_activity
 from discord.ext import tasks
+from copy import deepcopy
 import discord
 import logging
 
@@ -52,13 +53,12 @@ class DreamBot(Bot):
         _status_text (Optional[str]): The text of the bot's status.
     """
 
-    def __init__(self, intents: discord.Intents, database: str, prefix: str, owner: int, environment: str,
+    def __init__(self, database: str, prefix: str, owner: int, environment: str,
                  options: Optional[Dict[str, Optional[Any]]]) -> None:
         """
         The constructor for the DreamBot class.
 
         Parameters:
-            intents (discord.Intents): Which gateway features to enable for the bot.
             database (str): The filename of the bot's database.
             prefix (str): The bot's default prefix.
             owner (int): The ID of the bot's owner. Required for most 'Admin' commands.
@@ -72,6 +72,10 @@ class DreamBot(Bot):
         Returns:
             None.
         """
+
+        intents = discord.Intents(
+            guilds=True, members=True, bans=True, emojis=True, voice_states=True, messages=True, reactions=True
+        )
 
         super().__init__(
             command_prefix=get_prefix, case_insensitive=True, owner_id=owner, max_messages=None, intents=intents
@@ -172,7 +176,7 @@ class DreamBot(Bot):
             None.
         """
 
-        current_prefixes = self.prefixes
+        current_prefixes = deepcopy(self.prefixes)
 
         try:
             self.prefixes.clear()
@@ -184,8 +188,11 @@ class DreamBot(Bot):
                 else:
                     self.prefixes[int(guild)] = [prefix]
 
-        except aiosqliteError:
+        except aiosqliteError as e:
+            logging.error(f'Failed Prefix Retrieval. {e}')
             self.prefixes = current_prefixes
+        else:
+            logging.info('Completed Prefix Retrieval')
 
     def run(self, token: str) -> None:
         """

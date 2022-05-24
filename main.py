@@ -78,11 +78,7 @@ def main() -> None:
     if all(git_options.values()):
         options['git'] = git_options
 
-    # specify intents (members requires explicit opt-in via dev portal)
-    intents = discord.Intents(guilds=True, members=True, bans=True, emojis=True, voice_states=True, messages=True,
-                              reactions=True)
-
-    dream_bot = DreamBot(intents, database, prefix, owner, environment, options=options)
+    dream_bot = DreamBot(database, prefix, owner, environment, options=options)
     dream_bot.run(token)
 
 
