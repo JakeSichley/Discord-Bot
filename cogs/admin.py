@@ -363,8 +363,9 @@ class Admin(commands.Cog):
             value = stdout.getvalue()
 
             if ret is None:
-                value = value if value else "None"
-                await ctx.send(f'```py\n{value}\n```', safe_send=True)
+                if 'return' in body.lower():
+                    value = value if value else "None"
+                    await ctx.send(f'```py\n{value}\n```', safe_send=True)
             else:
                 self._last_result = ret
                 await ctx.send(f'```py\n{value}{ret}\n```', safe_send=True)
