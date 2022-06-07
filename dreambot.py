@@ -123,7 +123,7 @@ class DreamBot(Bot):
         """
 
         if not self.initialized:
-            logging.info('DreamBot Ready. Performing initialization.')
+            logging.info('Bot ready - performing initialization.')
             await self.retrieve_prefixes()
             self.initialized = True
 
@@ -151,7 +151,9 @@ class DreamBot(Bot):
 
         activity = await generate_activity(self._status_text, self._status_type)
         await self.change_presence(status=discord.Status.online, activity=activity)
-        logging.info(f"Bot presence was empty. Refreshed presence.")
+
+        logging_level = logging.info if self.refresh_presence.current_loop == 0 else logging.error
+        logging_level(f'Bot presence was empty. Refreshed presence.')
 
     @refresh_presence.before_loop
     async def before_refresh_presence_loop(self) -> None:
@@ -188,10 +190,10 @@ class DreamBot(Bot):
                     self.prefixes[int(guild)] = [prefix]
 
         except aiosqliteError as e:
-            logging.error(f'Failed Prefix Retrieval. {e}')
+            logging.error(f'Failed prefix retrieval. {e}')
             self.prefixes = current_prefixes
         else:
-            logging.info('Completed Prefix Retrieval')
+            logging.info('Completed prefix retrieval')
 
     async def get_context(self, message: discord.Message, *, cls: classmethod = Context) -> Context:
         """
