@@ -123,7 +123,7 @@ class Images(commands.Cog):
                 return
 
 
-def setup(bot: DreamBot) -> None:
+async def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -134,5 +134,5 @@ def setup(bot: DreamBot) -> None:
         None.
     """
 
-    bot.add_cog(Images(bot))
+    await bot.add_cog(Images(bot))
     logging.info('Completed Setup for Cog: Images')

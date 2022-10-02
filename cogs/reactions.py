@@ -747,7 +747,7 @@ class ReactionRolePagination:
                 await self.message.add_reaction(reaction)
 
 
-def setup(bot: DreamBot) -> None:
+async def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -758,5 +758,5 @@ def setup(bot: DreamBot) -> None:
         None.
     """
 
-    bot.add_cog(ReactionRoles(bot))
+    await bot.add_cog(ReactionRoles(bot))
     logging.info('Completed Setup for Cog: Reactions')

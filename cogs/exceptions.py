@@ -166,6 +166,7 @@ class Exceptions(commands.Cog):
             return
 
         # Calling a command currently at max concurrency
+        # TODO: Verify this key exists
         elif isinstance(error, commands.MaxConcurrencyReached):
             await ctx.send(f'{ctx.message.author.mention}, the maximum concurrency for this command has been reached. '
                            f'It can be used a maximum of {error.number} time(s) per {error.per.name} concurrently.')
@@ -182,7 +183,7 @@ class Exceptions(commands.Cog):
             await ctx.send(f'```py\n{"".join(format_exception(type(error), error, error.__traceback__))}```')
 
 
-def setup(bot: DreamBot) -> None:
+async def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -193,5 +194,5 @@ def setup(bot: DreamBot) -> None:
         None.
     """
 
-    bot.add_cog(Exceptions(bot))
+    await bot.add_cog(Exceptions(bot))
     logging.info('Completed Setup for Cog: Exceptions')

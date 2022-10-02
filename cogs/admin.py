@@ -136,10 +136,10 @@ class Admin(commands.Cog):
         """
 
         try:
-            self.bot.reload_extension('cogs.' + module)
+            await self.bot.reload_extension('cogs.' + module)
             await ctx.send(f'Reloaded Module: `{module}`')
         except commands.ExtensionNotLoaded:
-            self.bot.load_extension('cogs.' + module)
+            await self.bot.load_extension('cogs.' + module)
             await ctx.send(f'Loaded Module: `{module}`')
 
     @commands.command(name='unload', hidden=True)
@@ -167,7 +167,7 @@ class Admin(commands.Cog):
             return
 
         try:
-            self.bot.unload_extension('cogs.' + module)
+            await self.bot.unload_extension('cogs.' + module)
             await ctx.send(f'Unloaded Module: `{module}`')
         except commands.ExtensionNotLoaded:
             await ctx.send(f'Could Not Unload Module: `{module}`')
@@ -448,7 +448,7 @@ class Admin(commands.Cog):
 
         embed = discord.Embed(title='Git Pull Changes', color=0x00bbff)
         embed.url = f"https://github.com/{self.bot.git['git_user']}/{self.bot.git['git_repo']}"
-        embed.set_thumbnail(url=self.bot.user.avatar_url)
+        embed.set_thumbnail(url=self.bot.user.avatar.url)
         for field, value in fields.items():
             if value:
                 embed.add_field(name=field, value='\n'.join(value))
@@ -492,10 +492,10 @@ class Admin(commands.Cog):
         for cog in cogs:
             try:
                 try:
-                    self.bot.reload_extension(f'cogs.{cog}')
+                    await self.bot.reload_extension(f'cogs.{cog}')
                 except commands.ExtensionNotLoaded:
                     try:
-                        self.bot.load_extension(f'cogs.{cog}')
+                        await self.bot.load_extension(f'cogs.{cog}')
                     except commands.ExtensionFailed:
                         raise
                     else:
@@ -788,7 +788,7 @@ async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool =
         return str(buffer[break_index:])
 
 
-def setup(bot: DreamBot) -> None:
+async def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -799,5 +799,5 @@ def setup(bot: DreamBot) -> None:
         None.
     """
 
-    bot.add_cog(Admin(bot))
+    await bot.add_cog(Admin(bot))
     logging.info('Completed Setup for Cog: Admin')

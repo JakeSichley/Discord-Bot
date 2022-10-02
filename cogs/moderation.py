@@ -340,7 +340,7 @@ class Moderation(commands.Cog):
                         logging.error(f'Role Addition Alert Failure. {e.status}. {e.text}')
 
 
-def setup(bot: DreamBot) -> None:
+async def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -351,5 +351,5 @@ def setup(bot: DreamBot) -> None:
         None.
     """
 
-    bot.add_cog(Moderation(bot))
+    await bot.add_cog(Moderation(bot))
     logging.info('Completed Setup for Cog: Moderation')

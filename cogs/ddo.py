@@ -282,7 +282,7 @@ class DDO(commands.Cog):
 
         # Create and send our embedded object
         embed = Embed(title=f'**{item}**', url=url, color=0x6879f2)
-        embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
+        embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar.url)
         embed.set_thumbnail(url='https://i.imgur.com/QV6uUZf.png')
         embed.add_field(name='Minimum Level', value=str(minimum_level))
         embed.add_field(name='Item Type', value=item_type)

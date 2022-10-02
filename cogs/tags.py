@@ -108,6 +108,7 @@ class Tags(commands.Cog):
         """
 
         if ctx.invoked_subcommand is None and tag_name:
+            # TODO: Verify this signature
             await ctx.invoke(self.get_tag, tag_name=tag_name)
         elif ctx.invoked_subcommand is None:
             await ctx.send_help('tag')
@@ -420,7 +421,7 @@ async def increment_tag_count(database: str, tag_name: str, guild_id: int) -> No
         pass
 
 
-def setup(bot: DreamBot) -> None:
+async def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -431,5 +432,5 @@ def setup(bot: DreamBot) -> None:
         None.
     """
 
-    bot.add_cog(Tags(bot))
+    await bot.add_cog(Tags(bot))
     logging.info('Completed Setup for Cog: Tags')

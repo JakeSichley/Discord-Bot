@@ -60,6 +60,7 @@ class Prefixes(commands.Cog):
             None.
         """
 
+        # TODO: Verify this signature
         if ctx.invoked_subcommand is None:
             await ctx.invoke(self.bot.get_command('prefix get'))
 
@@ -295,7 +296,7 @@ class Prefixes(commands.Cog):
             )
 
 
-def setup(bot: DreamBot) -> None:
+async def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -306,5 +307,5 @@ def setup(bot: DreamBot) -> None:
         None.
     """
 
-    bot.add_cog(Prefixes(bot))
+    await bot.add_cog(Prefixes(bot))
     logging.info('Completed Setup for Cog: Prefixes')
