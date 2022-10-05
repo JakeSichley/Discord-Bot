@@ -166,7 +166,6 @@ class Exceptions(commands.Cog):
             return
 
         # Calling a command currently at max concurrency
-        # TODO: Verify this key exists
         elif isinstance(error, commands.MaxConcurrencyReached):
             await ctx.send(f'{ctx.message.author.mention}, the maximum concurrency for this command has been reached. '
                            f'It can be used a maximum of {error.number} time(s) per {error.per.name} concurrently.')

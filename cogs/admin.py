@@ -220,8 +220,6 @@ class Admin(commands.Cog):
         except Exception as e:
             output = str(e)
 
-            x: int = '5'
-
         await ctx.safe_send(output)
 
     @commands.command(name='sql', hidden=True)

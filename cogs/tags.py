@@ -108,7 +108,7 @@ class Tags(commands.Cog):
         """
 
         if ctx.invoked_subcommand is None and tag_name:
-            # TODO: Verify this signature
+            # noinspection PyTypeChecker
             await ctx.invoke(self.get_tag, tag_name=tag_name)
         elif ctx.invoked_subcommand is None:
             await ctx.send_help('tag')
@@ -305,7 +305,7 @@ class Tags(commands.Cog):
         tag = await fetch_tag(self.bot.database, ctx.guild.id)
 
         if tag:
-            await ctx.send(f'**Tag `{tag.name}`**\n{tag.content}', safe_send=True)
+            await ctx.safe_send(f'**Tag `{tag.name}`**\n{tag.content}')
         else:
             await ctx.send(f'No tags exist for this guild.')
 
