@@ -503,7 +503,7 @@ class DDO(commands.Cog):
         logging.info('Completed Unload for Cog: DDO')
 
 
-def setup(bot: DreamBot) -> None:
+async def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -514,5 +514,5 @@ def setup(bot: DreamBot) -> None:
         None.
     """
 
-    bot.add_cog(DDO(bot))
+    await bot.add_cog(DDO(bot))
     logging.info('Completed Setup for Cog: DDO')

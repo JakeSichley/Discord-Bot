@@ -49,7 +49,7 @@ async def extract_image_as_bytes(source: Union[discord.Message, str]) -> BytesIO
 
     if isinstance(source, discord.Message) and source.attachments:
         buffer = BytesIO()
-        await source.attachments[0].save(buffer, seek_begin=True)
+        await source.attachments[0].save(buffer)
         if buffer.getbuffer().nbytes >= 8000000:
             raise BufferSizeExceeded
         else:

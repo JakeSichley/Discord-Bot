@@ -60,9 +60,11 @@ class Prefixes(commands.Cog):
             None.
         """
 
-        # TODO: Verify this signature
         if ctx.invoked_subcommand is None:
-            await ctx.invoke(self.bot.get_command('prefix get'))
+            command: commands.Command = self.bot.get_command('prefix get')
+
+            if command is not None:
+                await ctx.invoke(command)
 
     @commands.cooldown(1, 2, commands.BucketType.guild)
     @commands.has_permissions(manage_guild=True)

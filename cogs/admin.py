@@ -220,7 +220,9 @@ class Admin(commands.Cog):
         except Exception as e:
             output = str(e)
 
-        await ctx.send(output, safe_send=True)
+            x: int = '5'
+
+        await ctx.safe_send(output)
 
     @commands.command(name='sql', hidden=True)
     async def sql(self, ctx: Context, *, query: str) -> None:
@@ -248,7 +250,7 @@ class Admin(commands.Cog):
         try:
             if (query.upper()).startswith('SELECT'):
                 result = await retrieve_query(self.bot.database, query)
-                await ctx.send(str(result), safe_send=True)
+                await ctx.safe_send(str(result))
             else:
                 affected = await execute_query(self.bot.database, query)
                 await ctx.send(f'Executed. {affected} rows affected.')
@@ -346,7 +348,7 @@ class Admin(commands.Cog):
         try:
             exec(to_compile, env)
         except Exception as e:
-            await ctx.send(f'```py\n{e.__class__.__name__}: {e}\n```', safe_send=True)
+            await ctx.safe_send(f'```py\n{e.__class__.__name__}: {e}\n```')
             return
 
         func = env['func']
@@ -358,17 +360,17 @@ class Admin(commands.Cog):
 
         except Exception:
             value = stdout.getvalue()
-            await ctx.send(f'```py\n{value}{format_exc()}\n```', safe_send=True)
+            await ctx.safe_send(f'```py\n{value}{format_exc()}\n```')
         else:
             value = stdout.getvalue()
 
             if ret is None:
                 if 'return' in body.lower():
                     value = value if value else "None"
-                    await ctx.send(f'```py\n{value}\n```', safe_send=True)
+                    await ctx.safe_send(f'```py\n{value}\n```')
             else:
                 self._last_result = ret
-                await ctx.send(f'```py\n{value}{ret}\n```', safe_send=True)
+                await ctx.safe_send(f'```py\n{value}{ret}\n```')
 
     @ensure_git_credentials()
     @commands.group(name='git', hidden=True)

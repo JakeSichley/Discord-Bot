@@ -29,9 +29,10 @@ from dreambot import DreamBot
 from utils.logging_formatter import BotLoggingFormatter
 import logging
 import discord
+import asyncio
 
 
-def main() -> None:
+async def main() -> None:
     """
     Driver method.
     """
@@ -57,6 +58,7 @@ def main() -> None:
     environment = getenv('ENVIRONMENT', 'DEV')
 
     # optional
+    # noinspection PyTypeChecker
     options = {
         'status_type': discord.ActivityType(int(getenv('STATUS_TYPE', 1))),
         'status_text': getenv('STATUS_TEXT')
@@ -78,10 +80,10 @@ def main() -> None:
     if all(git_options.values()):
         options['git'] = git_options
 
-    dream_bot = DreamBot(database, prefix, owner, environment, options=options)
-    dream_bot.run(token)
+    async with DreamBot(database, prefix, owner, environment, options=options) as bot:
+        await bot.start(token)
 
 
 # Run the bot
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())

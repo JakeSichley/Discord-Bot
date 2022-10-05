@@ -25,7 +25,7 @@ SOFTWARE.
 from os import getcwd, listdir, path
 from discord.ext.commands import ExtensionError, Bot, when_mentioned
 from datetime import datetime
-from typing import Optional, List, Any, Dict
+from typing import Optional, List, Any, Dict, Type
 from utils.database_utils import retrieve_query
 from aiosqlite import Error as aiosqliteError
 from utils.context import Context
@@ -42,7 +42,6 @@ class DreamBot(Bot):
 
     Attributes:
         prefixes (dict): A quick reference for accessing a guild's specified prefix.
-        initialized (boolean): Whether the bot has performed initialization steps.
         uptime (datetime.datetime): The time the bot was initialized.
         database (str): The name of the database the bot uses.
         default_prefix (str): The default prefix to use if a guild has not specified one.
@@ -73,22 +72,21 @@ class DreamBot(Bot):
             None.
         """
 
-        intents = discord.Intents(
-            guilds=True, members=True, bans=True, emojis=True, voice_states=True, messages=True, reactions=True
-        )
+        intents = discord.Intents(message_content=True, guilds=True, members=True, bans=True, emojis=True,
+                                  voice_states=True, messages=True, reactions=True)
 
         super().__init__(
             command_prefix=get_prefix, case_insensitive=True, owner_id=owner, max_messages=None, intents=intents
         )
         self.wavelink = None
         self.prefixes = {}
-        self.initialized = False
         self.uptime = datetime.now()
         self.database = database
         self.default_prefix = prefix
         self.environment = environment
 
         # optionals
+        # noinspection PyTypeChecker
         self._status_type = options.pop('status_type', discord.ActivityType(0))
         self._status_text = options.pop('status_text', None)
         self.disabled_cogs = options.pop('disabled_cogs', [])
@@ -96,24 +94,12 @@ class DreamBot(Bot):
         # git optionals
         self.git = options.pop('git', None)
 
-        # load our cogs
-        for cog in listdir(path.join(getcwd(), 'cogs')):
-            # only load python files that we haven't explicitly disabled
-            if cog.endswith('.py') and cog[:-3] not in self.disabled_cogs:
-                try:
-                    self.load_extension(f'cogs.{cog[:-3]}')
-                except ExtensionError as e:
-                    logging.error(f'Failed Setup for Cog: {cog[:-3].capitalize()}. {e}')
-
         # tasks
         self.refresh_presence.start()
 
-    async def on_ready(self):
+    async def setup_hook(self) -> None:
         """
-        A Client.event() method that is called when the client is done preparing the data received from Discord.
-        Note: Event does not guarantee position and may be called multiple times.
-        'initialized' is used to ensure bot setup only happens once. Some setup cannot be performed in __init__ because
-            __init__ is not asynchronous.
+        A coroutine to be called to set up the bot.
 
         Parameters:
             None.
@@ -122,10 +108,16 @@ class DreamBot(Bot):
             None.
         """
 
-        if not self.initialized:
-            logging.info('Bot ready - performing initialization.')
-            await self.retrieve_prefixes()
-            self.initialized = True
+        await self.retrieve_prefixes()
+
+        # load our cogs
+        for cog in listdir(path.join(getcwd(), 'cogs')):
+            # only load python files that we haven't explicitly disabled
+            if cog.endswith('.py') and cog[:-3] not in self.disabled_cogs:
+                try:
+                    await self.load_extension(f'cogs.{cog[:-3]}')
+                except ExtensionError as e:
+                    logging.error(f'Failed Setup for Cog: {cog[:-3].capitalize()}. {e}')
 
     @tasks.loop(minutes=30)
     async def refresh_presence(self) -> None:
@@ -195,7 +187,7 @@ class DreamBot(Bot):
         else:
             logging.info('Completed prefix retrieval')
 
-    async def get_context(self, message: discord.Message, *, cls: classmethod = Context) -> Context:
+    async def get_context(self, message: discord.Message, *, cls: Type[Context] = Context) -> Context:
         """
         Creates a Context instance for the current command invocation.
 

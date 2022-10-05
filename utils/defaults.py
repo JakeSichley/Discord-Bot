@@ -22,47 +22,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-
 from discord.ext import commands
 from discord import Message
-from typing import Any, Optional
+from typing import Optional
 from utils.context import Context
 
 
-class MessageReply(commands.CustomDefault):
+def default_message_reply(ctx: Context) -> Optional[Message]:
     """
-    Default parameter that returns a message reply from the current context.
+    Default converter closure for the MessageReply Parameter.
 
-    Attributes:
-        required (bool): Whether the argument is required for the invocation context to be valid.
+    Parameters:
+        ctx (Context): The invocation context.
+
+    Returns:
+        (Optional[discord.Message])
     """
 
-    def __init__(self, *, required: bool = True) -> None:
-        """
-        The constructor for the Moderation class.
+    try:
+        return ctx.message.reference.resolved
+    except AttributeError:
+        raise commands.BadArgument()
 
-        Parameters:
-            required (bool): Whether the argument is required for the invocation context to be valid.
-        """
 
-        self.required = required
-
-    async def default(self, ctx: Context, param: Any) -> Optional[Message]:
-        """
-        Attempts to default the argument into a discord.Message object.
-
-        Parameters:
-            ctx (Context): The invocation context.
-            param (Any): The arg to be converted.
-
-        Returns:
-            (Optional[discord.Message]): The resulting discord.Message.
-        """
-
-        try:
-            return ctx.message.reference.resolved
-        except AttributeError:
-            if self.required:
-                raise commands.MissingRequiredArgument(param)
-            else:
-                return None
+MessageReply = commands.parameter(
+    default=default_message_reply,
+    displayed_default='<The message being replied to>',
+    converter=commands.MessageConverter
+)

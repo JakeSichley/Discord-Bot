@@ -31,7 +31,6 @@ from typing import Optional
 from re import findall
 from dreambot import DreamBot
 from aiohttp import ClientResponseError
-from discord.ext.commands.default import Author
 import datetime
 import pytz
 import discord
@@ -125,7 +124,7 @@ class Utility(commands.Cog):
     @commands.guild_only()
     @commands.command(name='userinfo', aliases=['ui'],
                       help='Generates an embed detailing information about the specified user')
-    async def user_info(self, ctx: Context, user: discord.Member = Author) -> None:
+    async def user_info(self, ctx: Context, user: discord.Member = commands.Author) -> None:
         """
         A method that outputs user information.
 
@@ -301,7 +300,7 @@ class Utility(commands.Cog):
             await ctx.send(response)
 
 
-def setup(bot: DreamBot) -> None:
+async def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -312,5 +311,5 @@ def setup(bot: DreamBot) -> None:
         None.
     """
 
-    bot.add_cog(Utility(bot))
+    await bot.add_cog(Utility(bot))
     logging.info('Completed Setup for Cog: UtilityFunctions')
