@@ -153,20 +153,18 @@ class Context(commands.Context):
                 await prompt.delete()
             return result
 
-    async def safe_send(self, content: Optional[str] = None, safe_send: bool = False, **kwargs: Any) -> discord.Message:
+    async def safe_send(self, content: Optional[str] = None, **kwargs: Any) -> discord.Message:
         """
-        Sends a message to the destination with the content given.
+        Sends a message safely to the destination with the content given.
 
         Parameters:
             content (str): The content of the message to send.
-            safe_send (Optional[bool]): If the content length exceeds 2000 characters, whether to send the content as a
-                file instead. Defaults to false.
 
         Returns:
             (discord.Message): The message that was sent.
         """
 
-        if safe_send and content and len(content) > 2000:
+        if content and len(content) > 2000:
             fp = io.BytesIO(content.encode())
             kwargs.pop('file', None)
             return await self.send(file=discord.File(fp, filename='content.txt'), **kwargs)
