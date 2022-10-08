@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased
 ### Features
 ### Internal
+* Utilize SQL migrations for database management
 * Utilize context managers for aiohttp sessions and aiosqlite connections
 * Bump Python version to 3.9.2
 * Separate discord.py and bot logging

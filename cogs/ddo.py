@@ -65,7 +65,7 @@ class DDO(commands.Cog):
         The constructor for the Moderation class.
 
         Parameters:
-            bot (DreamBott): The Discord bot.
+            bot (DreamBot): The Discord bot.
         """
 
         self.bot = bot
