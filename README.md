@@ -2,9 +2,9 @@
 A Python-based bot for Discord utilizing [Rapptz's Discord Wrapper](https://github.com/Rapptz/discord.py).
 
 #### Versions
-**Python**: 3.8.1
+**Python**: 3.9.2
 
-[**JakeSichley/discord.py**](https://github.com/JakeSichley/discord.py): 1.8.0
+**discord.py**: 2.0.1
 
 # Overview
 I created this bot as a way to learn how to use Python - what was originally a simple Discord bot
@@ -38,21 +38,12 @@ The `Images` cog implements several image manipulation commands supported by Pil
 The `Moderation` cog contains methods related to the moderation of a Discord server. Supports advanced logging, such as 
 message edit and deletion events.
 
-## Music
-The `Music` cog implements a fully-functional music player. The backend is driven by a 
-[Lavalink Wrapper](https://github.com/PythonistaGuild/Wavelink) client, while the front-end is a modified version of the 
-[PythonistaGuild's](https://github.com/PythonistaGuild/Wavelink/blob/master/examples/advanced.py) advanced 
-implementation.
-
 ## Reactions
 The `Reactions` cog implements the concept of 'Reaction Roles'. Users can react to specified messages to receive 
 corresponding roles within the guild.
 
 ## Tags
 The `Tags` cog allows you to save content under a tag name and retrieve it later.
-
-## Twitch
-The `Twitch` cog builds a Twitch chatbot into the main Discord bot and allows for the execution of Twitch commands from Discord.
 
 ## Utility
 The `Utility` cog contains various unrelated methods, such as the current time in a specified timezone, an invite to the
@@ -72,3 +63,14 @@ The `Firestore` cog utilizes Google's Firestore database to provide message logg
 #### Deprecated: MemeCoin is no longer utilized. A better currency system may be implemented in the future.
 The `MemeCoin` cog contains methods related to the fictitious currency created for the guild's 'Memes' channel. Users can award 
 or revoke 'Meme Coins' at will by reacting to a message with a :heavy_check_mark: or :x: respectively.
+
+## Music
+#### Deprecated: Music will require a rewrite utilizing Wavelink >= 1.0.
+The `Music` cog implements a fully-functional music player. The backend is driven by a 
+[Lavalink Wrapper](https://github.com/PythonistaGuild/Wavelink) client, while the front-end is a modified version of the 
+[PythonistaGuild's](https://github.com/PythonistaGuild/Wavelink/blob/master/examples/advanced.py) advanced 
+implementation.
+
+## Twitch
+#### Deprecated: Twitch will require a rewrite utilizing TwitchIO >= 2.0.
+The `Twitch` cog builds a Twitch chatbot into the main Discord bot and allows for the execution of Twitch commands from Discord.
