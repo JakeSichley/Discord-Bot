@@ -68,7 +68,7 @@ class Audit(commands.Cog):
         """
 
         # retrieve logging information
-        if logging_info := (await retrieve_query(self.bot.database,
+        if logging_info := (await retrieve_query(self.bot.connection,
                                                  'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
                                                  (member.guild.id,))):
             await log_to_channel(self.bot, LoggingActions.USER_JOINED, logging_info[0][1], logging_info[0][0],
@@ -90,7 +90,7 @@ class Audit(commands.Cog):
         """
 
         # retrieve logging information
-        if logging_info := (await retrieve_query(self.bot.database,
+        if logging_info := (await retrieve_query(self.bot.connection,
                                                  'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
                                                  (member.guild.id,))):
             await log_to_channel(self.bot, LoggingActions.USER_LEFT, logging_info[0][1], logging_info[0][0],
@@ -113,7 +113,7 @@ class Audit(commands.Cog):
         """
 
         # retrieve logging information
-        if logging_info := (await retrieve_query(self.bot.database,
+        if logging_info := (await retrieve_query(self.bot.connection,
                                                  'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
                                                  (guild.id,))):
             await log_to_channel(self.bot, LoggingActions.USER_BANNED, logging_info[0][1], logging_info[0][0],
@@ -136,7 +136,7 @@ class Audit(commands.Cog):
         """
 
         # retrieve logging information
-        if logging_info := (await retrieve_query(self.bot.database,
+        if logging_info := (await retrieve_query(self.bot.connection,
                                                  'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
                                                  (guild.id,))):
             await log_to_channel(self.bot, LoggingActions.USER_UNBANNED, logging_info[0][1], logging_info[0][0],
@@ -172,7 +172,7 @@ class Audit(commands.Cog):
             None.
         """
 
-        if logging_info := (await retrieve_query(self.bot.database,
+        if logging_info := (await retrieve_query(self.bot.connection,
                                                  'SELECT BITS FROM LOGGING WHERE GUILD_ID=?',
                                                  (ctx.guild.id,))):
             await ctx.send(embed=build_actions_embed(LoggingActions.all_actions((logging_info[0][0]))))
@@ -201,7 +201,7 @@ class Audit(commands.Cog):
             None.
         """
 
-        if logging_info := (await retrieve_query(self.bot.database,
+        if logging_info := (await retrieve_query(self.bot.connection,
                                                  'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
                                                  (ctx.guild.id,))):
             bits = int(logging_info[0][1])
@@ -240,7 +240,7 @@ class Audit(commands.Cog):
 
         try:
             await execute_query(
-                self.bot.database,
+                self.bot.connection,
                 'INSERT INTO LOGGING (GUILD_ID, CHANNEL_ID, BITS) VALUES (?, ?, ?) '
                 'ON CONFLICT(GUILD_ID) DO UPDATE SET CHANNEL_ID=EXCLUDED.CHANNEL_ID',
                 (ctx.guild.id, channel.id, 0)
@@ -291,6 +291,7 @@ class LoggingActions(Enum):
             (bool): Whether the action flag is enabled.
         """
 
+        # noinspection PyTypeChecker
         return bool(action.value & action_bits)
 
     @staticmethod
@@ -305,6 +306,7 @@ class LoggingActions(Enum):
             ([Enum]): All logging actions that are enabled.
         """
 
+        # noinspection PyTypeChecker
         return [action.name for action in LoggingActions if action.value & action_bits]
 
     @staticmethod
@@ -502,7 +504,7 @@ class ActionBitMenu(menus.Menu):
             None.
         """
 
-        await execute_query(self.bot.database, 'UPDATE LOGGING SET BITS=? WHERE GUILD_ID=?',
+        await execute_query(self.bot.connection, 'UPDATE LOGGING SET BITS=? WHERE GUILD_ID=?',
                             (self.bits, self.ctx.guild.id))
         await self.stop('Updated Audit Actions.')
 

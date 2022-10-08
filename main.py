@@ -29,6 +29,8 @@ from dreambot import DreamBot
 from utils.logging_formatter import format_loggers, bot_logger
 import discord
 import asyncio
+import aiosqlite
+import aiohttp
 
 
 async def main() -> None:
@@ -74,7 +76,13 @@ async def main() -> None:
     if all(git_options.values()):
         options['git'] = git_options
 
-    async with DreamBot(database, prefix, owner, environment, options=options) as bot:
+    async with (
+        DreamBot(prefix, owner, environment, options=options) as bot,
+        aiosqlite.connect(database) as connection,
+        aiohttp.ClientSession() as session
+    ):
+        bot.connection = connection
+        bot.session = session
         await bot.start(token)
 
 

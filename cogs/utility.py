@@ -196,7 +196,9 @@ class Utility(commands.Cog):
 
         extension = 'gif' if animated else 'png'
         emoji_asset = await network_request(
-            f'https://cdn.discordapp.com/emojis/{source}.{extension}?size=96', return_type=NetworkReturnType.BYTES
+            self.bot.session,
+            f'https://cdn.discordapp.com/emojis/{source}.{extension}?size=96',
+            return_type=NetworkReturnType.BYTES
         )
 
         name = name if name else str(source)
@@ -268,6 +270,7 @@ class Utility(commands.Cog):
 
             try:
                 emoji_asset = await network_request(
+                    self.bot.session,
                     f'https://cdn.discordapp.com/emojis/{emoji[2]}.{extension}?size=96',
                     return_type=NetworkReturnType.BYTES
                 )

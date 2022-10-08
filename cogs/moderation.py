@@ -171,8 +171,8 @@ class Moderation(commands.Cog):
             return
 
         async with ctx.typing():
-            matches = findall(r'(?<=<@!)?(?<=<@)?[0-9]{15,19}(?=>)?|[^\s].{1,31}?#[0-9]{4}', members)
-            remaining = sub(r'(<@!)?(<@)?[0-9]{15,19}>?|[^\s].{1,31}?#[0-9]{4}', '', members)
+            matches = findall(r'(?<=<@!)?(?<=<@)?[0-9]{15,19}(?=>)?|\S.{1,31}?#[0-9]{4}', members)
+            remaining = sub(r'(<@!)?(<@)?[0-9]{15,19}>?|\S.{1,31}?#[0-9]{4}', '', members)
             potential_members = matches + [x for x in remaining.split('\n') if x and x.strip()]
             converted = [await AggressiveDefaultMemberConverter().convert(ctx, member) for member in potential_members]
 
@@ -217,7 +217,7 @@ class Moderation(commands.Cog):
             None.
         """
 
-        if role := (await retrieve_query(self.bot.database, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+        if role := (await retrieve_query(self.bot.connection, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                                          (ctx.guild.id,))):
             role = ctx.guild.get_role(role[0][0])
             await ctx.send(f'The default role for the server is **{role.name}**')
@@ -257,7 +257,7 @@ class Moderation(commands.Cog):
 
         if not role:
             try:
-                await execute_query(self.bot.database, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?', (ctx.guild.id,))
+                await execute_query(self.bot.connection, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?', (ctx.guild.id,))
                 await ctx.send('Cleared the default role for the guild.')
             except aiosqliteError:
                 await ctx.send('Failed to clear the default role for the guild.')
@@ -272,7 +272,7 @@ class Moderation(commands.Cog):
             else:
                 try:
                     await execute_query(
-                        self.bot.database,
+                        self.bot.connection,
                         'INSERT INTO DEFAULT_ROLES (GUILD_ID, ROLE_ID) VALUES (?, ?) ON CONFLICT(GUILD_ID) '
                         'DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID',
                         (ctx.guild.id, role.id)
@@ -299,7 +299,7 @@ class Moderation(commands.Cog):
         if 'MEMBER_VERIFICATION_GATE_ENABLED' in member.guild.features:
             return
 
-        if role := (await retrieve_query(self.bot.database, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+        if role := (await retrieve_query(self.bot.connection, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                                          (member.guild.id,))):
             role = member.guild.get_role(role[0][0])
 
@@ -307,7 +307,7 @@ class Moderation(commands.Cog):
                 await member.add_roles(role, reason='Default Role Assignment')
             except discord.HTTPException as e:
                 bot_logger.error(f'Role Addition Failure. {e.status}. {e.text}')
-                await execute_query(self.bot.database, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+                await execute_query(self.bot.connection, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                                     (member.guild.id,))
 
     @commands.Cog.listener()
@@ -327,7 +327,7 @@ class Moderation(commands.Cog):
         """
 
         if 'MEMBER_VERIFICATION_GATE_ENABLED' in after.guild.features and before.pending and not after.pending:
-            if role := (await retrieve_query(self.bot.database, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+            if role := (await retrieve_query(self.bot.connection, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                                              (after.guild.id,))):
                 role = after.guild.get_role(role[0][0])
 

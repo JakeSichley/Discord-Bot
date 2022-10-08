@@ -43,7 +43,8 @@ class DreamBot(Bot):
     Attributes:
         prefixes (dict): A quick reference for accessing a guild's specified prefix.
         uptime (datetime.datetime): The time the bot was initialized.
-        database (str): The name of the database the bot uses.
+        connection (aiosqlite.Connection): The bot's current database connection.
+        session (aiohttp.ClientSession): The bot's current client session.
         default_prefix (str): The default prefix to use if a guild has not specified one.
         environment (str): Environment string. Disable features (such as firebase logging) when not 'PROD'.
         wavelink (wavelink.Client): The bot's wavelink client. This initialization prevents attr errors in 'Music'.
@@ -52,13 +53,11 @@ class DreamBot(Bot):
         _status_text (Optional[str]): The text of the bot's status.
     """
 
-    def __init__(self, database: str, prefix: str, owner: int, environment: str,
-                 options: Optional[Dict[str, Optional[Any]]]) -> None:
+    def __init__(self, prefix: str, owner: int, environment: str, options: Optional[Dict[str, Optional[Any]]]) -> None:
         """
         The constructor for the DreamBot class.
 
         Parameters:
-            database (str): The filename of the bot's database.
             prefix (str): The bot's default prefix.
             owner (int): The ID of the bot's owner. Required for most 'Admin' commands.
             environment (str): Environment string. Disable features (such as firebase logging) when not 'PROD'.
@@ -78,10 +77,12 @@ class DreamBot(Bot):
         super().__init__(
             command_prefix=get_prefix, case_insensitive=True, owner_id=owner, max_messages=None, intents=intents
         )
+
+        self.connection = None
+        self.session = None
         self.wavelink = None
         self.prefixes = {}
         self.uptime = datetime.now()
-        self.database = database
         self.default_prefix = prefix
         self.environment = environment
 
@@ -173,7 +174,7 @@ class DreamBot(Bot):
 
         try:
             self.prefixes.clear()
-            result = await retrieve_query(self.database, 'SELECT * FROM PREFIXES')
+            result = await retrieve_query(self.connection, 'SELECT * FROM PREFIXES')
 
             for guild, prefix in result:
                 if int(guild) in self.prefixes:

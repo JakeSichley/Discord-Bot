@@ -247,10 +247,10 @@ class Admin(commands.Cog):
 
         try:
             if (query.upper()).startswith('SELECT'):
-                result = await retrieve_query(self.bot.database, query)
+                result = await retrieve_query(self.bot.connection, query)
                 await ctx.safe_send(str(result))
             else:
-                affected = await execute_query(self.bot.database, query)
+                affected = await execute_query(self.bot.connection, query)
                 await ctx.send(f'Executed. {affected} rows affected.')
         except aiosqliteError as e:
             await ctx.send(f'Error: {e}')
@@ -565,14 +565,17 @@ class Admin(commands.Cog):
         users_url = f"https://api.github.com/users/{self.bot.git['git_user']}"
         commits_url = f"https://api.github.com/repos/{self.bot.git['git_user']}/{self.bot.git['git_repo']}/commits/"
 
-        branch_data = await network_request(branches_url, headers=headers, return_type=NetworkReturnType.JSON)
+        branch_data = await network_request(
+            self.bot.session, branches_url, headers=headers, return_type=NetworkReturnType.JSON
+        )
         user_data = await network_request(
-            users_url, headers=headers, return_type=NetworkReturnType.JSON, raise_errors=False
+            self.bot.session, users_url, headers=headers, return_type=NetworkReturnType.JSON, raise_errors=False
         )
         latest_commit_data = {
             branch['name']:
                 await network_request(
-                    commits_url + branch['commit']['sha'], headers=headers, return_type=NetworkReturnType.JSON
+                    self.bot.session, commits_url + branch['commit']['sha'], headers=headers,
+                    return_type=NetworkReturnType.JSON
                 ) for branch in branch_data[-5:]
         }
 

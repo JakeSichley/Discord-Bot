@@ -71,8 +71,8 @@ class BotLoggingFormatter(logging.Formatter):
         None.
     """
 
-    basic_format = '%(asctime)s: %(levelname)s [DreamBot]   - %(message)s (%(filename)s)'
-    detailed_format = '%(asctime)s: %(levelname)s [DreamBot]   - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
+    basic_format = '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s)'
+    detailed_format = '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
 
     formats = {
         logging.DEBUG: blue + basic_format + reset,

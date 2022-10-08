@@ -143,7 +143,7 @@ class DDO(commands.Cog):
         # this allows this regex pattern to find a 'd#' at the beginning
         pattern = ' ' + pattern.replace(' ', '')
         # build a dict of the single die in the pattern (ex: 'd20', 'd2', etc.)
-        single_die = {x[0] + x[1]: x[0] + '1' + x[1] for x in findall(r'([^\d])(d\d+)', pattern)}
+        single_die = {x[0] + x[1]: x[0] + '1' + x[1] for x in findall(r'(\D)(d\d+)', pattern)}
         # replace all the single die with a '1d#' alternative, ensuring all dice follow the #d# format
         for key, value in single_die.items():
             pattern = pattern.replace(key, value.strip(), 1)
@@ -194,7 +194,7 @@ class DDO(commands.Cog):
         """
 
         url = 'https://ddowiki.com/page/Item:' + item.replace(' ', '_')
-        data = await network_request(url)
+        data = await network_request(self.bot.session, url)
         soup = BeautifulSoup(data, features="html5lib")
         # Pull the main table
         table = soup.find_all('tr')
@@ -449,6 +449,7 @@ class DDO(commands.Cog):
         for server in self.SERVERS:
             try:
                 self.api_data[server] = await network_request(
+                    self.bot.session,
                     f'https://www.playeraudit.com/api/groups?s={server}',
                     return_type=NetworkReturnType.JSON, ssl=False
                 )
