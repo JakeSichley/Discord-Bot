@@ -27,7 +27,7 @@ from utils.database_utils import execute_query
 from utils.context import Context
 from dreambot import DreamBot
 from aiosqlite import Error as aiosqliteError
-import logging
+from utils.logging_formatter import bot_logger
 
 
 class Prefixes(commands.Cog):
@@ -310,4 +310,4 @@ async def setup(bot: DreamBot) -> None:
     """
 
     await bot.add_cog(Prefixes(bot))
-    logging.info('Completed Setup for Cog: Prefixes')
+    bot_logger.info('Completed Setup for Cog: Prefixes')

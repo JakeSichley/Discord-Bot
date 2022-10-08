@@ -29,7 +29,7 @@ from utils.defaults import MessageReply
 from typing import Union
 from utils.context import Context
 import discord
-import logging
+from utils.logging_formatter import bot_logger
 
 
 class Images(commands.Cog):
@@ -78,14 +78,14 @@ class Images(commands.Cog):
                 await ctx.send('The supplied image is too large. Bots are limited to images of size < 8 Megabytes.')
                 return
             except discord.HTTPException as e:
-                logging.error(f'File Download Failure. {e.status}. {e.text}')
+                bot_logger.error(f'File Download Failure. {e.status}. {e.text}')
                 await ctx.send(f'Could not download image. Details: [Status {e.status} | {e.text}]')
                 return
 
             try:
                 await ctx.send(file=discord.File(inverted, filename="inverted.png"))
             except discord.HTTPException as e:
-                logging.error(f'File Send Failure. {e.status}. {e.text}')
+                bot_logger.error(f'File Send Failure. {e.status}. {e.text}')
                 await ctx.send(f'Could not send image. Details: [Status {e.status} | {e.text}]')
                 return
 
@@ -118,7 +118,7 @@ class Images(commands.Cog):
             try:
                 await ctx.send(file=discord.File(buffer, filename="iasip.png"))
             except discord.HTTPException as e:
-                logging.error(f'File Send Failure. {e.status}. {e.text}')
+                bot_logger.error(f'File Send Failure. {e.status}. {e.text}')
                 await ctx.send(f'Could not send image. Details: [Status {e.status} | {e.text}]')
                 return
 
@@ -135,4 +135,4 @@ async def setup(bot: DreamBot) -> None:
     """
 
     await bot.add_cog(Images(bot))
-    logging.info('Completed Setup for Cog: Images')
+    bot_logger.info('Completed Setup for Cog: Images')

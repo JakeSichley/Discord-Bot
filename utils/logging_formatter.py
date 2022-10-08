@@ -23,17 +23,46 @@ SOFTWARE.
 """
 
 import logging
+import discord
+
+cyan = '\x1b[36m'
+yellow = '\x1b[33;20m'
+blue = '\x1b[34m'
+green = '\x1b[32m'
+red = '\x1b[31;20m'
+reset = '\x1b[0m'
+
+bot_logger = logging.getLogger('DreamBot')
+
+
+def format_loggers() -> None:
+    """
+    Formats loggers for discord.py and DreamBot.
+
+    Parameters:
+        None.
+
+    Returns:
+        None.
+    """
+
+    logger = logging.getLogger('DreamBot')
+    logger.setLevel(logging.INFO)
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(BotLoggingFormatter())
+    logger.addHandler(handler)
+    logger.propagate = False
+
+    discord.utils.setup_logging(formatter=DiscordLoggingFormatter(), root=False)
 
 
 class BotLoggingFormatter(logging.Formatter):
     """
     A logging.Formatter with custom formatting and coloring based on logging level.
+    Formats stream output for DreamBot.
 
     Constants:
-        blue (str): ansi color code for blue.
-        yellow (str): ansi color code for yellow.
-        red (str): ansi color code for red.
-        reset (str): ansi color code to reset all colors and effects.
         basic_format (str): A less-descriptive log format for info related events.
         detailed_format (str): A more-descriptive log format for warnings and errors.
         formats (Dict[int, str]): A dictionary of logging levels and their corresponding formats.
@@ -42,13 +71,8 @@ class BotLoggingFormatter(logging.Formatter):
         None.
     """
 
-    blue = '\x1b[36m'
-    yellow = '\x1b[33;20m'
-    red = '\x1b[31;20m'
-    reset = '\x1b[0m'
-
-    basic_format = '%(asctime)s: %(levelname)s - %(message)s (%(filename)s)'
-    detailed_format = '%(asctime)s: %(levelname)s - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
+    basic_format = '%(asctime)s: %(levelname)s [DreamBot]   - %(message)s (%(filename)s)'
+    detailed_format = '%(asctime)s: %(levelname)s [DreamBot]   - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
 
     formats = {
         logging.DEBUG: blue + basic_format + reset,
@@ -85,3 +109,29 @@ class BotLoggingFormatter(logging.Formatter):
         log_format = self.formats.get(record.levelno, logging.DEBUG)
         formatter = logging.Formatter(log_format, datefmt=self.datefmt)
         return formatter.format(record)
+
+
+class DiscordLoggingFormatter(BotLoggingFormatter):
+    """
+    A logging.Formatter with custom formatting and coloring based on logging level.
+    Formats stream output for discord.py.
+
+    Constants:
+        basic_format (str): A less-descriptive log format for info related events.
+        detailed_format (str): A more-descriptive log format for warnings and errors.
+        formats (Dict[int, str]): A dictionary of logging levels and their corresponding formats.
+
+    Attributes:
+        None.
+    """
+
+    basic_format = '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s)'
+    detailed_format = '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
+
+    formats = {
+        logging.DEBUG: cyan + basic_format + reset,
+        logging.INFO: cyan + basic_format + reset,
+        logging.WARNING: yellow + detailed_format + reset,
+        logging.ERROR: red + detailed_format + reset,
+        logging.CRITICAL: red + detailed_format + reset
+    }

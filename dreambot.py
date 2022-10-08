@@ -32,8 +32,8 @@ from utils.context import Context
 from utils.utils import generate_activity
 from discord.ext import tasks
 from copy import deepcopy
+from utils.logging_formatter import bot_logger
 import discord
-import logging
 
 
 class DreamBot(Bot):
@@ -117,7 +117,7 @@ class DreamBot(Bot):
                 try:
                     await self.load_extension(f'cogs.{cog[:-3]}')
                 except ExtensionError as e:
-                    logging.error(f'Failed Setup for Cog: {cog[:-3].capitalize()}. {e}')
+                    bot_logger.error(f'Failed Setup for Cog: {cog[:-3].capitalize()}. {e}')
 
     @tasks.loop(minutes=30)
     async def refresh_presence(self) -> None:
@@ -135,7 +135,7 @@ class DreamBot(Bot):
         try:
             bot_member: discord.Member = self.guilds[0].me
         except (IndexError, AttributeError) as e:
-            logging.error(f"Couldn't get a member instance of bot. Exception type: {type(e)}.")
+            bot_logger.error(f"Couldn't get a member instance of bot. Exception type: {type(e)}.")
             return
 
         if bot_member.activity:
@@ -144,7 +144,7 @@ class DreamBot(Bot):
         activity = await generate_activity(self._status_text, self._status_type)
         await self.change_presence(status=discord.Status.online, activity=activity)
 
-        logging_level = logging.info if self.refresh_presence.current_loop == 0 else logging.error
+        logging_level = bot_logger.info if self.refresh_presence.current_loop == 0 else bot_logger.error
         logging_level(f'Bot presence was empty. Refreshed presence.')
 
     @refresh_presence.before_loop
@@ -182,10 +182,10 @@ class DreamBot(Bot):
                     self.prefixes[int(guild)] = [prefix]
 
         except aiosqliteError as e:
-            logging.error(f'Failed prefix retrieval. {e}')
+            bot_logger.error(f'Failed prefix retrieval. {e}')
             self.prefixes = current_prefixes
         else:
-            logging.info('Completed prefix retrieval')
+            bot_logger.info('Completed prefix retrieval')
 
     async def get_context(self, message: discord.Message, *, cls: Type[Context] = Context) -> Context:
         """

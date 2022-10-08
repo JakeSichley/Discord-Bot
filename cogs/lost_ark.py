@@ -25,7 +25,7 @@ SOFTWARE.
 from discord.ext import commands
 from utils.context import Context
 from dreambot import DreamBot
-import logging
+from utils.logging_formatter import bot_logger
 
 
 class LostArk(commands.Cog):
@@ -87,4 +87,4 @@ async def setup(bot: DreamBot) -> None:
     """
 
     await bot.add_cog(LostArk(bot))
-    logging.info('Completed Setup for Cog: Lost Ark')
+    bot_logger.info('Completed Setup for Cog: Lost Ark')

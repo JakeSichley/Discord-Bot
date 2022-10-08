@@ -26,8 +26,7 @@ from os import getenv
 from sys import version
 from dotenv import load_dotenv
 from dreambot import DreamBot
-from utils.logging_formatter import BotLoggingFormatter
-import logging
+from utils.logging_formatter import format_loggers, bot_logger
 import discord
 import asyncio
 
@@ -38,15 +37,10 @@ async def main() -> None:
     """
 
     # logging setup
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    handler = logging.StreamHandler()
-    handler.setLevel(logging.INFO)
-    handler.setFormatter(BotLoggingFormatter())
-    logger.addHandler(handler)
+    format_loggers()
 
-    logging.info(f'Current Python Version: {version}')
-    logging.info(f'Current Discord Version: {discord.__version__}')
+    bot_logger.info(f'Current Python Version: {version}')
+    bot_logger.info(f'Current Discord Version: {discord.__version__}')
 
     load_dotenv()
 

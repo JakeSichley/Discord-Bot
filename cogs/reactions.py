@@ -32,8 +32,8 @@ from utils.context import Context
 from typing import Union, Optional, List, Tuple
 from math import ceil
 from dreambot import DreamBot
+from utils.logging_formatter import bot_logger
 import discord
-import logging
 
 
 class ReactionRoles(commands.Cog):
@@ -174,7 +174,7 @@ class ReactionRoles(commands.Cog):
             try:
                 await message.add_reaction(payload.emoji)
             except discord.HTTPException as e:
-                logging.warning(f'Reaction Role Reaction Addition Error. {e.status}. {e.text}')
+                bot_logger.warning(f'Reaction Role Reaction Addition Error. {e.status}. {e.text}')
                 cleanup_messages.append(await ctx.send("I wasn't able to add the reaction to the base message. If you"
                                                        " have not already done so, please add the reaction for me!"))
         except TimeoutError:
@@ -307,7 +307,7 @@ class ReactionRoles(commands.Cog):
                     try:
                         await message.clear_reaction(to_remove[0])
                     except discord.HTTPException as e:
-                        logging.warning(f'Reaction Role Reaction Removal Error. {e.status}. {e.text}')
+                        bot_logger.warning(f'Reaction Role Reaction Removal Error. {e.status}. {e.text}')
 
                     await ctx.send('Removed the specified reaction role from the message.')
                 else:
@@ -390,7 +390,7 @@ class ReactionRoles(commands.Cog):
                             try:
                                 await message.remove_reaction(reaction, ctx.me)
                             except discord.HTTPException as e:
-                                logging.warning(f'Reaction Role Reaction Clear Error. {e.status}. {e.text}')
+                                bot_logger.warning(f'Reaction Role Reaction Clear Error. {e.status}. {e.text}')
                     await ctx.send('Removed all reaction roles from the specified message.')
                 else:
                     raise commands.BadArgument
@@ -557,7 +557,7 @@ class ReactionRoles(commands.Cog):
                             role, reason=f'Reaction Roles - Add [Message ID: {payload.message_id}]'
                         )
                     except discord.HTTPException as e:
-                        logging.error(f'Reaction Role - Role Addition Failure. {e.status}. {e.text}')
+                        bot_logger.error(f'Reaction Role - Role Addition Failure. {e.status}. {e.text}')
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent) -> None:
@@ -590,7 +590,7 @@ class ReactionRoles(commands.Cog):
                             role, reason=f'Reaction Roles - Remove [Message ID: {payload.message_id}]'
                         )
                     except discord.HTTPException as e:
-                        logging.error(f'Reaction Role - Role Removal Error. {e.status}. {e.text}')
+                        bot_logger.error(f'Reaction Role - Role Removal Error. {e.status}. {e.text}')
 
 
 class ReactionRolePagination:
@@ -759,4 +759,4 @@ async def setup(bot: DreamBot) -> None:
     """
 
     await bot.add_cog(ReactionRoles(bot))
-    logging.info('Completed Setup for Cog: Reactions')
+    bot_logger.info('Completed Setup for Cog: Reactions')

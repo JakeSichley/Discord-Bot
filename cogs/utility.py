@@ -31,10 +31,10 @@ from typing import Optional
 from re import findall
 from dreambot import DreamBot
 from aiohttp import ClientResponseError
+from utils.logging_formatter import bot_logger
 import datetime
 import pytz
 import discord
-import logging
 
 
 class Utility(commands.Cog):
@@ -208,10 +208,10 @@ class Utility(commands.Cog):
             try:
                 await ctx.react(created_emoji, raise_exceptions=True)
             except discord.HTTPException as e:
-                logging.warning(f'Raw Yoink Add Reaction Error. {e.status}. {e.text}')
+                bot_logger.warning(f'Raw Yoink Add Reaction Error. {e.status}. {e.text}')
                 await ctx.tick()
         except discord.HTTPException as e:
-            logging.error(f'Raw Yoink Creation Error. {e.status}. {e.text}')
+            bot_logger.error(f'Raw Yoink Creation Error. {e.status}. {e.text}')
             await ctx.send(f'**{name}** failed with `{e.text}`')
 
     @commands.has_guild_permissions(manage_emojis=True)
@@ -282,10 +282,10 @@ class Utility(commands.Cog):
                 try:
                     await ctx.react(created_emoji, raise_exceptions=True)
                 except discord.HTTPException as e:
-                    logging.warning(f'Yoink Add Reaction Error. {e.status}. {e.text}')
+                    bot_logger.warning(f'Yoink Add Reaction Error. {e.status}. {e.text}')
                     success.append(emoji[1])
             except discord.HTTPException as e:
-                logging.error(f'Yoink Creation Error. {e.status}. {e.text}')
+                bot_logger.error(f'Yoink Creation Error. {e.status}. {e.text}')
                 failed.append(f'**{emoji[1]}** failed with `{e.text}`')
 
         response = ''
@@ -312,4 +312,4 @@ async def setup(bot: DreamBot) -> None:
     """
 
     await bot.add_cog(Utility(bot))
-    logging.info('Completed Setup for Cog: UtilityFunctions')
+    bot_logger.info('Completed Setup for Cog: UtilityFunctions')

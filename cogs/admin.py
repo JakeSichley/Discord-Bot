@@ -40,10 +40,10 @@ from datetime import datetime
 from utils.context import Context
 from copy import copy
 from importlib import reload
+from utils.logging_formatter import bot_logger
 import discord
 import sys
 import re
-import logging
 
 
 class Admin(commands.Cog):
@@ -800,4 +800,4 @@ async def setup(bot: DreamBot) -> None:
     """
 
     await bot.add_cog(Admin(bot))
-    logging.info('Completed Setup for Cog: Admin')
+    bot_logger.info('Completed Setup for Cog: Admin')

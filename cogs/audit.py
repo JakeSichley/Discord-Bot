@@ -30,8 +30,8 @@ from asyncio import Condition
 from dreambot import DreamBot
 from aiosqlite import Error as aiosqliteError
 from utils.context import Context
+from utils.logging_formatter import bot_logger
 import discord
-import logging
 
 
 class Audit(commands.Cog):
@@ -639,4 +639,4 @@ async def setup(bot: DreamBot) -> None:
     """
 
     await bot.add_cog(Audit(bot))
-    logging.info('Completed Setup for Cog: Audit')
+    bot_logger.info('Completed Setup for Cog: Audit')

@@ -31,8 +31,8 @@ from dreambot import DreamBot
 from utils.prompts import prompt_user_for_voice_channel, prompt_user_for_role
 from utils.context import Context
 from cache import ExpiringCache
+from utils.logging_formatter import bot_logger
 import discord
-import logging
 
 
 class VoiceRoles(commands.Cog):
@@ -304,7 +304,7 @@ class VoiceRoles(commands.Cog):
                             reason=f'Voice Roles - Join [Channel ID: {after.channel.id} ("{after.channel.name}")]'
                         )
                     except discord.HTTPException as e:
-                        logging.error(f'Voice Role - Role Addition Error. {e.status}. {e.text}')
+                        bot_logger.error(f'Voice Role - Role Addition Error. {e.status}. {e.text}')
 
                 if remove_roles:
                     try:
@@ -313,7 +313,7 @@ class VoiceRoles(commands.Cog):
                             reason=f'Voice Roles - Leave [Channel ID: {after.channel.id} ("{after.channel.name}")]'
                         )
                     except discord.HTTPException as e:
-                        logging.error(f'Voice Role - Role Removal Error. {e.status}. {e.text}')
+                        bot_logger.error(f'Voice Role - Role Removal Error. {e.status}. {e.text}')
 
             else:
                 remove_roles = []
@@ -324,7 +324,7 @@ class VoiceRoles(commands.Cog):
                     try:
                         await member.remove_roles(*remove_roles, reason=f'Voice Roles - Disconnect')
                     except discord.HTTPException as e:
-                        logging.error(f'Voice Role - Role Removal Error. {e.status}. {e.text}')
+                        bot_logger.error(f'Voice Role - Role Removal Error. {e.status}. {e.text}')
 
 
 async def setup(bot: DreamBot) -> None:
@@ -339,4 +339,4 @@ async def setup(bot: DreamBot) -> None:
     """
 
     await bot.add_cog(VoiceRoles(bot))
-    logging.info('Completed Setup for Cog: VoiceRoles')
+    bot_logger.info('Completed Setup for Cog: VoiceRoles')

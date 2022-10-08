@@ -26,8 +26,8 @@ from discord.ext import commands
 from typing import Any, Union, Optional
 from uuid import uuid4
 from asyncio import TimeoutError
+from utils.logging_formatter import bot_logger
 import discord
-import logging
 import io
 
 
@@ -69,7 +69,7 @@ class Context(commands.Context):
         try:
             await self.message.add_reaction(emoji)
         except discord.HTTPException as e:
-            logging.warning(f'Context React Error. {e.status}. {e.text}')
+            bot_logger.warning(f'Context React Error. {e.status}. {e.text}')
             if raise_exceptions:
                 raise
 

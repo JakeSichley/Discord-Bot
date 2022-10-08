@@ -24,8 +24,8 @@ SOFTWARE.
 
 from typing import Any
 from enum import Enum
+from utils.logging_formatter import bot_logger
 import aiohttp
-import logging
 
 
 class NetworkReturnType(Enum):
@@ -75,6 +75,6 @@ async def network_request(url: str, **options) -> Any:
                 else:
                     return await r.text(encoding=encoding)
     except aiohttp.ClientResponseError as e:
-        logging.error(f'Network Request Error. ("{url}"). {e.status}. {e.message}')
+        bot_logger.error(f'Network Request Error. ("{url}"). {e.status}. {e.message}')
         if raise_errors:
             raise

@@ -33,7 +33,7 @@ from typing import Optional, List
 from utils.utils import cleanup, valid_content
 from utils.prompts import prompt_user_for_content
 from utils.converters import StringConverter
-import logging
+from utils.logging_formatter import bot_logger
 import discord
 
 # TODO: Add user profile picture to tag info
@@ -433,4 +433,4 @@ async def setup(bot: DreamBot) -> None:
     """
 
     await bot.add_cog(Tags(bot))
-    logging.info('Completed Setup for Cog: Tags')
+    bot_logger.info('Completed Setup for Cog: Tags')

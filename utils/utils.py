@@ -24,13 +24,13 @@ SOFTWARE.
 
 from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable
 from re import search
+from utils.logging_formatter import bot_logger
 import discord
 import datetime
 import pytz
 import functools
 import asyncio
 import subprocess
-import logging
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.TextChannel) -> None:
@@ -49,11 +49,11 @@ async def cleanup(messages: List[discord.Message], channel: discord.TextChannel)
     try:
         await channel.delete_messages(messages)
     except discord.Forbidden as e:
-        logging.warning(f'Message Cleanup Error. {e.status}. {e.text}')
+        bot_logger.warning(f'Message Cleanup Error. {e.status}. {e.text}')
         while messages:
             await messages.pop().delete()
     except discord.HTTPException as e:
-        logging.error(f'Message Cleanup Error. {e.status}. {e.text}')
+        bot_logger.error(f'Message Cleanup Error. {e.status}. {e.text}')
 
 
 def localize_time(time: datetime.datetime) -> str:
