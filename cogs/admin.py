@@ -34,7 +34,7 @@ from typing import Union
 from dreambot import DreamBot
 from utils.checks import ensure_git_credentials
 from utils.network_utils import network_request, NetworkReturnType
-from utils.database_utils import execute_query, retrieve_query
+from utils.database.helpers import execute_query, retrieve_query
 from aiosqlite import Error as aiosqliteError
 from datetime import datetime
 from utils.context import Context

@@ -26,7 +26,7 @@ from os import getcwd, listdir, path
 from discord.ext.commands import ExtensionError, Bot, when_mentioned
 from datetime import datetime
 from typing import Optional, List, Any, Dict, Type
-from utils.database_utils import retrieve_query
+from utils.database.helpers import retrieve_query
 from aiosqlite import Error as aiosqliteError
 from utils.context import Context
 from utils.utils import generate_activity

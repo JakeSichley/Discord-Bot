@@ -27,6 +27,7 @@ from sys import version
 from dotenv import load_dotenv
 from dreambot import DreamBot
 from utils.logging_formatter import format_loggers, bot_logger
+from utils.database.migrations import Migrator
 import discord
 import asyncio
 import aiosqlite
@@ -52,6 +53,10 @@ async def main() -> None:
     prefix = getenv('PREFIX', '>')
     database = getenv('DATABASE')
     environment = getenv('ENVIRONMENT', 'DEV')
+
+    # apply database migrations
+    async with Migrator(database) as m:
+        await m.apply_migrations()
 
     # optional
     # noinspection PyTypeChecker
@@ -84,7 +89,6 @@ async def main() -> None:
         bot.connection = connection
         bot.session = session
         await bot.start(token)
-
 
 # Run the bot
 if __name__ == '__main__':

@@ -24,7 +24,7 @@ SOFTWARE.
 
 from discord.ext import commands
 from asyncio import TimeoutError
-from utils.database_utils import execute_query, retrieve_query
+from utils.database.helpers import execute_query, retrieve_query
 from utils.converters import GuildConverter
 from utils.prompts import prompt_user_for_role, prompt_user_for_discord_message
 from utils.utils import cleanup

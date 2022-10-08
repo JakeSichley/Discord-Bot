@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 from discord.ext import commands
-from utils.database_utils import execute_query, retrieve_query
+from utils.database.helpers import execute_query, retrieve_query
 from typing import Union
 from dreambot import DreamBot
 from utils.converters import AggressiveDefaultMemberConverter

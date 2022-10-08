@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 from discord.ext import commands
-from utils.database_utils import execute_query, retrieve_query
+from utils.database.helpers import execute_query, retrieve_query
 from aiosqlite import Error as aiosqliteError
 from utils.utils import cleanup
 from asyncio import sleep
