@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.0.1
+### Issues
+* Fix Admin -> Git Pull not utilizing `safe_send`
+
 ## 2.0.0
 ### Internal
 * Utilize SQL migrations for database management
