@@ -32,6 +32,8 @@ import functools
 import asyncio
 import subprocess
 
+VERSION = '2.0.0'
+
 
 async def cleanup(messages: List[discord.Message], channel: discord.TextChannel) -> None:
     """
@@ -180,7 +182,7 @@ async def generate_activity(status_text: str, status_type: discord.ActivityType)
     except AttributeError:
         return discord.Activity(name=status_text, type=status_type)
     else:
-        git_text = f'Version {git_commit} - {git_description}'
+        git_text = f'Version {VERSION} ({git_commit}) - {git_description}'
         padding = "\u3000" * (126 - len(status_text) - len(git_text))
         return discord.Activity(name=f'{status_text}\n{padding}{git_text}', type=status_type)
 
