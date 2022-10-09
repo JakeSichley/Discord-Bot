@@ -406,7 +406,7 @@ class Admin(commands.Cog):
             return
 
         output = '\n'.join(x.decode() for x in actual_result)
-        await ctx.send(f'**Pulling would modify the following the following files:**\n```\n{output}```')
+        await ctx.safe_send(f'**Pulling would modify the following the following files:**\n```\n{output}```')
 
         confirmation = await ctx.confirmation_prompt('Do you wish to continue?')
 
@@ -520,7 +520,7 @@ class Admin(commands.Cog):
 
         # -- finalize --
         await self.bot.change_presence(activity=await generate_activity(self.bot._status_text, self.bot._status_type))
-        await ctx.send(output)
+        await ctx.safe_send(output)
 
     @git.command(name='dry_run', aliases=['dry', 'd'], hidden=True)
     async def dry_run(self, ctx: Context) -> None:
