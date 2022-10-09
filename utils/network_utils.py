@@ -24,8 +24,8 @@ SOFTWARE.
 
 from typing import Any
 from enum import Enum
+from utils.logging_formatter import bot_logger
 import aiohttp
-import logging
 
 
 class NetworkReturnType(Enum):
@@ -38,11 +38,12 @@ class NetworkReturnType(Enum):
     BYTES = 3  # bytes
 
 
-async def network_request(url: str, **options) -> Any:
+async def network_request(session: aiohttp.ClientSession, url: str, **options) -> Any:
     """
     A method that downloads an image from an url.
 
     Parameters:
+        session (aiohttp.ClientSession): The bot's current client session.
         url (str): The url of the request.
         options (**kwargs): Optional, keyword only arguments.
             SUPPORTED:
@@ -66,15 +67,14 @@ async def network_request(url: str, **options) -> Any:
     ssl = options.pop('ssl', None)
 
     try:
-        async with aiohttp.ClientSession(raise_for_status=raise_errors) as session:
-            async with session.get(url, headers=header, ssl=ssl) as r:
-                if return_type == NetworkReturnType.JSON:
-                    return await r.json(encoding=encoding)
-                elif return_type == NetworkReturnType.BYTES:
-                    return await r.read()
-                else:
-                    return await r.text(encoding=encoding)
+        async with session.get(url, headers=header, ssl=ssl, raise_for_status=raise_errors) as r:
+            if return_type == NetworkReturnType.JSON:
+                return await r.json(encoding=encoding)
+            elif return_type == NetworkReturnType.BYTES:
+                return await r.read()
+            else:
+                return await r.text(encoding=encoding)
     except aiohttp.ClientResponseError as e:
-        logging.error(f'Network Request Error. ("{url}"). {e.status}. {e.message}')
+        bot_logger.error(f'Network Request Error. ("{url}"). {e.status}. {e.message}')
         if raise_errors:
             raise

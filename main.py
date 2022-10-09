@@ -26,26 +26,24 @@ from os import getenv
 from sys import version
 from dotenv import load_dotenv
 from dreambot import DreamBot
-from utils.logging_formatter import BotLoggingFormatter
-import logging
+from utils.logging_formatter import format_loggers, bot_logger
+from utils.database.migrations import Migrator
 import discord
+import asyncio
+import aiosqlite
+import aiohttp
 
 
-def main() -> None:
+async def main() -> None:
     """
     Driver method.
     """
 
     # logging setup
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    handler = logging.StreamHandler()
-    handler.setLevel(logging.INFO)
-    handler.setFormatter(BotLoggingFormatter())
-    logger.addHandler(handler)
+    format_loggers()
 
-    logging.info(f'Current Python Version: {version}')
-    logging.info(f'Current Discord Version: {discord.__version__}')
+    bot_logger.info(f'Current Python Version: {version}')
+    bot_logger.info(f'Current Discord Version: {discord.__version__}')
 
     load_dotenv()
 
@@ -56,7 +54,12 @@ def main() -> None:
     database = getenv('DATABASE')
     environment = getenv('ENVIRONMENT', 'DEV')
 
+    # apply database migrations
+    async with Migrator(database) as m:
+        await m.apply_migrations()
+
     # optional
+    # noinspection PyTypeChecker
     options = {
         'status_type': discord.ActivityType(int(getenv('STATUS_TYPE', 1))),
         'status_text': getenv('STATUS_TEXT')
@@ -78,10 +81,15 @@ def main() -> None:
     if all(git_options.values()):
         options['git'] = git_options
 
-    dream_bot = DreamBot(database, prefix, owner, environment, options=options)
-    dream_bot.run(token)
-
+    async with (
+        DreamBot(prefix, owner, environment, options=options) as bot,
+        aiosqlite.connect(database) as connection,
+        aiohttp.ClientSession() as session
+    ):
+        bot.connection = connection
+        bot.session = session
+        await bot.start(token)
 
 # Run the bot
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())

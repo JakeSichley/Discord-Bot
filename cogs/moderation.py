@@ -23,15 +23,16 @@ SOFTWARE.
 """
 
 from discord.ext import commands
-from utils.database_utils import execute_query, retrieve_query
+from utils.database.helpers import execute_query, retrieve_query
 from typing import Union
 from dreambot import DreamBot
 from utils.converters import AggressiveDefaultMemberConverter
 from aiosqlite import Error as aiosqliteError
 from utils.context import Context
 from re import findall, sub
+from utils.logging_formatter import bot_logger
 import discord
-import logging
+
 
 CHANNEL_OBJECT = Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]
 PERMISSIONS_PARENT = Union[discord.Role, discord.Member]
@@ -130,7 +131,7 @@ class Moderation(commands.Cog):
             await ctx.send(f"**{base_channel.name}**[`{base_permission_owner}`] --> "
                            f"**{target_channel.name}**[`{target_permission_owner}`]")
         except Exception as e:
-            logging.error(f'Overwrites Duplication Error. {e}')
+            bot_logger.error(f'Overwrites Duplication Error. {e}')
             await ctx.send(f"Failed to duplicate overwrites ({e})")
 
     @commands.has_guild_permissions(manage_roles=True)
@@ -170,8 +171,8 @@ class Moderation(commands.Cog):
             return
 
         async with ctx.typing():
-            matches = findall(r'(?<=<@!)?(?<=<@)?[0-9]{15,19}(?=>)?|[^\s].{1,31}?#[0-9]{4}', members)
-            remaining = sub(r'(<@!)?(<@)?[0-9]{15,19}>?|[^\s].{1,31}?#[0-9]{4}', '', members)
+            matches = findall(r'(?<=<@!)?(?<=<@)?[0-9]{15,19}(?=>)?|\S.{1,31}?#[0-9]{4}', members)
+            remaining = sub(r'(<@!)?(<@)?[0-9]{15,19}>?|\S.{1,31}?#[0-9]{4}', '', members)
             potential_members = matches + [x for x in remaining.split('\n') if x and x.strip()]
             converted = [await AggressiveDefaultMemberConverter().convert(ctx, member) for member in potential_members]
 
@@ -216,7 +217,7 @@ class Moderation(commands.Cog):
             None.
         """
 
-        if role := (await retrieve_query(self.bot.database, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+        if role := (await retrieve_query(self.bot.connection, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                                          (ctx.guild.id,))):
             role = ctx.guild.get_role(role[0][0])
             await ctx.send(f'The default role for the server is **{role.name}**')
@@ -256,7 +257,7 @@ class Moderation(commands.Cog):
 
         if not role:
             try:
-                await execute_query(self.bot.database, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?', (ctx.guild.id,))
+                await execute_query(self.bot.connection, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?', (ctx.guild.id,))
                 await ctx.send('Cleared the default role for the guild.')
             except aiosqliteError:
                 await ctx.send('Failed to clear the default role for the guild.')
@@ -271,7 +272,7 @@ class Moderation(commands.Cog):
             else:
                 try:
                     await execute_query(
-                        self.bot.database,
+                        self.bot.connection,
                         'INSERT INTO DEFAULT_ROLES (GUILD_ID, ROLE_ID) VALUES (?, ?) ON CONFLICT(GUILD_ID) '
                         'DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID',
                         (ctx.guild.id, role.id)
@@ -298,15 +299,15 @@ class Moderation(commands.Cog):
         if 'MEMBER_VERIFICATION_GATE_ENABLED' in member.guild.features:
             return
 
-        if role := (await retrieve_query(self.bot.database, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+        if role := (await retrieve_query(self.bot.connection, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                                          (member.guild.id,))):
             role = member.guild.get_role(role[0][0])
 
             try:
                 await member.add_roles(role, reason='Default Role Assignment')
             except discord.HTTPException as e:
-                logging.error(f'Role Addition Failure. {e.status}. {e.text}')
-                await execute_query(self.bot.database, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+                bot_logger.error(f'Role Addition Failure. {e.status}. {e.text}')
+                await execute_query(self.bot.connection, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                                     (member.guild.id,))
 
     @commands.Cog.listener()
@@ -326,21 +327,21 @@ class Moderation(commands.Cog):
         """
 
         if 'MEMBER_VERIFICATION_GATE_ENABLED' in after.guild.features and before.pending and not after.pending:
-            if role := (await retrieve_query(self.bot.database, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+            if role := (await retrieve_query(self.bot.connection, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                                              (after.guild.id,))):
                 role = after.guild.get_role(role[0][0])
 
                 try:
                     await after.add_roles(role, reason='Default Role [Membership Screening] Assignment')
                 except discord.HTTPException as e:
-                    logging.error(f'Role Addition Failure. {e.status}. {e.text}')
+                    bot_logger.error(f'Role Addition Failure. {e.status}. {e.text}')
                     try:
                         await after.guild.system_channel.send(f'Failed to add the default role to `{str(after)}`.')
                     except discord.HTTPException:
-                        logging.error(f'Role Addition Alert Failure. {e.status}. {e.text}')
+                        bot_logger.error(f'Role Addition Alert Failure. {e.status}. {e.text}')
 
 
-def setup(bot: DreamBot) -> None:
+async def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -351,5 +352,5 @@ def setup(bot: DreamBot) -> None:
         None.
     """
 
-    bot.add_cog(Moderation(bot))
-    logging.info('Completed Setup for Cog: Moderation')
+    await bot.add_cog(Moderation(bot))
+    bot_logger.info('Completed Setup for Cog: Moderation')

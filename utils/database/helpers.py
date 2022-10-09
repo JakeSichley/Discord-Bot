@@ -23,17 +23,17 @@ SOFTWARE.
 """
 
 from typing import List, Tuple, Any, Optional
+from utils.logging_formatter import bot_logger
 import aiosqlite
-import logging
 
 
-async def execute_query(database_name: str, query: str, values: Tuple[Any, ...] = None) -> Optional[int]:
+async def execute_query(connection: aiosqlite.Connection, query: str, values: Tuple[Any, ...] = None) -> Optional[int]:
     """
     A method that executes a sqlite3 statement.
     Note: Use retrieve_query() for 'SELECT' statements.
 
     Parameters:
-        database_name (str): The name of the database.
+        connection (aiosqlite.Connection): The bot's current database connection.
         query (str): The statement to execute.
         values (Tuple[Any, ...]): The values to insert into the query.
 
@@ -44,23 +44,22 @@ async def execute_query(database_name: str, query: str, values: Tuple[Any, ...] 
     values = values if values else tuple()
 
     try:
-        async with aiosqlite.connect(database_name) as db:
-            affected = await db.execute(query, values)
-            await db.commit()
-            return affected.rowcount
+        affected = await connection.execute(query, values)
+        await connection.commit()
+        return affected.rowcount
 
     except aiosqlite.Error as error:
-        logging.error(f'Execute Query ("{query}"). {error}.')
+        bot_logger.error(f'Execute Query ("{query}"). {error}.')
         raise error
 
 
-async def retrieve_query(database_name: str, query: str, values: Tuple[Any, ...] = None) -> List[Any]:
+async def retrieve_query(connection: aiosqlite.Connection, query: str, values: Tuple[Any, ...] = None) -> List[Any]:
     """
     A method that returns the result of a sqlite3 'SELECT' statement.
     Note: Use execute_query() for non-'SELECT' statements.
 
     Parameters:
-        database_name (str): The name of the database.
+        connection (aiosqlite.Connection): The bot's current database connection.
         query (str): The statement to execute.
         values (Tuple[Any, ...]): The values to insert into the query.
 
@@ -71,10 +70,9 @@ async def retrieve_query(database_name: str, query: str, values: Tuple[Any, ...]
     values = values if values else tuple()
 
     try:
-        async with aiosqlite.connect(database_name) as db:
-            async with db.execute(query, values) as cursor:
-                return await cursor.fetchall()
+        async with connection.execute(query, values) as cursor:
+            return await cursor.fetchall()
 
     except aiosqlite.Error as error:
-        logging.error(f'Retrieve Query ("{query}"). {error}.')
+        bot_logger.error(f'Retrieve Query ("{query}"). {error}.')
         raise error

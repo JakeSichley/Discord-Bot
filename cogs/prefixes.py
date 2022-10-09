@@ -23,11 +23,11 @@ SOFTWARE.
 """
 
 from discord.ext import commands
-from utils.database_utils import execute_query
+from utils.database.helpers import execute_query
 from utils.context import Context
 from dreambot import DreamBot
 from aiosqlite import Error as aiosqliteError
-import logging
+from utils.logging_formatter import bot_logger
 
 
 class Prefixes(commands.Cog):
@@ -61,7 +61,10 @@ class Prefixes(commands.Cog):
         """
 
         if ctx.invoked_subcommand is None:
-            await ctx.invoke(self.bot.get_command('prefix get'))
+            command: commands.Command = self.bot.get_command('prefix get')
+
+            if command is not None:
+                await ctx.invoke(command)
 
     @commands.cooldown(1, 2, commands.BucketType.guild)
     @commands.has_permissions(manage_guild=True)
@@ -102,7 +105,7 @@ class Prefixes(commands.Cog):
 
         try:
             await execute_query(
-                self.bot.database,
+                self.bot.connection,
                 'INSERT INTO PREFIXES (GUILD_ID, PREFIX) VALUES (?, ?)',
                 (ctx.guild.id, prefix)
             )
@@ -150,7 +153,7 @@ class Prefixes(commands.Cog):
 
         try:
             await execute_query(
-                self.bot.database,
+                self.bot.connection,
                 'DELETE FROM PREFIXES WHERE GUILD_ID=? AND PREFIX=?',
                 (ctx.guild.id, prefix)
             )
@@ -203,7 +206,7 @@ class Prefixes(commands.Cog):
 
         try:
             await execute_query(
-                self.bot.database,
+                self.bot.connection,
                 'UPDATE PREFIXES SET PREFIX=? WHERE GUILD_ID=? AND PREFIX=?',
                 (new_prefix, ctx.guild.id, old_prefix)
             )
@@ -249,7 +252,7 @@ class Prefixes(commands.Cog):
 
         try:
             await execute_query(
-                self.bot.database,
+                self.bot.connection,
                 'DELETE FROM PREFIXES WHERE GUILD_ID=?',
                 (ctx.guild.id,)
             )
@@ -295,7 +298,7 @@ class Prefixes(commands.Cog):
             )
 
 
-def setup(bot: DreamBot) -> None:
+async def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -306,5 +309,5 @@ def setup(bot: DreamBot) -> None:
         None.
     """
 
-    bot.add_cog(Prefixes(bot))
-    logging.info('Completed Setup for Cog: Prefixes')
+    await bot.add_cog(Prefixes(bot))
+    bot_logger.info('Completed Setup for Cog: Prefixes')

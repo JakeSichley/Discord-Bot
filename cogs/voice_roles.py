@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 from discord.ext import commands
-from utils.database_utils import execute_query, retrieve_query
+from utils.database.helpers import execute_query, retrieve_query
 from aiosqlite import Error as aiosqliteError
 from utils.utils import cleanup
 from asyncio import sleep
@@ -31,8 +31,8 @@ from dreambot import DreamBot
 from utils.prompts import prompt_user_for_voice_channel, prompt_user_for_role
 from utils.context import Context
 from cache import ExpiringCache
+from utils.logging_formatter import bot_logger
 import discord
-import logging
 
 
 class VoiceRoles(commands.Cog):
@@ -144,7 +144,7 @@ class VoiceRoles(commands.Cog):
         # we should have all pieces for a reaction role now
         try:
             await execute_query(
-                self.bot.database,
+                self.bot.connection,
                 'INSERT INTO VOICE_ROLES (GUILD_ID, CHANNEL_ID, ROLE_ID) VALUES (?, ?, ?) '
                 'ON CONFLICT(CHANNEL_ID) DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID',
                 (channel.guild.id, channel.id, role.id)
@@ -189,7 +189,7 @@ class VoiceRoles(commands.Cog):
 
         # once we have a channel id, proceed with deletion confirmation
         if role := await retrieve_query(
-                self.bot.database,
+                self.bot.connection,
                 'SELECT ROLE_ID FROM VOICE_ROLES WHERE CHANNEL_ID=?',
                 (channel.id,)
         ):
@@ -202,7 +202,7 @@ class VoiceRoles(commands.Cog):
 
             try:
                 await execute_query(
-                    self.bot.database,
+                    self.bot.connection,
                     'DELETE FROM VOICE_ROLES WHERE CHANNEL_ID=?',
                     (channel.id,)
                 )
@@ -241,7 +241,7 @@ class VoiceRoles(commands.Cog):
 
         # once we have a channel id, check to see if a role exists
         if role := await retrieve_query(
-                self.bot.database,
+                self.bot.connection,
                 'SELECT ROLE_ID FROM VOICE_ROLES WHERE CHANNEL_ID=?',
                 (channel.id,)
         ):
@@ -282,7 +282,7 @@ class VoiceRoles(commands.Cog):
             return
 
         if data := await retrieve_query(
-                self.bot.database,
+                self.bot.connection,
                 'SELECT CHANNEL_ID, ROLE_ID FROM VOICE_ROLES WHERE GUILD_ID=?',
                 (member.guild.id,)
         ):
@@ -304,7 +304,7 @@ class VoiceRoles(commands.Cog):
                             reason=f'Voice Roles - Join [Channel ID: {after.channel.id} ("{after.channel.name}")]'
                         )
                     except discord.HTTPException as e:
-                        logging.error(f'Voice Role - Role Addition Error. {e.status}. {e.text}')
+                        bot_logger.error(f'Voice Role - Role Addition Error. {e.status}. {e.text}')
 
                 if remove_roles:
                     try:
@@ -313,7 +313,7 @@ class VoiceRoles(commands.Cog):
                             reason=f'Voice Roles - Leave [Channel ID: {after.channel.id} ("{after.channel.name}")]'
                         )
                     except discord.HTTPException as e:
-                        logging.error(f'Voice Role - Role Removal Error. {e.status}. {e.text}')
+                        bot_logger.error(f'Voice Role - Role Removal Error. {e.status}. {e.text}')
 
             else:
                 remove_roles = []
@@ -324,10 +324,10 @@ class VoiceRoles(commands.Cog):
                     try:
                         await member.remove_roles(*remove_roles, reason=f'Voice Roles - Disconnect')
                     except discord.HTTPException as e:
-                        logging.error(f'Voice Role - Role Removal Error. {e.status}. {e.text}')
+                        bot_logger.error(f'Voice Role - Role Removal Error. {e.status}. {e.text}')
 
 
-def setup(bot: DreamBot) -> None:
+async def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -338,5 +338,5 @@ def setup(bot: DreamBot) -> None:
         None.
     """
 
-    bot.add_cog(VoiceRoles(bot))
-    logging.info('Completed Setup for Cog: VoiceRoles')
+    await bot.add_cog(VoiceRoles(bot))
+    bot_logger.info('Completed Setup for Cog: VoiceRoles')

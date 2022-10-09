@@ -32,15 +32,17 @@ from utils.network_utils import network_request, NetworkReturnType
 from utils.utils import run_in_executor
 from os import path
 from inspect import Parameter
+from aiohttp import ClientSession
 import discord
 import PIL.ImageOps
 
 
-async def extract_image_as_bytes(source: Union[discord.Message, str]) -> BytesIO:
+async def extract_image_as_bytes(session: ClientSession, source: Union[discord.Message, str]) -> BytesIO:
     """
     A method that downloads an image from a url.
 
     Parameters:
+        session (aiohttp.ClientSession): The bot's current client session.
         source (Union[discord.Message, str]): The image source. Could be an attachment or url.
 
     Returns:
@@ -49,7 +51,7 @@ async def extract_image_as_bytes(source: Union[discord.Message, str]) -> BytesIO
 
     if isinstance(source, discord.Message) and source.attachments:
         buffer = BytesIO()
-        await source.attachments[0].save(buffer, seek_begin=True)
+        await source.attachments[0].save(buffer)
         if buffer.getbuffer().nbytes >= 8000000:
             raise BufferSizeExceeded
         else:
@@ -57,7 +59,7 @@ async def extract_image_as_bytes(source: Union[discord.Message, str]) -> BytesIO
     elif isinstance(source, str) and search(r'.(webp|jpeg|jpg|png|bmp)', source):
         # if the user provided an embed, refresh to allow discord time to update the message
         buffer = BytesIO()
-        data = await network_request(source, return_type=NetworkReturnType.BYTES)
+        data = await network_request(session, source, return_type=NetworkReturnType.BYTES)
         buffer.write(data)
         buffer.seek(0)
         if buffer.getbuffer().nbytes >= 8000000:

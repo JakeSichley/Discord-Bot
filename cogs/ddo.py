@@ -35,7 +35,7 @@ from functools import reduce
 from aiohttp import ClientResponseError
 from utils.network_utils import network_request, NetworkReturnType
 from utils.context import Context
-import logging
+from utils.logging_formatter import bot_logger
 
 
 class DDO(commands.Cog):
@@ -52,26 +52,25 @@ class DDO(commands.Cog):
         bot (DreamBot): The Discord bot.
         api_data (dict): The response data from DDOAudit (used for LFMs).
         reconnect_tries (int): The number of consecutive unsuccessful queries to the DDOAudit.
-        query_ddo_audit (ext.tasks): Stores the task that queries DDOAudit every 30 seconds.
+        query_ddo_audit (ext.tasks): Stores the task that queries DDOAudit every {QUERY_INTERVAL} seconds.
     """
 
     SERVERS = ('Argonnessen', 'Cannith', 'Ghallanda', 'Khyber', 'Orien', 'Sarlona', 'Thelanis', 'Wayfinder', 'Hardcore')
     QUEST_TYPES = ('Solo', 'Quest', 'Raid')
     DIFFICULTIES = ('Casual', 'Normal', 'Hard', 'Elite', 'Reaper')
-    QUERY_INTERVAL = 30
+    QUERY_INTERVAL = 15
 
     def __init__(self, bot: DreamBot) -> None:
         """
         The constructor for the Moderation class.
 
         Parameters:
-            bot (DreamBott): The Discord bot.
+            bot (DreamBot): The Discord bot.
         """
 
         self.bot = bot
         self.api_data = {server: None for server in self.SERVERS}
         self.reconnect_tries = 0
-        self.query_ddo_audit_task_count = 0
         self.query_ddo_audit.start()
 
     @commands.command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')
@@ -143,7 +142,7 @@ class DDO(commands.Cog):
         # this allows this regex pattern to find a 'd#' at the beginning
         pattern = ' ' + pattern.replace(' ', '')
         # build a dict of the single die in the pattern (ex: 'd20', 'd2', etc.)
-        single_die = {x[0] + x[1]: x[0] + '1' + x[1] for x in findall(r'([^\d])(d\d+)', pattern)}
+        single_die = {x[0] + x[1]: x[0] + '1' + x[1] for x in findall(r'(\D)(d\d+)', pattern)}
         # replace all the single die with a '1d#' alternative, ensuring all dice follow the #d# format
         for key, value in single_die.items():
             pattern = pattern.replace(key, value.strip(), 1)
@@ -154,7 +153,7 @@ class DDO(commands.Cog):
         # build a result string we can present to the user
         breakdown = f'Roll: **{pattern}**\nResult: **$**\n\nBreakdown:'
 
-        # group all the non-die rolls together so we can append it the breakdown
+        # group all the non-die rolls together, so we can append it the breakdown
         non_die_base = reduce(lambda s, r: s.replace(r, '@', 1), die_patterns, pattern)
         non_die = findall(r'[+|-]\d+|\d+(?=[+|-])', non_die_base)
 
@@ -194,7 +193,7 @@ class DDO(commands.Cog):
         """
 
         url = 'https://ddowiki.com/page/Item:' + item.replace(' ', '_')
-        data = await network_request(url)
+        data = await network_request(self.bot.session, url)
         soup = BeautifulSoup(data, features="html5lib")
         # Pull the main table
         table = soup.find_all('tr')
@@ -226,7 +225,7 @@ class DDO(commands.Cog):
         first_index = enchantment_string.find('<li>')
         last_index = enchantment_string.rfind('</li>')
 
-        # If there are not valid list indexes, return an error
+        # If the list indexes are not valid, return an error
         if first_index == -1 or last_index == -1:
             await ctx.send(f'ERROR: Enchantments table was found, but could not find valid enchantments.')
             return
@@ -282,7 +281,7 @@ class DDO(commands.Cog):
 
         # Create and send our embedded object
         embed = Embed(title=f'**{item}**', url=url, color=0x6879f2)
-        embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
+        embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar.url)
         embed.set_thumbnail(url='https://i.imgur.com/QV6uUZf.png')
         embed.add_field(name='Minimum Level', value=str(minimum_level))
         embed.add_field(name='Item Type', value=item_type)
@@ -345,7 +344,7 @@ class DDO(commands.Cog):
 
     @commands.command(name='flfms', help=f'Returns a filtered list of active LFMs for the specified server.\n'
                                          f'Optional filters include: LFM Type: (Solo, Quest, Raid), Difficulty: '
-                                         f'(Casual, Normal, Hard, Elite, Reaper), and Level: (1-30).\nYou MUST supply a'
+                                         f'(Casual, Normal, Hard, Elite, Reaper), and Level: (1-32).\nYou MUST supply a'
                                          f' server.\nValid servers include Argonnessen, Cannith, Ghallanda, Khyber,'
                                          f' Orien, Sarlona, Thelanis, Wayfinder, and Hardcore.\nInformation is '
                                          f'populated from \'DDO Audit\' every {QUERY_INTERVAL} seconds.')
@@ -359,7 +358,7 @@ class DDO(commands.Cog):
 
         Output:
             Success: A message detailing the filtered lfms.
-            Failure: A description syntax error that occured.
+            Failure: A description syntax error that occurred.
 
         Returns:
             None.
@@ -381,7 +380,7 @@ class DDO(commands.Cog):
             else:
                 try:
                     level = int(arg)
-                    if level < 1 or level > 30:
+                    if level < 1 or level > 32:
                         level = None
                 except ValueError:
                     level = None
@@ -429,7 +428,7 @@ class DDO(commands.Cog):
     async def query_ddo_audit(self) -> None:
         """
         A discord.ext.tasks loop that queries the DDOAudit API for LFM information.
-        Executes every {QUERY_INTERVAL} seconds to comply with DDOAudit's rate limit (30 seconds).
+        Executes every {QUERY_INTERVAL} seconds to comply with DDOAudit's rate limit.
 
         Parameters:
             None.
@@ -441,35 +440,27 @@ class DDO(commands.Cog):
             None.
         """
 
-        if self.query_ddo_audit_task_count > 0:
-            return
+        server = self.SERVERS[self.query_ddo_audit.current_loop % len(self.SERVERS)]
 
-        self.query_ddo_audit_task_count += 1
+        try:
+            self.api_data[server] = await network_request(
+                self.bot.session,
+                f'https://api.ddoaudit.com/groups/{server.lower()}',
+                return_type=NetworkReturnType.JSON, ssl=False
+            )
+            self.reconnect_tries = 0
 
-        for server in self.SERVERS:
-            try:
-                self.api_data[server] = await network_request(
-                    f'https://www.playeraudit.com/api/groups?s={server}',
-                    return_type=NetworkReturnType.JSON, ssl=False
-                )
+        except (ClientResponseError, JSONDecodeError, UnicodeError) as e:
+            bot_logger.warning(f'DDOAudit Query[{server}] Error: {e}')
+            self.api_data[server] = None
+            self.reconnect_tries += 1
+
+            # if the query fails whatever number of times this is in a row, delay querying the API for an hour
+            if self.reconnect_tries >= (len(self.SERVERS) - 1) * 2:
+                bot_logger.error(f'DDOAudit Reconnect Tries Exceeded. Backing off for 3600 seconds')
                 self.reconnect_tries = 0
-
-            except (ClientResponseError, JSONDecodeError, UnicodeError) as e:
-                logging.warning(f'DDOAudit Query[{server}] Error: {e}')
-                self.api_data[server] = None
-                self.reconnect_tries += 1
-
-                # if the query fails whatever number of times this is in a row, delay querying the API for an hour
-                if self.reconnect_tries >= (len(self.SERVERS) - 1) * 2:
-                    logging.error(f'DDOAudit Reconnect Tries Exceeded. Backing off for 3600 seconds')
-                    self.reconnect_tries = 0
-                    self.api_data = {server: None for server in self.SERVERS}
-                    await sleep(3600)
-
-            finally:
-                await sleep(5)
-
-        self.query_ddo_audit_task_count -= 1
+                self.api_data = {server: None for server in self.SERVERS}
+                await sleep(3600)
 
     @query_ddo_audit.before_loop
     async def before_api_query_loop(self) -> None:
@@ -500,10 +491,10 @@ class DDO(commands.Cog):
         self.query_ddo_audit.cancel()
         self.api_data = None
 
-        logging.info('Completed Unload for Cog: DDO')
+        bot_logger.info('Completed Unload for Cog: DDO')
 
 
-def setup(bot: DreamBot) -> None:
+async def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -514,5 +505,5 @@ def setup(bot: DreamBot) -> None:
         None.
     """
 
-    bot.add_cog(DDO(bot))
-    logging.info('Completed Setup for Cog: DDO')
+    await bot.add_cog(DDO(bot))
+    bot_logger.info('Completed Setup for Cog: DDO')

@@ -90,7 +90,7 @@ async def prompt_user_for_role(
         Command State Information.
 
     Returns:
-        Tuple[List[discord.Message], Optional[discord.Role]]
+        Tuple[List[discord.Message], Optional[discord.Role]].
     """
 
     sent_messages = [await ctx.send(initial_prompt)] if initial_prompt else []

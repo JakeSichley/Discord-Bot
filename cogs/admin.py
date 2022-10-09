@@ -34,16 +34,16 @@ from typing import Union
 from dreambot import DreamBot
 from utils.checks import ensure_git_credentials
 from utils.network_utils import network_request, NetworkReturnType
-from utils.database_utils import execute_query, retrieve_query
+from utils.database.helpers import execute_query, retrieve_query
 from aiosqlite import Error as aiosqliteError
 from datetime import datetime
 from utils.context import Context
 from copy import copy
 from importlib import reload
+from utils.logging_formatter import bot_logger
 import discord
 import sys
 import re
-import logging
 
 
 class Admin(commands.Cog):
@@ -136,10 +136,10 @@ class Admin(commands.Cog):
         """
 
         try:
-            self.bot.reload_extension('cogs.' + module)
+            await self.bot.reload_extension('cogs.' + module)
             await ctx.send(f'Reloaded Module: `{module}`')
         except commands.ExtensionNotLoaded:
-            self.bot.load_extension('cogs.' + module)
+            await self.bot.load_extension('cogs.' + module)
             await ctx.send(f'Loaded Module: `{module}`')
 
     @commands.command(name='unload', hidden=True)
@@ -167,7 +167,7 @@ class Admin(commands.Cog):
             return
 
         try:
-            self.bot.unload_extension('cogs.' + module)
+            await self.bot.unload_extension('cogs.' + module)
             await ctx.send(f'Unloaded Module: `{module}`')
         except commands.ExtensionNotLoaded:
             await ctx.send(f'Could Not Unload Module: `{module}`')
@@ -220,7 +220,7 @@ class Admin(commands.Cog):
         except Exception as e:
             output = str(e)
 
-        await ctx.send(output, safe_send=True)
+        await ctx.safe_send(output)
 
     @commands.command(name='sql', hidden=True)
     async def sql(self, ctx: Context, *, query: str) -> None:
@@ -247,10 +247,10 @@ class Admin(commands.Cog):
 
         try:
             if (query.upper()).startswith('SELECT'):
-                result = await retrieve_query(self.bot.database, query)
-                await ctx.send(str(result), safe_send=True)
+                result = await retrieve_query(self.bot.connection, query)
+                await ctx.safe_send(str(result))
             else:
-                affected = await execute_query(self.bot.database, query)
+                affected = await execute_query(self.bot.connection, query)
                 await ctx.send(f'Executed. {affected} rows affected.')
         except aiosqliteError as e:
             await ctx.send(f'Error: {e}')
@@ -346,7 +346,7 @@ class Admin(commands.Cog):
         try:
             exec(to_compile, env)
         except Exception as e:
-            await ctx.send(f'```py\n{e.__class__.__name__}: {e}\n```', safe_send=True)
+            await ctx.safe_send(f'```py\n{e.__class__.__name__}: {e}\n```')
             return
 
         func = env['func']
@@ -358,17 +358,17 @@ class Admin(commands.Cog):
 
         except Exception:
             value = stdout.getvalue()
-            await ctx.send(f'```py\n{value}{format_exc()}\n```', safe_send=True)
+            await ctx.safe_send(f'```py\n{value}{format_exc()}\n```')
         else:
             value = stdout.getvalue()
 
             if ret is None:
                 if 'return' in body.lower():
                     value = value if value else "None"
-                    await ctx.send(f'```py\n{value}\n```', safe_send=True)
+                    await ctx.safe_send(f'```py\n{value}\n```')
             else:
                 self._last_result = ret
-                await ctx.send(f'```py\n{value}{ret}\n```', safe_send=True)
+                await ctx.safe_send(f'```py\n{value}{ret}\n```')
 
     @ensure_git_credentials()
     @commands.group(name='git', hidden=True)
@@ -448,7 +448,7 @@ class Admin(commands.Cog):
 
         embed = discord.Embed(title='Git Pull Changes', color=0x00bbff)
         embed.url = f"https://github.com/{self.bot.git['git_user']}/{self.bot.git['git_repo']}"
-        embed.set_thumbnail(url=self.bot.user.avatar_url)
+        embed.set_thumbnail(url=self.bot.user.avatar.url)
         for field, value in fields.items():
             if value:
                 embed.add_field(name=field, value='\n'.join(value))
@@ -492,10 +492,10 @@ class Admin(commands.Cog):
         for cog in cogs:
             try:
                 try:
-                    self.bot.reload_extension(f'cogs.{cog}')
+                    await self.bot.reload_extension(f'cogs.{cog}')
                 except commands.ExtensionNotLoaded:
                     try:
-                        self.bot.load_extension(f'cogs.{cog}')
+                        await self.bot.load_extension(f'cogs.{cog}')
                     except commands.ExtensionFailed:
                         raise
                     else:
@@ -565,14 +565,17 @@ class Admin(commands.Cog):
         users_url = f"https://api.github.com/users/{self.bot.git['git_user']}"
         commits_url = f"https://api.github.com/repos/{self.bot.git['git_user']}/{self.bot.git['git_repo']}/commits/"
 
-        branch_data = await network_request(branches_url, headers=headers, return_type=NetworkReturnType.JSON)
+        branch_data = await network_request(
+            self.bot.session, branches_url, headers=headers, return_type=NetworkReturnType.JSON
+        )
         user_data = await network_request(
-            users_url, headers=headers, return_type=NetworkReturnType.JSON, raise_errors=False
+            self.bot.session, users_url, headers=headers, return_type=NetworkReturnType.JSON, raise_errors=False
         )
         latest_commit_data = {
             branch['name']:
                 await network_request(
-                    commits_url + branch['commit']['sha'], headers=headers, return_type=NetworkReturnType.JSON
+                    self.bot.session, commits_url + branch['commit']['sha'], headers=headers,
+                    return_type=NetworkReturnType.JSON
                 ) for branch in branch_data[-5:]
         }
 
@@ -788,7 +791,7 @@ async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool =
         return str(buffer[break_index:])
 
 
-def setup(bot: DreamBot) -> None:
+async def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -799,5 +802,5 @@ def setup(bot: DreamBot) -> None:
         None.
     """
 
-    bot.add_cog(Admin(bot))
-    logging.info('Completed Setup for Cog: Admin')
+    await bot.add_cog(Admin(bot))
+    bot_logger.info('Completed Setup for Cog: Admin')

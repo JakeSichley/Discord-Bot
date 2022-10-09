@@ -31,7 +31,7 @@ from aiohttp import ClientResponseError
 from utils.context import Context
 from google.cloud import errorreporting_v1beta1 as error_reporting
 from os import getenv
-import logging
+from utils.logging_formatter import bot_logger
 
 
 class Exceptions(commands.Cog):
@@ -109,7 +109,7 @@ class Exceptions(commands.Cog):
         )
 
         if not isinstance(error, ignored):
-            logging.warning(f'Ignoring exception in command {ctx.command}:')
+            bot_logger.warning(f'Ignoring exception in command {ctx.command}:')
             print_exception(type(error), error, error.__traceback__, file=stderr)
 
             if self.reporting_client:
@@ -182,7 +182,7 @@ class Exceptions(commands.Cog):
             await ctx.send(f'```py\n{"".join(format_exception(type(error), error, error.__traceback__))}```')
 
 
-def setup(bot: DreamBot) -> None:
+async def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -193,5 +193,5 @@ def setup(bot: DreamBot) -> None:
         None.
     """
 
-    bot.add_cog(Exceptions(bot))
-    logging.info('Completed Setup for Cog: Exceptions')
+    await bot.add_cog(Exceptions(bot))
+    bot_logger.info('Completed Setup for Cog: Exceptions')

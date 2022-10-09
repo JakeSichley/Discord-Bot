@@ -31,11 +31,10 @@ from typing import Optional
 from re import findall
 from dreambot import DreamBot
 from aiohttp import ClientResponseError
-from discord.ext.commands.default import Author
+from utils.logging_formatter import bot_logger
 import datetime
 import pytz
 import discord
-import logging
 
 
 class Utility(commands.Cog):
@@ -125,7 +124,7 @@ class Utility(commands.Cog):
     @commands.guild_only()
     @commands.command(name='userinfo', aliases=['ui'],
                       help='Generates an embed detailing information about the specified user')
-    async def user_info(self, ctx: Context, user: discord.Member = Author) -> None:
+    async def user_info(self, ctx: Context, user: discord.Member = commands.Author) -> None:
         """
         A method that outputs user information.
 
@@ -197,7 +196,9 @@ class Utility(commands.Cog):
 
         extension = 'gif' if animated else 'png'
         emoji_asset = await network_request(
-            f'https://cdn.discordapp.com/emojis/{source}.{extension}?size=96', return_type=NetworkReturnType.BYTES
+            self.bot.session,
+            f'https://cdn.discordapp.com/emojis/{source}.{extension}?size=96',
+            return_type=NetworkReturnType.BYTES
         )
 
         name = name if name else str(source)
@@ -209,10 +210,10 @@ class Utility(commands.Cog):
             try:
                 await ctx.react(created_emoji, raise_exceptions=True)
             except discord.HTTPException as e:
-                logging.warning(f'Raw Yoink Add Reaction Error. {e.status}. {e.text}')
+                bot_logger.warning(f'Raw Yoink Add Reaction Error. {e.status}. {e.text}')
                 await ctx.tick()
         except discord.HTTPException as e:
-            logging.error(f'Raw Yoink Creation Error. {e.status}. {e.text}')
+            bot_logger.error(f'Raw Yoink Creation Error. {e.status}. {e.text}')
             await ctx.send(f'**{name}** failed with `{e.text}`')
 
     @commands.has_guild_permissions(manage_emojis=True)
@@ -269,6 +270,7 @@ class Utility(commands.Cog):
 
             try:
                 emoji_asset = await network_request(
+                    self.bot.session,
                     f'https://cdn.discordapp.com/emojis/{emoji[2]}.{extension}?size=96',
                     return_type=NetworkReturnType.BYTES
                 )
@@ -283,10 +285,10 @@ class Utility(commands.Cog):
                 try:
                     await ctx.react(created_emoji, raise_exceptions=True)
                 except discord.HTTPException as e:
-                    logging.warning(f'Yoink Add Reaction Error. {e.status}. {e.text}')
+                    bot_logger.warning(f'Yoink Add Reaction Error. {e.status}. {e.text}')
                     success.append(emoji[1])
             except discord.HTTPException as e:
-                logging.error(f'Yoink Creation Error. {e.status}. {e.text}')
+                bot_logger.error(f'Yoink Creation Error. {e.status}. {e.text}')
                 failed.append(f'**{emoji[1]}** failed with `{e.text}`')
 
         response = ''
@@ -301,7 +303,7 @@ class Utility(commands.Cog):
             await ctx.send(response)
 
 
-def setup(bot: DreamBot) -> None:
+async def setup(bot: DreamBot) -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
@@ -312,5 +314,5 @@ def setup(bot: DreamBot) -> None:
         None.
     """
 
-    bot.add_cog(Utility(bot))
-    logging.info('Completed Setup for Cog: UtilityFunctions')
+    await bot.add_cog(Utility(bot))
+    bot_logger.info('Completed Setup for Cog: UtilityFunctions')
