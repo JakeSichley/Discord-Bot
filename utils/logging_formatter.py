@@ -26,6 +26,7 @@ import datetime
 import logging
 import discord
 import os
+from typing import Tuple
 
 cyan = '\x1b[36m'
 yellow = '\x1b[33;20m'
@@ -61,35 +62,54 @@ def format_loggers() -> None:
     logger.setLevel(logging.INFO)
     handler = logging.StreamHandler()
     handler.setLevel(logging.INFO)
-    handler.setFormatter(BotLoggingFormatter())
+    handler.setFormatter(
+        StreamLoggingFormatter(
+            '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s)',
+            '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)',
+            (blue, blue, yellow, red, red)
+        )
+    )
     logger.addHandler(handler)
 
     bot_file_handler = logging.FileHandler(os.path.join(file_path, file_time_name))
     bot_file_handler.setLevel(logging.INFO)
-    bot_file_handler.setFormatter(BotFileLoggingFormatter())
-
+    bot_file_handler.setFormatter(
+        FileLoggingFormatter(
+            '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s)',
+            '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
+        )
+    )
     logger.addHandler(bot_file_handler)
 
-    logger.propagate = False
-
     # set up discord handlers
-    discord.utils.setup_logging(formatter=DiscordLoggingFormatter(), root=False)
-
+    discord.utils.setup_logging(
+        formatter=StreamLoggingFormatter(
+            '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s)',
+            '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)',
+            (cyan, cyan, yellow, red, red)
+        ),
+        root=False
+    )
     discord_logger = logging.getLogger('discord')
 
     discord_file_handler = logging.FileHandler(os.path.join(file_path, file_time_name))
     discord_file_handler.setLevel(logging.INFO)
-    discord_file_handler.setFormatter(DiscordFileLoggingFormatter())
+    discord_file_handler.setFormatter(
+        FileLoggingFormatter(
+            '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s)',
+            '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
+        )
+    )
 
     discord_logger.addHandler(discord_file_handler)
 
 
-class BotLoggingFormatter(logging.Formatter):
+class StreamLoggingFormatter(logging.Formatter):
     """
     A logging.Formatter with custom formatting and coloring based on logging level.
-    Formats stream output for DreamBot.
+    Handles logging events to the standard stream.
 
-    Constants:
+    Attributes:
         basic_format (str): A less-descriptive log format for info related events.
         detailed_format (str): A more-descriptive log format for warnings and errors.
         formats (Dict[int, str]): A dictionary of logging levels and their corresponding formats.
@@ -98,29 +118,30 @@ class BotLoggingFormatter(logging.Formatter):
         None.
     """
 
-    basic_format = '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s)'
-    detailed_format = '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
-
-    formats = {
-        logging.DEBUG: blue + basic_format + reset,
-        logging.INFO: blue + basic_format + reset,
-        logging.WARNING: yellow + detailed_format + reset,
-        logging.ERROR: red + detailed_format + reset,
-        logging.CRITICAL: red + detailed_format + reset
-    }
-
-    def __init__(self) -> None:
+    def __init__(self, basic_format: str, detailed_format: str, colors: Tuple[str, str, str, str, str]) -> None:
         """
         The constructor for the Formatter class.
 
         Parameters:
-            None.
+            basic_format (str): A less-descriptive log format for info related events.
+            detailed_format (str): A more-descriptive log format for warnings and errors.
+            colors (Tuple[str, str, str, str, str]): The colors to apply to each level.
 
         Returns:
             None.
         """
 
         super().__init__(datefmt='%I:%M %p on %A, %B %d, %Y')
+
+        self.basic_format = basic_format
+        self.detailed_format = detailed_format
+        self.formats = {
+            logging.DEBUG: colors[0] + basic_format + reset,
+            logging.INFO: colors[1] + basic_format + reset,
+            logging.WARNING: colors[2] + detailed_format + reset,
+            logging.ERROR: colors[3] + detailed_format + reset,
+            logging.CRITICAL: colors[4] + detailed_format + reset
+        }
 
     def format(self, record: logging.LogRecord) -> str:
         """
@@ -133,17 +154,17 @@ class BotLoggingFormatter(logging.Formatter):
             (str): The formatted record.
         """
 
-        log_format = self.formats.get(record.levelno, logging.DEBUG)
+        log_format = self.formats.get(record.levelno, logging.INFO)
         formatter = logging.Formatter(log_format, datefmt=self.datefmt)
         return formatter.format(record)
 
 
-class DiscordLoggingFormatter(BotLoggingFormatter):
+class FileLoggingFormatter(logging.Formatter):
     """
-    A logging.Formatter with custom formatting and coloring based on logging level.
-    Formats stream output for discord.py.
+    A logging.Formatter with custom formatting based on logging level.
+    Handles logging events to a file.
 
-    Constants:
+    Attributes:
         basic_format (str): A less-descriptive log format for info related events.
         detailed_format (str): A more-descriptive log format for warnings and errors.
         formats (Dict[int, str]): A dictionary of logging levels and their corresponding formats.
@@ -152,65 +173,41 @@ class DiscordLoggingFormatter(BotLoggingFormatter):
         None.
     """
 
-    basic_format = '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s)'
-    detailed_format = '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
+    def __init__(self, basic_format: str, detailed_format: str) -> None:
+        """
+        The constructor for the Formatter class.
 
-    formats = {
-        logging.DEBUG: cyan + basic_format + reset,
-        logging.INFO: cyan + basic_format + reset,
-        logging.WARNING: yellow + detailed_format + reset,
-        logging.ERROR: red + detailed_format + reset,
-        logging.CRITICAL: red + detailed_format + reset
-    }
+        Parameters:
+            basic_format (str): A less-descriptive log format for info related events.
+            detailed_format (str): A more-descriptive log format for warnings and errors.
 
+        Returns:
+            None.
+        """
 
-class BotFileLoggingFormatter(BotLoggingFormatter):
-    """
-    A logging.Formatter with custom formatting and coloring based on logging level.
-    Formats stream output for discord.py.
+        super().__init__(datefmt='%I:%M %p on %A, %B %d, %Y')
 
-    Constants:
-        basic_format (str): A less-descriptive log format for info related events.
-        detailed_format (str): A more-descriptive log format for warnings and errors.
-        formats (Dict[int, str]): A dictionary of logging levels and their corresponding formats.
+        self.basic_format = basic_format
+        self.detailed_format = detailed_format
+        self.formats = {
+            logging.DEBUG: basic_format,
+            logging.INFO: basic_format,
+            logging.WARNING: detailed_format,
+            logging.ERROR: detailed_format,
+            logging.CRITICAL: detailed_format,
+        }
 
-    Attributes:
-        None.
-    """
+    def format(self, record: logging.LogRecord) -> str:
+        """
+        Returns a formatted logging record.
 
-    basic_format = '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s)'
-    detailed_format = '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
+        Parameters:
+            record (logging.LogRecord): The logging record for an event.
 
-    formats = {
-        logging.DEBUG: basic_format,
-        logging.INFO: basic_format,
-        logging.WARNING: detailed_format,
-        logging.ERROR: detailed_format,
-        logging.CRITICAL: detailed_format,
-    }
+        Returns:
+            (str): The formatted record.
+        """
 
-
-class DiscordFileLoggingFormatter(DiscordLoggingFormatter):
-    """
-    A logging.Formatter with custom formatting and coloring based on logging level.
-    Formats stream output for discord.py.
-
-    Constants:
-        basic_format (str): A less-descriptive log format for info related events.
-        detailed_format (str): A more-descriptive log format for warnings and errors.
-        formats (Dict[int, str]): A dictionary of logging levels and their corresponding formats.
-
-    Attributes:
-        None.
-    """
-
-    basic_format = '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s)'
-    detailed_format = '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
-
-    formats = {
-        logging.DEBUG: basic_format,
-        logging.INFO: basic_format,
-        logging.WARNING: detailed_format,
-        logging.ERROR: detailed_format,
-        logging.CRITICAL: detailed_format,
-    }
+        log_format: str = self.formats.get(record.levelno, logging.DEBUG)
+        formatter = logging.Formatter(log_format, datefmt=self.datefmt)
+        return formatter.format(record)

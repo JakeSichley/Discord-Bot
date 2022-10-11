@@ -57,6 +57,9 @@ class Migration:
             script (str): The (raw) SQL script to be executed.
             version (str): The version associated with this script.
             name (str): The name of this migration.
+
+        Returns:
+            None.
         """
 
         self.script = script
@@ -121,7 +124,7 @@ class Migrator:
         _migrations (List[Migration]): A list of all successfully-parsed migration files.
     """
 
-    def __init__(self, database: str):
+    def __init__(self, database: str) -> None:
         """
         The constructor for the Migrator class.
 
