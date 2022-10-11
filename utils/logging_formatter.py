@@ -58,8 +58,8 @@ def format_loggers() -> None:
         pass
 
     # set up bot handlers
-    logger = logging.getLogger('DreamBot')
-    logger.setLevel(logging.INFO)
+    bot_logger = logging.getLogger('DreamBot')
+    bot_logger.setLevel(logging.INFO)
     handler = logging.StreamHandler()
     handler.setLevel(logging.INFO)
     handler.setFormatter(
@@ -69,7 +69,7 @@ def format_loggers() -> None:
             (blue, blue, yellow, red, red)
         )
     )
-    logger.addHandler(handler)
+    bot_logger.addHandler(handler)
 
     bot_file_handler = logging.FileHandler(os.path.join(file_path, file_time_name))
     bot_file_handler.setLevel(logging.INFO)
@@ -79,7 +79,7 @@ def format_loggers() -> None:
             '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
         )
     )
-    logger.addHandler(bot_file_handler)
+    bot_logger.addHandler(bot_file_handler)
 
     # set up discord handlers
     discord.utils.setup_logging(
