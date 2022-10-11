@@ -22,11 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from typing import Tuple
 import datetime
 import logging
 import discord
 import os
-from typing import Tuple
+
 
 cyan = '\x1b[36m'
 yellow = '\x1b[33;20m'
@@ -58,8 +59,8 @@ def format_loggers() -> None:
         pass
 
     # set up bot handlers
-    bot_logger = logging.getLogger('DreamBot')
-    bot_logger.setLevel(logging.INFO)
+    logger = logging.getLogger('DreamBot')
+    logger.setLevel(logging.INFO)
     handler = logging.StreamHandler()
     handler.setLevel(logging.INFO)
     handler.setFormatter(
@@ -69,7 +70,7 @@ def format_loggers() -> None:
             (blue, blue, yellow, red, red)
         )
     )
-    bot_logger.addHandler(handler)
+    logger.addHandler(handler)
 
     bot_file_handler = logging.FileHandler(os.path.join(file_path, file_time_name))
     bot_file_handler.setLevel(logging.INFO)
@@ -79,7 +80,7 @@ def format_loggers() -> None:
             '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
         )
     )
-    bot_logger.addHandler(bot_file_handler)
+    logger.addHandler(bot_file_handler)
 
     # set up discord handlers
     discord.utils.setup_logging(
