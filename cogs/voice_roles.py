@@ -32,6 +32,7 @@ from utils.prompts import prompt_user_for_voice_channel, prompt_user_for_role
 from utils.context import Context
 from cache import ExpiringCache
 from utils.logging_formatter import bot_logger
+from typing import List, Optional
 import discord
 
 
@@ -84,8 +85,9 @@ class VoiceRoles(commands.Cog):
                                          ' role name in order for it to be properly parsed ("my role").\nYou can also'
                                          ' use this method to change the role of an existing voice role channel.'
                                          ' Specify the same channel and simply supply a new role!')
-    async def add_voice_role(self, ctx: Context, channel: discord.VoiceChannel = None,
-                             role: discord.Role = None) -> None:
+    async def add_voice_role(
+            self, ctx: Context, channel: discord.VoiceChannel = None, role: discord.Role = None
+    ) -> None:
         """
         Adds a voice role to a specified channel.
 
@@ -257,8 +259,9 @@ class VoiceRoles(commands.Cog):
 
     # noinspection PyUnusedLocal
     @commands.Cog.listener()
-    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState,
-                                    after: discord.VoiceState) -> None:
+    async def on_voice_state_update(
+            self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState
+    ) -> None:
         """
         A listener method that is called whenever a VoiceState is modified.
 
@@ -267,12 +270,30 @@ class VoiceRoles(commands.Cog):
             before (discord.VoiceState): Not used.
             after (discord.VoiceState): The updated voice state for the member.
 
-        Output:
-            None.
-
         Returns:
             None.
         """
+
+        def unique_roles(
+                existing_roles: List[discord.Role], pending_roles: List[discord.Role]
+        ) -> Optional[List[discord.Role]]:
+            """
+            Computes 'held' roles for a member from a list of roles.
+
+            Parameters:
+                existing_roles (List[discord.Role]): The existing roles a member has.
+                pending_roles (List[discord.Role]): A list of roles to check against the existing roles.
+
+            Returns:
+                 (Optional[List[discord.Role]]): The intersection of the existing and pending roles.
+            """
+
+            existing_set = set(existing_roles)
+            pending_set = set(pending_roles)
+
+            intersection = existing_set.intersection(pending_set)
+
+            return None if len(intersection) == 0 else list(intersection)
 
         self.cache[member.id] = None  # value is irrelevant for our purposes
 
@@ -306,10 +327,10 @@ class VoiceRoles(commands.Cog):
                     except discord.HTTPException as e:
                         bot_logger.error(f'Voice Role - Role Addition Error. {e.status}. {e.text}')
 
-                if remove_roles:
+                if removal_set := unique_roles(member.roles, remove_roles):
                     try:
                         await member.remove_roles(
-                            *remove_roles,
+                            *removal_set,
                             reason=f'Voice Roles - Leave [Channel ID: {after.channel.id} ("{after.channel.name}")]'
                         )
                     except discord.HTTPException as e:
@@ -320,9 +341,9 @@ class VoiceRoles(commands.Cog):
                 for channel_id, role_id in data:
                     remove_roles.append(member.guild.get_role(role_id))
 
-                if remove_roles:
+                if removal_set := unique_roles(member.roles, remove_roles):
                     try:
-                        await member.remove_roles(*remove_roles, reason=f'Voice Roles - Disconnect')
+                        await member.remove_roles(*removal_set, reason=f'Voice Roles - Disconnect')
                     except discord.HTTPException as e:
                         bot_logger.error(f'Voice Role - Role Removal Error. {e.status}. {e.text}')
 

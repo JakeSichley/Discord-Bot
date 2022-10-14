@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.2.0
+### Internal
+* Remove only 'held' roles in `on_voice_state_update` rather than all possible roles
+
 ## 2.1.0
 ### Internal
 * Add file logging handlers
