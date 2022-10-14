@@ -26,6 +26,7 @@ from os import getenv
 from sys import version
 from dotenv import load_dotenv
 from dreambot import DreamBot
+from utils.utils import VERSION
 from utils.logging_formatter import format_loggers, bot_logger
 from utils.database.migrations import Migrator
 import discord
@@ -42,6 +43,7 @@ async def main() -> None:
     # logging setup
     format_loggers()
 
+    bot_logger.info(f'Current DreamBot Version: {VERSION}')
     bot_logger.info(f'Current Python Version: {version}')
     bot_logger.info(f'Current Discord Version: {discord.__version__}')
 
