@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased
 ### Features
 ### Internal
+* Swap discord.py and DreamBot logging colors
 ### Issues
 
 ## 2.2.0

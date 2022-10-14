@@ -67,7 +67,7 @@ def format_loggers() -> None:
         StreamLoggingFormatter(
             '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s)',
             '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)',
-            (blue, blue, yellow, red, red)
+            (cyan, cyan, yellow, red, red)
         )
     )
     logger.addHandler(handler)
@@ -87,7 +87,7 @@ def format_loggers() -> None:
         formatter=StreamLoggingFormatter(
             '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s)',
             '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)',
-            (cyan, cyan, yellow, red, red)
+            (blue, blue, yellow, red, red)
         ),
         root=False
     )
