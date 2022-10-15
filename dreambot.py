@@ -24,15 +24,17 @@ SOFTWARE.
 
 from os import getcwd, listdir, path
 from discord.ext.commands import ExtensionError, Bot, when_mentioned
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Any, Dict, Type
-from utils.database.helpers import retrieve_query
+from utils.database.helpers import retrieve_query, execute_query
 from aiosqlite import Error as aiosqliteError
 from utils.context import Context
 from utils.utils import generate_activity
 from discord.ext import tasks
 from copy import deepcopy
 from utils.logging_formatter import bot_logger
+from uuid import uuid4
+from json import dumps
 import discord
 
 
@@ -201,6 +203,31 @@ class DreamBot(Bot):
         """
 
         return await super().get_context(message, cls=cls)
+
+    async def log_base_event(self, event: str, data: Optional[Dict] = None) -> None:
+        """
+        Logs an event to the "BASE_EVENTS" table.
+
+        Parameters:
+            event (str): The name of the event.
+            data (Optional[Dict]): Any data associated with the event.
+
+        Returns:
+            None.
+        """
+
+        event_id = str(uuid4())
+        event_timestamp = int(datetime.now(tz=timezone.utc).timestamp())
+        event_data = dumps(data) if data else None
+
+        try:
+            await execute_query(
+                self.connection,
+                'INSERT INTO BASE_EVENTS (ID, DATE, EVENT, DATA) VALUES (?, ?, ?, ?)',
+                (event_id, event_timestamp, event, event_data)
+            )
+        except aiosqliteError:
+            pass
 
 
 async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:
