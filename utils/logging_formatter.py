@@ -214,7 +214,7 @@ class FileLoggingFormatter(logging.Formatter):
 
 class NoResumeFilter(logging.Filter):
     """
-    A logging.Filter that removes "RESUMED" logs from library.
+    A logging.Filter that removes "RESUMED" events from discord.py logger.
 
     Attributes:
         None.
