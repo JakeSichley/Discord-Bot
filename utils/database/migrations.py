@@ -215,7 +215,7 @@ class Migrator:
             bot_logger.info(f'No migrations available - Database (Version {self.version:03d}) is up-to-date.')
             return
 
-        bot_logger.critical(f'{migration_count} migrations are available for Database Version {self.version:03d}.')
+        bot_logger.critical(f'{migration_count} migration(s) are available for Database Version {self.version:03d}.')
         bot_logger.critical('Migrations will be automatically applied in 10 seconds.')
         await asyncio.sleep(10)
 

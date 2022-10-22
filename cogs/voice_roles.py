@@ -274,6 +274,15 @@ class VoiceRoles(commands.Cog):
             None.
         """
 
+        await self.bot.log_base_event(
+            'on_voice_state_update',
+            {
+                'member': str(member.id),
+                'before': str(before.channel.id),
+                'after': str(after.channel.id)
+            }
+        )
+
         def unique_roles(
                 existing_roles: List[discord.Role], pending_roles: List[discord.Role]
         ) -> Optional[List[discord.Role]]:

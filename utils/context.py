@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 from discord.ext import commands
-from typing import Any, Union, Optional
+from typing import Any, Union, Optional, Dict
 from uuid import uuid4
 from asyncio import TimeoutError
 from utils.logging_formatter import bot_logger
@@ -170,3 +170,27 @@ class Context(commands.Context):
             return await self.send(file=discord.File(fp, filename='content.txt'), **kwargs)
         else:
             return await self.send(content)
+
+    @property
+    def analytic_params(self) -> Dict[str, str]:
+        """
+        Generates analytic parameters for this context.
+
+        Parameters:
+            None.
+
+        Returns:
+            (Dict[str: str]): The analytic params for this context.
+        """
+
+        params = {}
+
+        if self.guild:
+            params['guild_id'] = str(self.guild.id)
+
+        params['channel_id'] = str(self.channel.id)
+        params['author_id'] = str(self.author.id)
+
+        return params
+
+
