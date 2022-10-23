@@ -83,12 +83,16 @@ def format_loggers() -> None:
     logger.addHandler(bot_file_handler)
 
     # set up discord handlers
+    discord_handler = logging.StreamHandler()
+    discord_handler.setLevel(logging.INFO)
+    discord_handler.addFilter(NoResumeFilter())
     discord.utils.setup_logging(
         formatter=StreamLoggingFormatter(
             '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s)',
             '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)',
             (blue, blue, yellow, red, red)
         ),
+        handler=discord_handler,
         root=False
     )
     discord_logger = logging.getLogger('discord')
@@ -103,7 +107,6 @@ def format_loggers() -> None:
     )
 
     discord_logger.addHandler(discord_file_handler)
-    discord_logger.addFilter(NoResumeFilter())
 
 
 class StreamLoggingFormatter(logging.Formatter):
