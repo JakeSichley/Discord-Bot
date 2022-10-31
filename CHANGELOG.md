@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.3.0
+### Features
+* Convert LostArk::Split to AppCommand
+
 ## 2.2.2
 ### Issues
 * Add NoResumeFilter to discord.py's StreamHandler during setup instead of logger after setup
