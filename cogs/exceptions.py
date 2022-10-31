@@ -189,7 +189,7 @@ class Exceptions(commands.Cog):
         A listener method that is called whenever an app command encounters an error.
 
         Parameters:
-            interaction (Interaction): The invocation context.
+            interaction (Interaction): The invocation interaction.
             error (AppCommandError): The app command error.
 
         Returns:
