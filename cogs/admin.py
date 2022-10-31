@@ -143,7 +143,7 @@ class Admin(commands.Cog):
             await ctx.send(f'Loaded Module: `{module}`')
 
     @commands.command(name='sync')
-    async def sync_commands(self, ctx: Context, *, sync_type: Optional[str] = None) -> None:
+    async def sync_commands(self, ctx: Context, sync_type: Optional[str] = None) -> None:
         """
         Syncs application commands based on the specified sync type.
         Defaults to syncing to the local guild.
