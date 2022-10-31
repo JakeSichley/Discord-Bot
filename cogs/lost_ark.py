@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from discord import app_commands, Interaction
 from discord.ext import commands
 from utils.context import Context
 from dreambot import DreamBot
@@ -46,16 +47,21 @@ class LostArk(commands.Cog):
 
         self.bot = bot
 
-    @commands.command(name='split', aliases=['loot', 'auction'],
-                      help='Calculates the maximum worthwhile bidding price for an auction item.')
-    async def loot_auction_split(self, ctx: Context, market_price: int, party_size: int = 4) -> None:
+    @app_commands.command(name='split', description='Calculates the worthwhile bid amount for an auction item')
+    @app_commands.describe(market_price='The Market Price of the item')
+    @app_commands.describe(party_size='The size of your party, including you')
+    async def loot_auction_split(
+            self, interaction: Interaction,
+            market_price: app_commands.Range[int, 1, None],
+            party_size: app_commands.Range[int, 1, None]
+    ) -> None:
         """
         A method to calculate the bidding breakpoint for a loot auction item in Lost Ark.
         The bidding breakpoint is the value where bidding makes you more money than you would receive from the split.
         You should continue to bid while the next minimum bid is less than this value.
 
         Parameters:
-            ctx (Context): The invocation context.
+            interaction (Interaction): The invocation interaction.
             market_price (int): The current market price for the auction item.
             party_size (int): The number of members in the party. Use 4 for regular parties and 8 for raids.
 
@@ -70,9 +76,11 @@ class LostArk(commands.Cog):
 
         bidding_breakpoint = int((.95 * market_price * party_size) / (1 + .95 * party_size))
 
-        await ctx.send(f'For an item with a market value of {"{:,}".format(market_price)} and a party size '
-                       f'of {party_size + 1}, you should continue to bid while the next minimum bid price is less than '
-                       f'**{"{:,}".format(bidding_breakpoint)}**.')
+        await interaction.response.send_message(
+            f'For an item with a market value of {"{:,}".format(market_price)} and a party size of {party_size + 1}, '
+            f'you should continue to bid while the next minimum bid price is less than '
+            f'**{"{:,}".format(bidding_breakpoint)}**.'
+        )
 
 
 async def setup(bot: DreamBot) -> None:

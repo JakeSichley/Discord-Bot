@@ -30,7 +30,7 @@ from textwrap import indent
 from traceback import format_exc
 from utils.utils import localize_time, pairs, run_in_subprocess, generate_activity
 from re import finditer
-from typing import Union, Literal, Optional
+from typing import Union, Optional
 from dreambot import DreamBot
 from utils.checks import ensure_git_credentials
 from utils.network_utils import network_request, NetworkReturnType
@@ -143,9 +143,7 @@ class Admin(commands.Cog):
             await ctx.send(f'Loaded Module: `{module}`')
 
     @commands.command(name='sync')
-    async def sync_commands(
-            self, ctx: Context, sync_type: Optional[Literal['global', 'from global', 'clear']] = None
-    ) -> None:
+    async def sync_commands(self, ctx: Context, *, sync_type: Optional[str] = None) -> None:
         """
         Syncs application commands based on the specified sync type.
         Defaults to syncing to the local guild.
@@ -155,7 +153,7 @@ class Admin(commands.Cog):
 
         Parameters:
             ctx (Context): The invocation context.
-            sync_type (Optional[Literal['global', 'from global', 'clear']]): The type of sync to perform.
+            sync_type (Optional[str]): The type of sync to perform.
 
         Returns:
             None.
@@ -163,18 +161,19 @@ class Admin(commands.Cog):
 
         if sync_type == 'global':
             synced = await ctx.bot.tree.sync()
-        elif sync_type == 'from global':
-            ctx.bot.tree.copy_global_to(guild=ctx.guild)
-            synced = await ctx.bot.tree.sync(guild=ctx.guild)
+        elif sync_type == 'local':
+            synced = await self.bot.tree.sync(guild=ctx.guild)
         elif sync_type == 'clear':
             ctx.bot.tree.clear_commands(guild=ctx.guild)
             await ctx.bot.tree.sync(guild=ctx.guild)
             synced = []
         else:
-            synced = await self.bot.tree.sync(guild=ctx.guild)
-            sync_type = 'local'
+            ctx.bot.tree.copy_global_to(guild=ctx.guild)
+            synced = await ctx.bot.tree.sync(guild=ctx.guild)
+            sync_type = 'from global'
 
         await ctx.send(f'Synced {len(synced)} commands using sync type: `{sync_type}`.')
+        bot_logger.info(f'Synced {len(synced)} commands using sync type: `{sync_type}`.')
 
     @commands.command(name='unload', hidden=True)
     async def unload(self, ctx: Context, module: str) -> None:
