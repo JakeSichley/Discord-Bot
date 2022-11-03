@@ -33,7 +33,7 @@ from asyncio import sleep, wait_for, TimeoutError
 from json.decoder import JSONDecodeError
 from functools import reduce
 from aiohttp import ClientResponseError
-from utils.network_utils import network_request, NetworkReturnType
+from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
 from utils.context import Context
 from utils.logging_formatter import bot_logger
 
@@ -51,8 +51,8 @@ class DDO(commands.Cog):
     Attributes:
         bot (DreamBot): The Discord bot.
         api_data (dict): The response data from DDOAudit (used for LFMs).
-        reconnect_tries (int): The number of consecutive unsuccessful queries to the DDOAudit.
         query_ddo_audit (ext.tasks): Stores the task that queries DDOAudit every {QUERY_INTERVAL} seconds.
+        backoff (ExponentialBackoff): Exponential Backoff calculator for network requests.
     """
 
     SERVERS = ('Argonnessen', 'Cannith', 'Ghallanda', 'Khyber', 'Orien', 'Sarlona', 'Thelanis', 'Wayfinder', 'Hardcore')
@@ -70,7 +70,7 @@ class DDO(commands.Cog):
 
         self.bot = bot
         self.api_data = {server: None for server in self.SERVERS}
-        self.reconnect_tries = 0
+        self.backoff = ExponentialBackoff(3600 * 4)
         self.query_ddo_audit.start()
 
     @commands.command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')
@@ -174,6 +174,7 @@ class DDO(commands.Cog):
             except TimeoutError:
                 await ctx.send('Die Evaluation Timeout Error')
 
+    # noinspection GrazieInspection
     @commands.command(name='ddoitem', help='Pulls basic information about an item in Dungeons & Dragons Online '
                                            'from the wiki')
     async def ddo_item(self, ctx: Context, *, item: str) -> None:
@@ -448,19 +449,29 @@ class DDO(commands.Cog):
                 f'https://api.ddoaudit.com/groups/{server.lower()}',
                 return_type=NetworkReturnType.JSON, ssl=False
             )
-            self.reconnect_tries = 0
+            self.backoff.reset()
 
         except (ClientResponseError, JSONDecodeError, UnicodeError) as e:
-            bot_logger.warning(f'DDOAudit Query[{server}] Error: {e}')
+            bot_logger.warning(f'DDOAudit Query[{server}] Error: {type(e)} - {e}')
             self.api_data[server] = None
-            self.reconnect_tries += 1
 
-            # if the query fails whatever number of times this is in a row, delay querying the API for an hour
-            if self.reconnect_tries >= (len(self.SERVERS) - 1) * 2:
-                bot_logger.error(f'DDOAudit Reconnect Tries Exceeded. Backing off for 3600 seconds')
-                self.reconnect_tries = 0
+            # if we backoff for more than 5 minutes, invalidate all LFM data
+            # this works out to roughly the 4th backoff
+            # this is also when we care about start caring about log entries
+            self.backoff.next_backoff()
+
+            if self.backoff.backoff_count >= 4:
                 self.api_data = {server: None for server in self.SERVERS}
-                await sleep(3600)
+                bot_logger.warning(
+                    f'DDOAudit Total Backoff Duration Will Exceed 5 Minutes. '
+                    f'Clearing all LFM data and backing off for {self.backoff.str_time}.'
+                )
+
+            await sleep(self.backoff.total_backoff_seconds)
+
+        except Exception as e:
+            bot_logger.error(f'DDOAudit Query[{server}] Unhandled Exception: {type(e)} - {e}')
+            raise
 
     @query_ddo_audit.before_loop
     async def before_api_query_loop(self) -> None:
