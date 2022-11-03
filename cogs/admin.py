@@ -173,7 +173,7 @@ class Admin(commands.Cog):
             sync_type = 'from global'
 
         await ctx.send(f'Synced {len(synced)} commands using sync type: `{sync_type}`.')
-        bot_logger.info(f'Synced {len(synced)} commands using sync type: `{sync_type}`.')
+        bot_logger.info(f'Synced {len(synced)} commands using sync type: {sync_type}.')
 
     @commands.command(name='unload', hidden=True)
     async def unload(self, ctx: Context, module: str) -> None:
