@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.3.2
+### Internal
+* Calculate actual limits for animated and static emojis during yoink commands
+
 ## 2.3.1
 ### Internal
 * Implement Exponential Backoff for DDOAudit Network Requests
