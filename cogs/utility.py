@@ -27,7 +27,7 @@ from utils.utils import localize_time, readable_flags
 from utils.defaults import MessageReply
 from utils.network_utils import network_request, NetworkReturnType
 from utils.context import Context
-from typing import Optional
+from typing import Optional, Tuple
 from re import findall
 from dreambot import DreamBot
 from aiohttp import ClientResponseError
@@ -194,6 +194,16 @@ class Utility(commands.Cog):
             None.
         """
 
+        available_static, available_animated = calculate_available_emoji_slots(ctx.guild)
+
+        if animated and available_animated < 1:
+            await ctx.send('You do not have enough animated emoji slots to yoink that emoji!')
+            return
+
+        elif available_static < 1:
+            await ctx.send('You do not have enough static emoji slots to yoink that emoji!')
+            return
+
         extension = 'gif' if animated else 'png'
         emoji_asset = await network_request(
             self.bot.session,
@@ -258,9 +268,16 @@ class Utility(commands.Cog):
                            f'same name as an existing emoji.\n\n**Failure Reasons:**\n{", ".join(non_unique_emoji)}')
             return
 
-        if ctx.guild.emoji_limit < len(ctx.guild.emojis) + len(unique_emoji):
-            await ctx.send(f'You do not have enough emoji slots to upload all of these emojis. '
-                           f'You have {ctx.guild.emoji_limit - len(ctx.guild.emojis)} remaining slots.')
+        available_static, available_animated = calculate_available_emoji_slots(ctx.guild)
+        static_count = len([x for x in unique_emoji if not x[0]])
+        animated_count = len(unique_emoji) - static_count
+
+        if animated_count > available_animated:
+            await ctx.send('You do not have enough animated emoji slots to yoink those emoji(s)!')
+            return
+
+        if static_count > available_static:
+            await ctx.send('You do not have enough static emoji slots to yoink those emoji(s)!')
             return
 
         success, failed = [], []
@@ -301,6 +318,23 @@ class Utility(commands.Cog):
 
         if response:
             await ctx.send(response)
+
+
+def calculate_available_emoji_slots(guild: discord.Guild) -> Tuple[int, int]:
+    """
+    A helper function to calculate the number of available emoji slots for a guild.
+
+    Parameters:
+        guild (discord.Guild): The guild to calculate emoji slots for.
+
+    Returns:
+        (Tuple[int, int]): The number of available static
+    """
+
+    static_emojis = len([x for x in guild.emojis if not x.animated])
+    animated_emojis = len([x for x in guild.emojis if x.animated])
+
+    return guild.emoji_limit - static_emojis, guild.emoji_limit - animated_emojis
 
 
 async def setup(bot: DreamBot) -> None:
