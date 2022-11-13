@@ -14,5 +14,4 @@ discord.py[speed,voice]==2.1.0
 aiofiles==22.1.0
 grpcio==1.40.0 # export LD_PRELOAD=/usr/lib/arm-linux-gnueabihf/libatomic.so.1.2.0
 git+https://github.com/Rapptz/discord-ext-menus@master # menus
-# git+git://github.com/JakeSichley/discord.py@main # discord.py
 # pip install -r requirements.txt --use-deprecated=legacy-resolver
