@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased
 ### Features
 ### Internal
+* Bump discord.py version to 2.1.0
+* Fix `avatar_url` -> `avatar.url` in Utility::UserInfo
 ### Issues
 
 ## 2.3.2

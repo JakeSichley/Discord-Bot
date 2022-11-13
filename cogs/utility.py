@@ -142,7 +142,7 @@ class Utility(commands.Cog):
         embed = discord.Embed(title=f'{str(user)}\'s User Information', color=0x1dcaff)
         if user.nick:
             embed.description = f'Known as **{user.nick}** round\' these parts'
-        embed.set_thumbnail(url=user.avatar_url)
+        embed.set_thumbnail(url=user.avatar.url)
         embed.add_field(name='Account Created', value=localize_time(user.created_at))
         embed.add_field(name='Joined Server', value=localize_time(user.joined_at))
         members = sorted(ctx.guild.members, key=lambda x: x.joined_at)
