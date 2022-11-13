@@ -32,9 +32,21 @@ from re import findall
 from dreambot import DreamBot
 from aiohttp import ClientResponseError
 from utils.logging_formatter import bot_logger
+from dataclasses import dataclass
 import datetime
 import pytz
 import discord
+
+@dataclass
+class EmojiComponent:
+    animated: Optional[bool] = False
+    name: Optional[str] = ''
+    id: Optional[int] = 0
+    content: Optional[bytes] = bytes()
+
+    @property
+    def extension(self) -> str:
+        return 'gif' if self.animated else 'png'
 
 
 class Utility(commands.Cog):
@@ -194,6 +206,13 @@ class Utility(commands.Cog):
             None.
         """
 
+        # emoji = EmojiComponent(animated=animated, name=name, id=source, content=bytes)
+        emoji = EmojiComponent(
+            animated=animated,
+            name=name if name else str(source),
+            id=source
+        )
+
         available_static, available_animated = calculate_available_emoji_slots(ctx.guild)
 
         if animated and available_animated < 1:
@@ -204,18 +223,15 @@ class Utility(commands.Cog):
             await ctx.send('You do not have enough static emoji slots to yoink that emoji!')
             return
 
-        extension = 'gif' if animated else 'png'
-        emoji_asset = await network_request(
+        emoji.content = await network_request(
             self.bot.session,
-            f'https://cdn.discordapp.com/emojis/{source}.{extension}?size=96',
+            f'https://cdn.discordapp.com/emojis/{emoji.id}.{emoji.extension}?size=96',
             return_type=NetworkReturnType.BYTES
         )
 
-        name = name if name else str(source)
-
         try:
             created_emoji = await ctx.guild.create_custom_emoji(
-                name=name, image=emoji_asset, reason=f'Yoink\'d by {ctx.author}'
+                name=emoji.name, image=emoji.content, reason=f'Yoink\'d by {ctx.author}'
             )
             try:
                 await ctx.react(created_emoji, raise_exceptions=True)
