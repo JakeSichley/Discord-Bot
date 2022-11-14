@@ -27,26 +27,15 @@ from utils.utils import localize_time, readable_flags
 from utils.defaults import MessageReply
 from utils.network_utils import network_request, NetworkReturnType
 from utils.context import Context
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from re import findall
 from dreambot import DreamBot
 from aiohttp import ClientResponseError
 from utils.logging_formatter import bot_logger
-from dataclasses import dataclass
+from utils.emoji_utils import EmojiManager, EmojiComponent, PartialEmojiSlotAvailability, NoRemainingEmojiSlots
 import datetime
 import pytz
 import discord
-
-@dataclass
-class EmojiComponent:
-    animated: Optional[bool] = False
-    name: Optional[str] = ''
-    id: Optional[int] = 0
-    content: Optional[bytes] = bytes()
-
-    @property
-    def extension(self) -> str:
-        return 'gif' if self.animated else 'png'
 
 
 class Utility(commands.Cog):
@@ -213,34 +202,19 @@ class Utility(commands.Cog):
             id=source
         )
 
-        available_static, available_animated = calculate_available_emoji_slots(ctx.guild)
-
-        if animated and available_animated < 1:
-            await ctx.send('You do not have enough animated emoji slots to yoink that emoji!')
-            return
-
-        elif available_static < 1:
-            await ctx.send('You do not have enough static emoji slots to yoink that emoji!')
-            return
-
-        emoji.content = await network_request(
-            self.bot.session,
-            f'https://cdn.discordapp.com/emojis/{emoji.id}.{emoji.extension}?size=96',
-            return_type=NetworkReturnType.BYTES
-        )
+        emoji_manager = EmojiManager(ctx.guild, emoji)
 
         try:
-            created_emoji = await ctx.guild.create_custom_emoji(
-                name=emoji.name, image=emoji.content, reason=f'Yoink\'d by {ctx.author}'
-            )
-            try:
-                await ctx.react(created_emoji, raise_exceptions=True)
-            except discord.HTTPException as e:
-                bot_logger.warning(f'Raw Yoink Add Reaction Error. {e.status}. {e.text}')
-                await ctx.tick()
-        except discord.HTTPException as e:
-            bot_logger.error(f'Raw Yoink Creation Error. {e.status}. {e.text}')
-            await ctx.send(f'**{name}** failed with `{e.text}`')
+            emoji_manager.check_emojis()
+        except NoRemainingEmojiSlots as e:
+            await ctx.send(f'{e}')
+            return
+        except PartialEmojiSlotAvailability as e:
+            await ctx.send(f'{e}')
+
+        await emoji_manager.fetch_partial_emoji_content(self.bot.session)
+        await emoji_manager.create_emojis(ctx)
+        await ctx.send(emoji_manager.status_message)
 
     @commands.has_guild_permissions(manage_emojis=True)
     @commands.bot_has_guild_permissions(manage_emojis=True)
@@ -284,73 +258,22 @@ class Utility(commands.Cog):
                            f'same name as an existing emoji.\n\n**Failure Reasons:**\n{", ".join(non_unique_emoji)}')
             return
 
-        available_static, available_animated = calculate_available_emoji_slots(ctx.guild)
-        static_count = len([x for x in unique_emoji if not x[0]])
-        animated_count = len(unique_emoji) - static_count
+        emoji_manager = EmojiManager(ctx.guild, emoji)
 
-        if animated_count > available_animated:
-            await ctx.send('You do not have enough animated emoji slots to yoink those emoji(s)!')
+        try:
+            emoji_manager.check_emojis()
+        except NoRemainingEmojiSlots as e:
+            await ctx.send(f'{e}')
             return
+        except PartialEmojiSlotAvailability as e:
+            await ctx.send(f'{e}')
 
-        if static_count > available_static:
-            await ctx.send('You do not have enough static emoji slots to yoink those emoji(s)!')
-            return
-
-        success, failed = [], []
-
-        for emoji in unique_emoji:
-            extension = 'gif' if emoji[0] else 'png'
-
-            try:
-                emoji_asset = await network_request(
-                    self.bot.session,
-                    f'https://cdn.discordapp.com/emojis/{emoji[2]}.{extension}?size=96',
-                    return_type=NetworkReturnType.BYTES
-                )
-            except ClientResponseError as e:
-                failed.append(f'**{emoji[1]}** failed with `{e.message}`')
-                continue
-
-            try:
-                created_emoji = await ctx.guild.create_custom_emoji(
-                    name=emoji[1], image=emoji_asset, reason=f'Yoink\'d by {ctx.author}'
-                )
-                try:
-                    await ctx.react(created_emoji, raise_exceptions=True)
-                except discord.HTTPException as e:
-                    bot_logger.warning(f'Yoink Add Reaction Error. {e.status}. {e.text}')
-                    success.append(emoji[1])
-            except discord.HTTPException as e:
-                bot_logger.error(f'Yoink Creation Error. {e.status}. {e.text}')
-                failed.append(f'**{emoji[1]}** failed with `{e.text}`')
-
-        response = ''
-
-        if success:
-            response += f'Successfully yoink\'d the following emoji:\n```{", ".join(success)}```\n'
-
-        if failed:
-            response += f'Failed to yoink the following emoji:\n```{", ".join(failed)}```'
-
-        if response:
-            await ctx.send(response)
+        await emoji_manager.fetch_partial_emoji_content(self.bot.session)
+        await emoji_manager.create_emojis(ctx)
+        await ctx.send(emoji_manager.status_message)
 
 
-def calculate_available_emoji_slots(guild: discord.Guild) -> Tuple[int, int]:
-    """
-    A helper function to calculate the number of available emoji slots for a guild.
 
-    Parameters:
-        guild (discord.Guild): The guild to calculate emoji slots for.
-
-    Returns:
-        (Tuple[int, int]): The number of available static
-    """
-
-    static_emojis = len([x for x in guild.emojis if not x.animated])
-    animated_emojis = len([x for x in guild.emojis if x.animated])
-
-    return guild.emoji_limit - static_emojis, guild.emoji_limit - animated_emojis
 
 
 async def setup(bot: DreamBot) -> None:
