@@ -30,7 +30,7 @@ from typing import Optional
 from re import findall
 from dreambot import DreamBot
 from utils.logging_formatter import bot_logger
-from utils.emoji_utils import EmojiManager, EmojiComponent, NoViableEmoji, NoRemainingEmojiSlots, NoEmojisFound
+from utils.emoji_manager import EmojiManager, EmojiComponent, NoViableEmoji, NoRemainingEmojiSlots, NoEmojisFound
 import datetime
 import pytz
 import discord
@@ -49,7 +49,7 @@ class Utility(commands.Cog):
         The constructor for the UtilityFunctions class.
 
         Parameters:
-           bot (DreamBot): The Discord bot.
+            bot (DreamBot): The Discord bot.
         """
 
         self.bot = bot
@@ -212,7 +212,7 @@ class Utility(commands.Cog):
         except NoViableEmoji:
             pass  # status message will detail all failures
 
-        await ctx.send(emoji_manager.status_message)
+        await ctx.send(emoji_manager.status_message())
 
     @commands.has_guild_permissions(manage_emojis=True)
     @commands.bot_has_guild_permissions(manage_emojis=True)
@@ -256,7 +256,7 @@ class Utility(commands.Cog):
         except NoViableEmoji:
             pass  # status message will detail all failures
 
-        await ctx.send(emoji_manager.status_message)
+        await ctx.send(emoji_manager.status_message())
 
 
 async def setup(bot: DreamBot) -> None:
