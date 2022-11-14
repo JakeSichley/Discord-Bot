@@ -52,7 +52,6 @@ TagName = StringConverter(
 )
 
 
-# noinspection PyUnresolvedReferences
 @dataclass
 class Tag:
     """
