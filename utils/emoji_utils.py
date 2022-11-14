@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, Union
 from aiohttp import ClientSession, ClientResponseError
 from context import Context
@@ -36,7 +36,7 @@ class EmojiComponent:
     animated: Optional[bool] = False
     name: Optional[str] = ''
     id: Optional[int] = 0
-    content: Optional[bytes] = bytes()
+    content: Optional[bytes] = field(default_factory=bytes, repr=False)
     status: str = ""
     failed: bool = False
 
@@ -73,41 +73,41 @@ class NoViableEmoji(Exception):
 
 class EmojiManager:
     def __init__(self, guild: discord.Guild, emojis: Union[EmojiComponent, List[EmojiComponent]]) -> None:
-        self.guild = guild
-        self.emojis = emojis if isinstance(emojis, list) else list(emojis)
+        self.__guild = guild
+        self.__emojis = emojis if isinstance(emojis, list) else list(emojis)
 
     @property
-    def no_viable_emoji(self) -> bool:
-        return all(not x.failed for x in self.emojis)
+    def __no_viable_emoji(self) -> bool:
+        return all(x.failed for x in self.__emojis)
 
     @property
-    def existing_emoji_ids(self) -> List[int]:
-        return [x.id for x in self.guild.emojis]
+    def __existing_emoji_ids(self) -> List[int]:
+        return [x.id for x in self.__guild.emojis]
 
     @property
-    def existing_emoji_names(self) -> List[str]:
-        return [x.name for x in self.guild.emojis]
+    def __existing_emoji_names(self) -> List[str]:
+        return [x.name for x in self.__guild.emojis]
 
     @property
-    def available_static_emoji_slots(self) -> int:
-        return len([x for x in self.guild.emojis if not x.animated])
+    def __available_static_slots(self) -> int:
+        return len([x for x in self.__guild.emojis if not x.animated])
 
     @property
-    def available_animated_emoji_slots(self) -> int:
-        return len([x for x in self.guild.emojis if x.animated])
+    def __available_animated_slots(self) -> int:
+        return len([x for x in self.__guild.emojis if x.animated])
 
     @property
-    def desired_static_emoji(self) -> List[EmojiComponent]:
-        return [x for x in self.emojis if not x.animated and not x.failed]
+    def __desired_static_emoji(self) -> List[EmojiComponent]:
+        return [x for x in self.__emojis if not x.animated and not x.failed]
 
     @property
-    def desired_animated_emoji(self) -> List[EmojiComponent]:
-        return [x for x in self.emojis if x.animated and not x.failed]
+    def __desired_animated_emoji(self) -> List[EmojiComponent]:
+        return [x for x in self.__emojis if x.animated and not x.failed]
 
     @property
     def status_message(self) -> str:
-        successful_emoji = filter(lambda x: not x.failed and x.status, self.emojis)
-        failed_emoji = filter(lambda x: x.failed and x.status, self.emojis)
+        successful_emoji = filter(lambda x: not x.failed and x.status, self.__emojis)
+        failed_emoji = filter(lambda x: x.failed and x.status, self.__emojis)
 
         status = ""
 
@@ -117,40 +117,53 @@ class EmojiManager:
         if failed_emoji:
             status += "\n\n**Failed Yoinks:**" + '\n'.join(x.status for x in failed_emoji)
 
+        if not status:
+            status = 'Failed to generate status message'
+            bot_logger.error(
+                f'Failed to Generate Yoink Status Message.\n'
+                f'Details: Guild={self.__guild.id}, EmojiComponents={self.__emojis}'
+            )
+
         return status
 
-    def check_for_duplicate_emoji(self) -> None:
-        names = self.existing_emoji_names
-        ids = self.existing_emoji_ids
+    async def yoink(self, ctx: Context, session: ClientSession) -> None:
+        self.__check_for_duplicate_emoji()
+        self.__check_emojis_slots()
+        await self.__fetch_partial_emoji_content(session)
+        await self.__create_emoji(ctx)
 
-        for emoji in self.emojis:
+    def __check_for_duplicate_emoji(self) -> None:
+        names = self.__existing_emoji_names
+        ids = self.__existing_emoji_ids
+
+        for emoji in self.__emojis:
             if emoji.name in names:
                 emoji.set_failed(f'Emoji **{emoji.name}** failed with Error: `DuplicateName`')
             elif emoji.id in ids:
                 emoji.set_failed(f'Emoji **{emoji.name}** ({emoji.id}) failed with Error: `DuplicateID`')
 
-        if self.no_viable_emoji:
+        if self.__no_viable_emoji:
             raise NoViableEmoji
 
-    def check_emojis(self) -> None:
-        if self.available_static_emoji_slots == self.available_animated_emoji_slots == 0:
+    def __check_emojis_slots(self) -> None:
+        if self.__available_static_slots == self.__available_animated_slots == 0:
             raise NoRemainingEmojiSlots('You have no remaining emoji slots - cannot yoink any emojis!')
 
         # fail extra static emojis
-        for emoji in filter(lambda x: not x.animated and not x.failed, self.emojis)[:self.available_static_emoji_slots]:
+        for emoji in filter(lambda x: not x.animated and not x.failed, self.__emojis)[:self.__available_static_slots]:
             emoji: EmojiComponent
             emoji.set_failed(f'Emoji **{emoji.name}** failed with Error: `NotEnoughSlots`')
 
         # fail extra animated emoji
-        for emoji in filter(lambda x: x.animated and not x.failed, self.emojis)[:self.available_animated_emoji_slots]:
+        for emoji in filter(lambda x: x.animated and not x.failed, self.__emojis)[:self.__available_animated_slots]:
             emoji: EmojiComponent
             emoji.set_failed(f'Emoji **{emoji.name}** failed with Error: `NotEnoughSlots`')
 
-        if self.no_viable_emoji:
+        if self.__no_viable_emoji:
             raise NoViableEmoji
 
-    async def fetch_partial_emoji_content(self, session: ClientSession) -> None:
-        for emoji in filter(lambda x: not x.failed, self.emojis):
+    async def __fetch_partial_emoji_content(self, session: ClientSession) -> None:
+        for emoji in filter(lambda x: not x.failed, self.__emojis):
             try:
                 emoji.content = await network_request(
                     session,
@@ -160,13 +173,13 @@ class EmojiManager:
             except ClientResponseError:
                 emoji.set_failed = f'**{emoji.name}** failed with Error: `FailedToFetchContent`'
 
-        if self.no_viable_emoji:
+        if self.__no_viable_emoji:
             raise NoViableEmoji
 
-    async def create_emojis(self, ctx: Context) -> None:
-        for emoji in filter(lambda x: not x.failed, self.emojis):
+    async def __create_emoji(self, ctx: Context) -> None:
+        for emoji in filter(lambda x: not x.failed, self.__emojis):
             try:
-                created_emoji = await self.guild.create_custom_emoji(
+                created_emoji = await self.__guild.create_custom_emoji(
                     name=emoji.name, image=emoji.content, reason=f'Yoink\'d by {ctx.author}'
                 )
                 emoji.status = f'Successfully yoink\'d emoji: **{emoji.name}**'

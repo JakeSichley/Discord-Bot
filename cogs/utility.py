@@ -25,14 +25,12 @@ SOFTWARE.
 from discord.ext import commands
 from utils.utils import localize_time, readable_flags
 from utils.defaults import MessageReply
-from utils.network_utils import network_request, NetworkReturnType
 from utils.context import Context
-from typing import Optional, Tuple, List
+from typing import Optional
 from re import findall
 from dreambot import DreamBot
-from aiohttp import ClientResponseError
 from utils.logging_formatter import bot_logger
-from utils.emoji_utils import EmojiManager, EmojiComponent, PartialEmojiSlotAvailability, NoRemainingEmojiSlots
+from utils.emoji_utils import EmojiManager, EmojiComponent, NoViableEmoji, NoRemainingEmojiSlots
 import datetime
 import pytz
 import discord
@@ -195,7 +193,6 @@ class Utility(commands.Cog):
             None.
         """
 
-        # emoji = EmojiComponent(animated=animated, name=name, id=source, content=bytes)
         emoji = EmojiComponent(
             animated=animated,
             name=name if name else str(source),
@@ -205,15 +202,13 @@ class Utility(commands.Cog):
         emoji_manager = EmojiManager(ctx.guild, emoji)
 
         try:
-            emoji_manager.check_emojis()
-        except NoRemainingEmojiSlots as e:
-            await ctx.send(f'{e}')
+            await emoji_manager.yoink(ctx, self.bot.session)
+        except NoRemainingEmojiSlots:
+            await ctx.send('You have no remaining emoji slots - cannot yoink any more emojis!')
             return
-        except PartialEmojiSlotAvailability as e:
-            await ctx.send(f'{e}')
+        except NoViableEmoji:
+            pass  # status message will detail all failures
 
-        await emoji_manager.fetch_partial_emoji_content(self.bot.session)
-        await emoji_manager.create_emojis(ctx)
         await ctx.send(emoji_manager.status_message)
 
     @commands.has_guild_permissions(manage_emojis=True)
@@ -234,46 +229,28 @@ class Utility(commands.Cog):
             None.
         """
 
-        emojis = findall(r'<(?P<animated>a?):(?P<name>[a-zA-Z0-9_]{2,32}):(?P<id>[0-9]{18,22})>', source.content)
+        default = EmojiComponent()  # create a default to reference absent regex values from
+        raw_emojis = findall(r'<(?P<animated>a?):(?P<name>[a-zA-Z0-9_]{2,32}):(?P<id>[0-9]{18,22})>', source.content)
 
-        if not emojis:
-            await ctx.send('Failed to extract any emojis from the specified message.')
-            return
+        emojis = [
+            EmojiComponent(
+                animated=bool(x[0] or default.animated),
+                name=x[1] or default.name,
+                id=int(x[2] or default.id)
+            ) for x in raw_emojis
+        ]
 
-        guild_emoji_names = [x.name for x in ctx.guild.emojis]
-        guild_emoji_ids = [x.id for x in ctx.guild.emojis]
-
-        unique_emoji, non_unique_emoji = [], []
-
-        for emoji in emojis:
-            if int(emoji[2]) in guild_emoji_ids:
-                non_unique_emoji.append(f'_{emoji[1]}_ failed with `AlreadyAdded`')
-            elif emoji[1] in guild_emoji_names:
-                non_unique_emoji.append(f'_{emoji[1]}_ failed with `DuplicateName`')
-            else:
-                unique_emoji.append(emoji)
-
-        if not unique_emoji:
-            await ctx.send(f'No unique emojis found. The potential emoji are either from this server or have the '
-                           f'same name as an existing emoji.\n\n**Failure Reasons:**\n{", ".join(non_unique_emoji)}')
-            return
-
-        emoji_manager = EmojiManager(ctx.guild, emoji)
+        emoji_manager = EmojiManager(ctx.guild, emojis)
 
         try:
-            emoji_manager.check_emojis()
-        except NoRemainingEmojiSlots as e:
-            await ctx.send(f'{e}')
+            await emoji_manager.yoink(ctx, self.bot.session)
+        except NoRemainingEmojiSlots:
+            await ctx.send('You have no remaining emoji slots - cannot yoink any more emojis!')
             return
-        except PartialEmojiSlotAvailability as e:
-            await ctx.send(f'{e}')
+        except NoViableEmoji:
+            pass  # status message will detail all failures
 
-        await emoji_manager.fetch_partial_emoji_content(self.bot.session)
-        await emoji_manager.create_emojis(ctx)
         await ctx.send(emoji_manager.status_message)
-
-
-
 
 
 async def setup(bot: DreamBot) -> None:
