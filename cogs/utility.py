@@ -223,7 +223,7 @@ class Utility(commands.Cog):
 
         Parameters:
             ctx (Context): The invocation context.
-            source (Optional[discord.Message]): The message to extract emojis from (can be a message reply).
+            source (discord.Message): The message to extract emojis from. Can be (and defaults to) a MessageReply.
 
         Output:
             Command state information.
