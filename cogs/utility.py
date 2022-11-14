@@ -30,7 +30,7 @@ from typing import Optional
 from re import findall
 from dreambot import DreamBot
 from utils.logging_formatter import bot_logger
-from utils.emoji_utils import EmojiManager, EmojiComponent, NoViableEmoji, NoRemainingEmojiSlots
+from utils.emoji_utils import EmojiManager, EmojiComponent, NoViableEmoji, NoRemainingEmojiSlots, NoEmojisFound
 import datetime
 import pytz
 import discord
@@ -206,6 +206,9 @@ class Utility(commands.Cog):
         except NoRemainingEmojiSlots:
             await ctx.send('You have no remaining emoji slots - cannot yoink any more emojis!')
             return
+        except NoEmojisFound:
+            await ctx.send('I could not find an emoji from the arguments provided!')
+            return
         except NoViableEmoji:
             pass  # status message will detail all failures
 
@@ -246,6 +249,9 @@ class Utility(commands.Cog):
             await emoji_manager.yoink(ctx, self.bot.session)
         except NoRemainingEmojiSlots:
             await ctx.send('You have no remaining emoji slots - cannot yoink any more emojis!')
+            return
+        except NoEmojisFound:
+            await ctx.send('I could not find any emojis in the specified message!')
             return
         except NoViableEmoji:
             pass  # status message will detail all failures

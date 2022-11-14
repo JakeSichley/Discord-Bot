@@ -25,15 +25,15 @@ SOFTWARE.
 from dataclasses import dataclass, field
 from typing import List, Optional, Union
 from aiohttp import ClientSession, ClientResponseError
-from context import Context
-from network_utils import network_request, NetworkReturnType
-from logging_formatter import bot_logger
+from utils.context import Context
+from utils.network_utils import network_request, NetworkReturnType
+from utils.logging_formatter import bot_logger
 import discord
 
 
 @dataclass
 class EmojiComponent:
-    animated: Optional[bool] = False
+    animated: bool = False
     name: Optional[str] = ''
     id: Optional[int] = 0
     content: Optional[bytes] = field(default_factory=bytes, repr=False)
@@ -42,7 +42,7 @@ class EmojiComponent:
 
     @property
     def extension(self) -> str:
-        return 'gif' if self.animated else 'png'
+        return 'gif' if self.animated else 'webp'
 
     @property
     def viable(self) -> bool:
@@ -60,6 +60,8 @@ class NoRemainingEmojiSlots(Exception):
 class NoViableEmoji(Exception):
     pass
 
+class NoEmojisFound(Exception):
+    pass
 
 """
     Process:
@@ -74,7 +76,7 @@ class NoViableEmoji(Exception):
 class EmojiManager:
     def __init__(self, guild: discord.Guild, emojis: Union[EmojiComponent, List[EmojiComponent]]) -> None:
         self.__guild = guild
-        self.__emojis = emojis if isinstance(emojis, list) else list(emojis)
+        self.__emojis = emojis if isinstance(emojis, list) else [emojis]
 
     @property
     def __no_viable_emoji(self) -> bool:
@@ -90,11 +92,11 @@ class EmojiManager:
 
     @property
     def __available_static_slots(self) -> int:
-        return len([x for x in self.__guild.emojis if not x.animated])
+        return self.__guild.emoji_limit - len([x for x in self.__guild.emojis if not x.animated])
 
     @property
     def __available_animated_slots(self) -> int:
-        return len([x for x in self.__guild.emojis if x.animated])
+        return self.__guild.emoji_limit - len([x for x in self.__guild.emojis if x.animated])
 
     @property
     def __desired_static_emoji(self) -> List[EmojiComponent]:
@@ -106,16 +108,17 @@ class EmojiManager:
 
     @property
     def status_message(self) -> str:
-        successful_emoji = filter(lambda x: not x.failed and x.status, self.__emojis)
-        failed_emoji = filter(lambda x: x.failed and x.status, self.__emojis)
+        # okay to copy since we're not modifying the components
+        successful_emoji = list(filter(lambda x: not x.failed and x.status, self.__emojis))
+        failed_emoji = list(filter(lambda x: x.failed and x.status, self.__emojis))
 
         status = ""
 
         if successful_emoji:
-            status += "**Successful Yoinks:**" + '\n'.join(x.status for x in successful_emoji)
+            status += "**Successful Yoinks:**\n" + '\n'.join(x.status for x in successful_emoji)
 
         if failed_emoji:
-            status += "\n\n**Failed Yoinks:**" + '\n'.join(x.status for x in failed_emoji)
+            status += "\n\n**Failed Yoinks:**\n" + '\n'.join(x.status for x in failed_emoji)
 
         if not status:
             status = 'Failed to generate status message'
@@ -127,6 +130,9 @@ class EmojiManager:
         return status
 
     async def yoink(self, ctx: Context, session: ClientSession) -> None:
+        if not self.__emojis:
+            raise NoEmojisFound
+
         self.__check_for_duplicate_emoji()
         self.__check_emojis_slots()
         await self.__fetch_partial_emoji_content(session)
@@ -137,10 +143,10 @@ class EmojiManager:
         ids = self.__existing_emoji_ids
 
         for emoji in self.__emojis:
-            if emoji.name in names:
+            if emoji.id in ids:
+                emoji.set_failed(f'Emoji **{emoji.name}** failed with Error: `DuplicateID [{emoji.id}]`')
+            elif emoji.name in names:
                 emoji.set_failed(f'Emoji **{emoji.name}** failed with Error: `DuplicateName`')
-            elif emoji.id in ids:
-                emoji.set_failed(f'Emoji **{emoji.name}** ({emoji.id}) failed with Error: `DuplicateID`')
 
         if self.__no_viable_emoji:
             raise NoViableEmoji
@@ -150,14 +156,14 @@ class EmojiManager:
             raise NoRemainingEmojiSlots('You have no remaining emoji slots - cannot yoink any emojis!')
 
         # fail extra static emojis
-        for emoji in filter(lambda x: not x.animated and not x.failed, self.__emojis)[:self.__available_static_slots]:
-            emoji: EmojiComponent
-            emoji.set_failed(f'Emoji **{emoji.name}** failed with Error: `NotEnoughSlots`')
+        for index, emoji in enumerate(filter(lambda x: not x.animated and not x.failed, self.__emojis)):
+            if index >= self.__available_static_slots:
+                emoji.set_failed(f'Emoji **{emoji.name}** failed with Error: `NotEnoughSlots [Static]`')
 
         # fail extra animated emoji
-        for emoji in filter(lambda x: x.animated and not x.failed, self.__emojis)[:self.__available_animated_slots]:
-            emoji: EmojiComponent
-            emoji.set_failed(f'Emoji **{emoji.name}** failed with Error: `NotEnoughSlots`')
+        for index, emoji in enumerate(filter(lambda x: x.animated and not x.failed, self.__emojis)):
+            if index >= self.__available_animated_slots:
+                emoji.set_failed(f'Emoji **{emoji.name}** failed with Error: `NotEnoughSlots [Animated]`')
 
         if self.__no_viable_emoji:
             raise NoViableEmoji
@@ -167,11 +173,11 @@ class EmojiManager:
             try:
                 emoji.content = await network_request(
                     session,
-                    f'https://cdn.discordapp.com/emojis/{emoji.id}.{emoji.extension}?size=96',
+                    f'https://cdn.discordapp.com/emojis/{emoji.id}.{emoji.extension}?size=96&quality=lossless',
                     return_type=NetworkReturnType.BYTES
                 )
             except ClientResponseError:
-                emoji.set_failed = f'**{emoji.name}** failed with Error: `FailedToFetchContent`'
+                emoji.set_failed(f'**{emoji.name}** failed with Error: `ContentDoesNotExist`')
 
         if self.__no_viable_emoji:
             raise NoViableEmoji
