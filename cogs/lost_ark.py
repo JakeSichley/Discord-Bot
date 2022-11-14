@@ -41,7 +41,7 @@ class LostArk(commands.Cog):
         The constructor for the LostArk class.
 
         Parameters:
-           bot (DreamBot): The Discord bot.
+            bot (DreamBot): The Discord bot.
         """
 
         self.bot = bot

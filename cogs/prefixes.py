@@ -43,7 +43,7 @@ class Prefixes(commands.Cog):
         The constructor for the Prefixes class.
 
         Parameters:
-           bot (DreamBot): The Discord bot.
+            bot (DreamBot): The Discord bot.
         """
 
         self.bot = bot

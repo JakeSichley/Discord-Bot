@@ -88,7 +88,7 @@ class Tags(commands.Cog):
         The constructor for the Tags class.
 
         Parameters:
-           bot (DreamBot): The Discord bot.
+            bot (DreamBot): The Discord bot.
         """
 
         self.bot = bot
