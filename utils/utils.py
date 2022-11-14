@@ -32,7 +32,7 @@ import functools
 import asyncio
 import subprocess
 
-VERSION = '2.3.2'
+VERSION = '2.4.0'
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.TextChannel) -> None:

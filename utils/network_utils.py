@@ -76,7 +76,7 @@ async def network_request(session: aiohttp.ClientSession, url: str, **options) -
             else:
                 return await r.text(encoding=encoding)
     except aiohttp.ClientResponseError as e:
-        bot_logger.error(f'Network Request Error. ("{url}"). {e.status}. {e.message}')
+        bot_logger.warning(f'Network Request Error. ("{url}"). {e.status}. {e.message}')
         if raise_errors:
             raise
 

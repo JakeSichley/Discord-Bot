@@ -33,6 +33,8 @@ from utils.utils import generate_activity
 from discord.ext import tasks
 from copy import deepcopy
 from utils.logging_formatter import bot_logger
+from sys import stderr
+from traceback import print_exception
 import discord
 
 
@@ -117,8 +119,9 @@ class DreamBot(Bot):
             if cog.endswith('.py') and cog[:-3] not in self.disabled_cogs:
                 try:
                     await self.load_extension(f'cogs.{cog[:-3]}')
-                except ExtensionError as e:
-                    bot_logger.error(f'Failed Setup for Cog: {cog[:-3].capitalize()}. {e}')
+                except ExtensionError as error:
+                    bot_logger.error(f'Failed Setup for Cog: {cog[:-3].capitalize()}. {error}')
+                    print_exception(type(error), error, error.__traceback__, file=stderr)
 
     @tasks.loop(minutes=30)
     async def refresh_presence(self) -> None:

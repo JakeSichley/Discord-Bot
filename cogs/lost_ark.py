@@ -24,7 +24,6 @@ SOFTWARE.
 
 from discord import app_commands, Interaction
 from discord.ext import commands
-from utils.context import Context
 from dreambot import DreamBot
 from utils.logging_formatter import bot_logger
 
@@ -42,7 +41,7 @@ class LostArk(commands.Cog):
         The constructor for the LostArk class.
 
         Parameters:
-           bot (DreamBot): The Discord bot.
+            bot (DreamBot): The Discord bot.
         """
 
         self.bot = bot

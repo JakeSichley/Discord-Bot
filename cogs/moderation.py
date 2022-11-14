@@ -132,7 +132,7 @@ class Moderation(commands.Cog):
                            f"**{target_channel.name}**[`{target_permission_owner}`]")
         except Exception as e:
             bot_logger.error(f'Overwrites Duplication Error. {e}')
-            await ctx.send(f"Failed to duplicate overwrites ({e})")
+            await ctx.send(f'Failed to duplicate overwrites ({e})')
 
     @commands.has_guild_permissions(manage_roles=True)
     @commands.bot_has_guild_permissions(manage_roles=True)
