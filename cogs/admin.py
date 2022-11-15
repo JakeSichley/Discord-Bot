@@ -36,11 +36,13 @@ from utils.checks import ensure_git_credentials
 from utils.network_utils import network_request, NetworkReturnType
 from utils.database.helpers import execute_query, retrieve_query
 from aiosqlite import Error as aiosqliteError
-from datetime import datetime
+from datetime import datetime, timedelta
 from utils.context import Context
 from copy import copy
 from importlib import reload
 from utils.logging_formatter import bot_logger
+from asyncio import sleep
+from discord.ext import tasks
 import discord
 import sys
 import re
@@ -68,6 +70,7 @@ class Admin(commands.Cog):
 
         self.bot = bot
         self._last_result = None
+        self.logging_line_break.start()
 
     async def cog_check(self, ctx: Context) -> bool:
         """
@@ -633,6 +636,35 @@ class Admin(commands.Cog):
         embed.set_footer(text="Please report any issues to my owner!")
 
         await ctx.send(embed=embed)
+
+    @tasks.loop(hours=24)
+    async def logging_line_break(self) -> None:
+        """
+        Inserts a logging line break at the start of each day.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
+        bot_logger.info(f'----- Line Break Inserted for Readability -----')
+
+    @logging_line_break.before_loop
+    async def before_logging_line_break(self) -> None:
+        """
+        A pre-task method to ensure the bot is ready before executing.
+        Additionally sleeps until the start of the next day before inserting the first line break.
+
+        Returns:
+            None.
+        """
+
+        await self.bot.wait_until_ready()
+        today, now = datetime.today(), datetime.now()
+        time_until_tomorrow = (datetime(year=today.year, month=today.month, day=today.day) + timedelta(days=1)) - now
+        await sleep(time_until_tomorrow.total_seconds())
 
     @commands.command(name='as', hidden=True)
     async def execute_command_as(
