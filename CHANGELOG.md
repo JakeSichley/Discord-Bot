@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Overhaul `Yoink` commands to use a new `EmojiManager` class
 
 ### Internal
+* Insert logging line break at the start of every day
 * Bump discord.py version to 2.1.0
 
 ### Issues
