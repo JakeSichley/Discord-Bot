@@ -160,8 +160,6 @@ class Migrator:
         """
         Asynchronous exit point logic.
 
-        Prepares the internal list of Migrations when executed.
-
         Parameters:
             exc_type (Type): The type of exception raised.
             exc_val (Exception): The exception raised.

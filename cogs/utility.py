@@ -25,13 +25,12 @@ SOFTWARE.
 from discord.ext import commands
 from utils.utils import localize_time, readable_flags
 from utils.defaults import MessageReply
-from utils.network_utils import network_request, NetworkReturnType
 from utils.context import Context
 from typing import Optional
 from re import findall
 from dreambot import DreamBot
-from aiohttp import ClientResponseError
 from utils.logging_formatter import bot_logger
+from utils.emoji_manager import EmojiManager, EmojiComponent, NoViableEmoji, NoRemainingEmojiSlots, NoEmojisFound
 import datetime
 import pytz
 import discord
@@ -50,7 +49,7 @@ class Utility(commands.Cog):
         The constructor for the UtilityFunctions class.
 
         Parameters:
-           bot (DreamBot): The Discord bot.
+            bot (DreamBot): The Discord bot.
         """
 
         self.bot = bot
@@ -142,7 +141,7 @@ class Utility(commands.Cog):
         embed = discord.Embed(title=f'{str(user)}\'s User Information', color=0x1dcaff)
         if user.nick:
             embed.description = f'Known as **{user.nick}** round\' these parts'
-        embed.set_thumbnail(url=user.avatar_url)
+        embed.set_thumbnail(url=user.avatar.url)
         embed.add_field(name='Account Created', value=localize_time(user.created_at))
         embed.add_field(name='Joined Server', value=localize_time(user.joined_at))
         members = sorted(ctx.guild.members, key=lambda x: x.joined_at)
@@ -194,27 +193,26 @@ class Utility(commands.Cog):
             None.
         """
 
-        extension = 'gif' if animated else 'png'
-        emoji_asset = await network_request(
-            self.bot.session,
-            f'https://cdn.discordapp.com/emojis/{source}.{extension}?size=96',
-            return_type=NetworkReturnType.BYTES
+        emoji = EmojiComponent(
+            animated=animated,
+            name=name if name else str(source),
+            id=source
         )
 
-        name = name if name else str(source)
+        emoji_manager = EmojiManager(ctx.guild, emoji)
 
         try:
-            created_emoji = await ctx.guild.create_custom_emoji(
-                name=name, image=emoji_asset, reason=f'Yoink\'d by {ctx.author}'
-            )
-            try:
-                await ctx.react(created_emoji, raise_exceptions=True)
-            except discord.HTTPException as e:
-                bot_logger.warning(f'Raw Yoink Add Reaction Error. {e.status}. {e.text}')
-                await ctx.tick()
-        except discord.HTTPException as e:
-            bot_logger.error(f'Raw Yoink Creation Error. {e.status}. {e.text}')
-            await ctx.send(f'**{name}** failed with `{e.text}`')
+            await emoji_manager.yoink(ctx, self.bot.session)
+        except NoRemainingEmojiSlots:
+            await ctx.send('You have no remaining emoji slots - cannot yoink any more emojis!')
+            return
+        except NoEmojisFound:
+            await ctx.send('I could not find an emoji from the arguments provided!')
+            return
+        except NoViableEmoji:
+            pass  # status message will detail all failures
+
+        await ctx.send(emoji_manager.status_message())
 
     @commands.has_guild_permissions(manage_emojis=True)
     @commands.bot_has_guild_permissions(manage_emojis=True)
@@ -225,7 +223,7 @@ class Utility(commands.Cog):
 
         Parameters:
             ctx (Context): The invocation context.
-            source (Optional[discord.Message]): The message to extract emojis from (can be a message reply).
+            source (discord.Message): The message to extract emojis from. Can be (and defaults to) a MessageReply.
 
         Output:
             Command state information.
@@ -234,73 +232,31 @@ class Utility(commands.Cog):
             None.
         """
 
-        emojis = findall(r'<(?P<animated>a?):(?P<name>[a-zA-Z0-9_]{2,32}):(?P<id>[0-9]{18,22})>', source.content)
+        default = EmojiComponent()  # create a default to reference absent regex values from
+        raw_emojis = findall(r'<(?P<animated>a?):(?P<name>[a-zA-Z0-9_]{2,32}):(?P<id>[0-9]{18,22})>', source.content)
 
-        if not emojis:
-            await ctx.send('Failed to extract any emojis from the specified message.')
+        emojis = [
+            EmojiComponent(
+                animated=bool(x[0] or default.animated),
+                name=x[1] or default.name,
+                id=int(x[2] or default.id)
+            ) for x in raw_emojis
+        ]
+
+        emoji_manager = EmojiManager(ctx.guild, emojis)
+
+        try:
+            await emoji_manager.yoink(ctx, self.bot.session)
+        except NoRemainingEmojiSlots:
+            await ctx.send('You have no remaining emoji slots - cannot yoink any more emojis!')
             return
-
-        guild_emoji_names = [x.name for x in ctx.guild.emojis]
-        guild_emoji_ids = [x.id for x in ctx.guild.emojis]
-
-        unique_emoji, non_unique_emoji = [], []
-
-        for emoji in emojis:
-            if int(emoji[2]) in guild_emoji_ids:
-                non_unique_emoji.append(f'_{emoji[1]}_ failed with `AlreadyAdded`')
-            elif emoji[1] in guild_emoji_names:
-                non_unique_emoji.append(f'_{emoji[1]}_ failed with `DuplicateName`')
-            else:
-                unique_emoji.append(emoji)
-
-        if not unique_emoji:
-            await ctx.send(f'No unique emojis found. The potential emoji are either from this server or have the '
-                           f'same name as an existing emoji.\n\n**Failure Reasons:**\n{", ".join(non_unique_emoji)}')
+        except NoEmojisFound:
+            await ctx.send('I could not find any emojis in the specified message!')
             return
+        except NoViableEmoji:
+            pass  # status message will detail all failures
 
-        if ctx.guild.emoji_limit < len(ctx.guild.emojis) + len(unique_emoji):
-            await ctx.send(f'You do not have enough emoji slots to upload all of these emojis. '
-                           f'You have {ctx.guild.emoji_limit - len(ctx.guild.emojis)} remaining slots.')
-            return
-
-        success, failed = [], []
-
-        for emoji in unique_emoji:
-            extension = 'gif' if emoji[0] else 'png'
-
-            try:
-                emoji_asset = await network_request(
-                    self.bot.session,
-                    f'https://cdn.discordapp.com/emojis/{emoji[2]}.{extension}?size=96',
-                    return_type=NetworkReturnType.BYTES
-                )
-            except ClientResponseError as e:
-                failed.append(f'**{emoji[1]}** failed with `{e.message}`')
-                continue
-
-            try:
-                created_emoji = await ctx.guild.create_custom_emoji(
-                    name=emoji[1], image=emoji_asset, reason=f'Yoink\'d by {ctx.author}'
-                )
-                try:
-                    await ctx.react(created_emoji, raise_exceptions=True)
-                except discord.HTTPException as e:
-                    bot_logger.warning(f'Yoink Add Reaction Error. {e.status}. {e.text}')
-                    success.append(emoji[1])
-            except discord.HTTPException as e:
-                bot_logger.error(f'Yoink Creation Error. {e.status}. {e.text}')
-                failed.append(f'**{emoji[1]}** failed with `{e.text}`')
-
-        response = ''
-
-        if success:
-            response += f'Successfully yoink\'d the following emoji:\n```{", ".join(success)}```\n'
-
-        if failed:
-            response += f'Failed to yoink the following emoji:\n```{", ".join(failed)}```'
-
-        if response:
-            await ctx.send(response)
+        await ctx.send(emoji_manager.status_message())
 
 
 async def setup(bot: DreamBot) -> None:

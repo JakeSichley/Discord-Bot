@@ -12,8 +12,39 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased
 ### Features
 ### Internal
-* Swap discord.py and DreamBot logging colors
 ### Issues
+
+## 2.4.0
+### Features
+* Overhaul `Yoink` commands to use a new `EmojiManager` class
+
+### Internal
+* Insert logging line break at the start of every day
+* Bump discord.py version to 2.1.0
+
+### Issues
+* Fix `avatar_url` -> `avatar.url` in Utility::UserInfo
+
+## 2.3.2
+### Issues
+* Calculate actual limits for animated and static emojis during yoink commands
+
+## 2.3.1
+### Internal
+* Implement Exponential Backoff for DDOAudit Network Requests
+
+## 2.3.0
+### Features
+* Convert LostArk::Split to AppCommand
+
+## 2.2.2
+### Issues
+* Add NoResumeFilter to discord.py's StreamHandler during setup instead of logger after setup
+
+## 2.2.1
+### Internal
+* Swap discord.py and DreamBot logging colors
+* Add RESUMED filter to discord.py logger
 
 ## 2.2.0
 ### Internal

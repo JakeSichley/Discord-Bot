@@ -83,12 +83,16 @@ def format_loggers() -> None:
     logger.addHandler(bot_file_handler)
 
     # set up discord handlers
+    discord_handler = logging.StreamHandler()
+    discord_handler.setLevel(logging.INFO)
+    discord_handler.addFilter(NoResumeFilter())
     discord.utils.setup_logging(
         formatter=StreamLoggingFormatter(
             '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s)',
             '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)',
             (blue, blue, yellow, red, red)
         ),
+        handler=discord_handler,
         root=False
     )
     discord_logger = logging.getLogger('discord')
@@ -169,9 +173,6 @@ class FileLoggingFormatter(logging.Formatter):
         basic_format (str): A less-descriptive log format for info related events.
         detailed_format (str): A more-descriptive log format for warnings and errors.
         formats (Dict[int, str]): A dictionary of logging levels and their corresponding formats.
-
-    Attributes:
-        None.
     """
 
     def __init__(self, basic_format: str, detailed_format: str) -> None:
@@ -212,3 +213,20 @@ class FileLoggingFormatter(logging.Formatter):
         log_format: str = self.formats.get(record.levelno, logging.DEBUG)
         formatter = logging.Formatter(log_format, datefmt=self.datefmt)
         return formatter.format(record)
+
+
+class NoResumeFilter(logging.Filter):
+    """
+    A logging.Filter that removes "RESUMED" events from discord.py logger.
+
+    Attributes:
+        None.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """
+        Determine if the specified record is to be logged.
+        Returns True if the record should be logged, or False otherwise.
+        """
+
+        return 'RESUMED' not in record.getMessage()

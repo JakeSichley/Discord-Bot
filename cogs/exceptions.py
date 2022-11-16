@@ -23,7 +23,8 @@ SOFTWARE.
 """
 
 from discord.ext import commands
-from discord import HTTPException
+from discord import HTTPException, Interaction
+from discord.app_commands import AppCommandError
 from sys import stderr
 from traceback import print_exception, format_exception
 from dreambot import DreamBot
@@ -53,6 +54,8 @@ class Exceptions(commands.Cog):
         self.bot = bot
         self.reporting_client = None
         self.firebase_project = getenv('FIREBASE_PROJECT')
+
+        bot.tree.on_error = self.on_app_command_error
 
         if bot.environment == 'PROD':
             self.reporting_client = error_reporting.ReportErrorsServiceAsyncClient.from_service_account_file(
@@ -180,6 +183,27 @@ class Exceptions(commands.Cog):
         # Reloading an extension that currently has errors
         elif isinstance(error, commands.ExtensionError):
             await ctx.send(f'```py\n{"".join(format_exception(type(error), error, error.__traceback__))}```')
+
+    async def on_app_command_error(self, interaction: Interaction, error: AppCommandError) -> None:
+        """
+        A listener method that is called whenever an app command encounters an error.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            error (AppCommandError): The app command error.
+
+        Returns:
+            None.
+        """
+
+        bot_logger.warning(
+            f'Encountered AppCommandError in command {interaction.command.name}. '
+            f'User: {interaction.user}. Guild: {interaction.guild.id}.\n'
+        )
+        print_exception(type(error), error, error.__traceback__, file=stderr)
+
+        if self.reporting_client:
+            await self.reporting_client.report_error_event(self.generate_error_event(error))
 
 
 async def setup(bot: DreamBot) -> None:
