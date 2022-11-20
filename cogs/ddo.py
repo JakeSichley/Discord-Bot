@@ -481,6 +481,7 @@ class DDO(commands.Cog):
 
         except Exception as e:
             bot_logger.error(f'DDOAudit Query[{server}] Unhandled Exception: {type(e)} - {e}')
+            await self.bot.report_exception(e)
             self.api_data[server] = None
             await backoff()
 
