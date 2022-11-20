@@ -64,7 +64,8 @@ async def main() -> None:
     # noinspection PyTypeChecker
     options = {
         'status_type': discord.ActivityType(int(getenv('STATUS_TYPE', 1))),
-        'status_text': getenv('STATUS_TEXT')
+        'status_text': getenv('STATUS_TEXT'),
+        'firebase_project': getenv('FIREBASE_PROJECT')
     }
 
     # explicitly disabled cogs

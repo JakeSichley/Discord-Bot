@@ -34,7 +34,8 @@ from discord.ext import tasks
 from copy import deepcopy
 from utils.logging_formatter import bot_logger
 from sys import stderr
-from traceback import print_exception
+from google.cloud import errorreporting_v1beta1 as error_reporting
+from traceback import print_exception, format_exception
 import discord
 
 
@@ -50,9 +51,11 @@ class DreamBot(Bot):
         default_prefix (str): The default prefix to use if a guild has not specified one.
         environment (str): Environment string. Disable features (such as firebase logging) when not 'PROD'.
         wavelink (wavelink.Client): The bot's wavelink client. This initialization prevents attr errors in 'Music'.
-        disabled_cogs (List[str]): A list of cogs the bot should not load on initialization.
+        _disabled_cogs (List[str]): A list of cogs the bot should not load on initialization.
         _status_type (Optional[int]): The discord.ActivityType to set the bot's status to.
         _status_text (Optional[str]): The text of the bot's status.
+        _firebase_project (Optional[str]): The name of the bot's Firebase project.
+        _reporting_client (Optional[ReportErrorsServiceAsyncClient]): The Firebase reporting client.
     """
 
     def __init__(self, prefix: str, owner: int, environment: str, options: Optional[Dict[str, Optional[Any]]]) -> None:
@@ -64,10 +67,10 @@ class DreamBot(Bot):
             owner (int): The ID of the bot's owner. Required for most 'Admin' commands.
             environment (str): Environment string. Disable features (such as firebase logging) when not 'PROD'.
             options (Optional[Dict[str, Optional[Any]]]): Additional setup features for the bot.
-                _status_type (int): The discord.ActivityType to set the bot's status to.
-                _status_text (str): The text of the bot's status.
+                status_type (int): The discord.ActivityType to set the bot's status to.
+                status_text (str): The text of the bot's status.
+                firebase_project (str): The name of the bot's Firebase project.
                 git (Dict[str, str]): Username, repository name, and personal access token.
-
 
         Returns:
             None.
@@ -92,7 +95,14 @@ class DreamBot(Bot):
         # noinspection PyTypeChecker
         self._status_type = options.pop('status_type', discord.ActivityType(0))
         self._status_text = options.pop('status_text', None)
-        self.disabled_cogs = options.pop('disabled_cogs', [])
+        self._disabled_cogs = options.pop('disabled_cogs', [])
+        self._firebase_project = options.pop('firebase_project', None)
+        self._reporting_client = None
+
+        if environment == 'PROD':
+            self._reporting_client = error_reporting.ReportErrorsServiceAsyncClient.from_service_account_file(
+                r'firebase-auth.json'
+            )
 
         # git optionals
         self.git = options.pop('git', None)
@@ -116,7 +126,7 @@ class DreamBot(Bot):
         # load our cogs
         for cog in listdir(path.join(getcwd(), 'cogs')):
             # only load python files that we haven't explicitly disabled
-            if cog.endswith('.py') and cog[:-3] not in self.disabled_cogs:
+            if cog.endswith('.py') and cog[:-3] not in self._disabled_cogs:
                 try:
                     await self.load_extension(f'cogs.{cog[:-3]}')
                 except ExtensionError as error:
@@ -205,6 +215,21 @@ class DreamBot(Bot):
 
         return await super().get_context(message, cls=cls)
 
+    async def report_exception(self, exception: Exception) -> None:
+        """
+        Reports an exception to the bot's Firebase Error Reporting dashboard.
+
+        Parameters:
+            exception (Exception): The encountered exception.
+
+        Returns:
+            None.
+        """
+
+        if self._reporting_client and self._firebase_project:
+            payload = generate_error_event(exception, self._firebase_project)
+            await self._reporting_client.report_error_event(payload)
+
 
 async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:
     """
@@ -223,3 +248,25 @@ async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:
     additional_prefixes = list(bot.prefixes.get(guild_id, bot.default_prefix))
 
     return mentions + additional_prefixes
+
+
+def generate_error_event(exception: Exception, project_name: str) -> error_reporting.ReportErrorEventRequest:
+    """
+    Transforms an exception into a Google Cloud ReportErrorEventRequest.
+
+    Parameters:
+        exception (Exception): The encountered error.
+        project_name (str): The name of the Firebase project.
+
+    Returns:
+        (errorreporting_v1beta1.ReportErrorEventRequest): The request payload.
+    """
+
+    event = error_reporting.ReportedErrorEvent()
+    event.message = ''.join(format_exception(type(exception), exception, exception.__traceback__))
+
+    # noinspection PyTypeChecker
+    return error_reporting.ReportErrorEventRequest(
+            project_name=project_name,
+            event=event
+        )
