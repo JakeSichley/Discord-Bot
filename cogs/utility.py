@@ -26,7 +26,7 @@ from discord.ext import commands
 from utils.utils import localize_time, readable_flags
 from utils.defaults import MessageReply
 from utils.context import Context
-from typing import Optional
+from typing import Optional, Union, List
 from re import findall
 from dreambot import DreamBot
 from utils.logging_formatter import bot_logger
@@ -186,9 +186,6 @@ class Utility(commands.Cog):
             name (Optional[str]): The name of the emoji.
             animated (Optional[bool]): Whether the emoji is animated.
 
-        Output:
-            Command state information.
-
         Returns:
             None.
         """
@@ -199,20 +196,7 @@ class Utility(commands.Cog):
             id=source
         )
 
-        emoji_manager = EmojiManager(ctx.guild, emoji)
-
-        try:
-            await emoji_manager.yoink(ctx, self.bot.session)
-        except NoRemainingEmojiSlots:
-            await ctx.send('You have no remaining emoji slots - cannot yoink any more emojis!')
-            return
-        except NoEmojisFound:
-            await ctx.send('I could not find an emoji from the arguments provided!')
-            return
-        except NoViableEmoji:
-            pass  # status message will detail all failures
-
-        await ctx.send(emoji_manager.status_message())
+        await create_emojis(self.bot, ctx, emoji)
 
     @commands.has_guild_permissions(manage_emojis=True)
     @commands.bot_has_guild_permissions(manage_emojis=True)
@@ -224,9 +208,6 @@ class Utility(commands.Cog):
         Parameters:
             ctx (Context): The invocation context.
             source (discord.Message): The message to extract emojis from. Can be (and defaults to) a MessageReply.
-
-        Output:
-            Command state information.
 
         Returns:
             None.
@@ -243,20 +224,36 @@ class Utility(commands.Cog):
             ) for x in raw_emojis
         ]
 
-        emoji_manager = EmojiManager(ctx.guild, emojis)
+        await create_emojis(self.bot, ctx, emojis)
 
-        try:
-            await emoji_manager.yoink(ctx, self.bot.session)
-        except NoRemainingEmojiSlots:
-            await ctx.send('You have no remaining emoji slots - cannot yoink any more emojis!')
-            return
-        except NoEmojisFound:
-            await ctx.send('I could not find any emojis in the specified message!')
-            return
-        except NoViableEmoji:
-            pass  # status message will detail all failures
 
-        await ctx.send(emoji_manager.status_message())
+async def create_emojis(bot: DreamBot, ctx: Context, emojis: Union[EmojiComponent, List[EmojiComponent]]) -> None:
+    """
+    Instantiates an EmojiManager instance, executes the driver `yoink` method, and handles resulting cases.
+
+    Parameters:
+        bot (DreamBot): The bot.
+        ctx (Context): The invocation context.
+        emojis (Union[EmojiComponent, List[EmojiComponent]]): The EmojiComponent(s) to yoink.
+
+    Returns:
+        None.
+    """
+
+    emoji_manager = EmojiManager(ctx.guild, emojis)
+
+    try:
+        await emoji_manager.yoink(ctx, bot.session)
+    except NoRemainingEmojiSlots:
+        await ctx.send('You have no remaining emoji slots - cannot yoink any more emojis!')
+        return
+    except NoEmojisFound:
+        await ctx.send('I could not find any emojis in the specified message!')
+        return
+    except NoViableEmoji:
+        pass  # status message will detail all failures
+
+    await ctx.send(emoji_manager.status_message())
 
 
 async def setup(bot: DreamBot) -> None:

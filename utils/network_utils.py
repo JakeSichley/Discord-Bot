@@ -79,6 +79,10 @@ async def network_request(session: aiohttp.ClientSession, url: str, **options) -
         bot_logger.warning(f'Network Request Error. ("{url}"). {e.status}. {e.message}')
         if raise_errors:
             raise
+    except aiohttp.ClientError as e:
+        bot_logger.warning(f'Network Request Client Error. ("{url}"). {type(e)} - {e} - {e.args}')
+        if raise_errors:
+            raise
 
 
 class ExponentialBackoff:
