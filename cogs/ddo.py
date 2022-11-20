@@ -453,8 +453,6 @@ class DDO(commands.Cog):
             # if we backoff for more than 5 minutes, invalidate all LFM data
             # this works out to roughly the 4th backoff
             # this is also when we care about start caring about log entries
-            self.api_data[current_server] = None
-
             self.backoff.next_backoff()
 
             if self.backoff.backoff_count >= 4:
@@ -463,6 +461,8 @@ class DDO(commands.Cog):
                     f'DDOAudit Total Backoff Duration Will Exceed 5 Minutes. '
                     f'Clearing all LFM data and backing off for {self.backoff.str_time}.'
                 )
+            else:
+                self.api_data[current_server] = None
 
             await sleep(self.backoff.total_backoff_seconds)
 
