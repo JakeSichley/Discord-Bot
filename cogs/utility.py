@@ -229,7 +229,7 @@ class Utility(commands.Cog):
 
 async def create_emojis(bot: DreamBot, ctx: Context, emojis: Union[EmojiComponent, List[EmojiComponent]]) -> None:
     """
-    Instantiates an EmojiManager instance, executes the driver 'yoink' method, and handles resulting cases.
+    Instantiates an EmojiManager instance, executes the driver `yoink` method, and handles resulting cases.
 
     Parameters:
         bot (DreamBot): The bot.
