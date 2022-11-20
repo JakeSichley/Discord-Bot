@@ -32,7 +32,7 @@ from dreambot import DreamBot
 from asyncio import sleep, wait_for, TimeoutError
 from json.decoder import JSONDecodeError
 from functools import reduce
-from aiohttp import ClientResponseError
+from aiohttp import ClientError
 from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
 from utils.context import Context
 from utils.logging_formatter import bot_logger
@@ -434,12 +434,35 @@ class DDO(commands.Cog):
         Parameters:
             None.
 
-        Output:
-            None.
-
         Returns:
             None.
         """
+
+        async def backoff() -> None:
+            """
+            A local function for handling exponential backoff during network errors.
+            Backoff behavior is desirable during any exception, though other behavior is exception-specific.
+
+            Parameters:
+                None.
+
+            Returns:
+                None.
+            """
+
+            # if we backoff for more than 5 minutes, invalidate all LFM data
+            # this works out to roughly the 4th backoff
+            # this is also when we care about start caring about log entries
+            self.backoff.next_backoff()
+
+            if self.backoff.backoff_count >= 4:
+                self.api_data = {s: None for s in self.SERVERS}
+                bot_logger.warning(
+                    f'DDOAudit Total Backoff Duration Will Exceed 5 Minutes. '
+                    f'Clearing all LFM data and backing off for {self.backoff.str_time}.'
+                )
+
+            await sleep(self.backoff.total_backoff_seconds)
 
         server = self.SERVERS[self.query_ddo_audit.current_loop % len(self.SERVERS)]
 
@@ -451,32 +474,23 @@ class DDO(commands.Cog):
             )
             self.backoff.reset()
 
-        except (ClientResponseError, JSONDecodeError, UnicodeError) as e:
+        except (ClientError, JSONDecodeError, UnicodeError) as e:
             bot_logger.warning(f'DDOAudit Query[{server}] Error: {type(e)} - {e}')
             self.api_data[server] = None
-
-            # if we backoff for more than 5 minutes, invalidate all LFM data
-            # this works out to roughly the 4th backoff
-            # this is also when we care about start caring about log entries
-            self.backoff.next_backoff()
-
-            if self.backoff.backoff_count >= 4:
-                self.api_data = {server: None for server in self.SERVERS}
-                bot_logger.warning(
-                    f'DDOAudit Total Backoff Duration Will Exceed 5 Minutes. '
-                    f'Clearing all LFM data and backing off for {self.backoff.str_time}.'
-                )
-
-            await sleep(self.backoff.total_backoff_seconds)
+            await backoff()
 
         except Exception as e:
             bot_logger.error(f'DDOAudit Query[{server}] Unhandled Exception: {type(e)} - {e}')
-            raise
+            self.api_data[server] = None
+            await backoff()
 
     @query_ddo_audit.before_loop
     async def before_api_query_loop(self) -> None:
         """
         A pre-task method to ensure the bot is ready before executing.
+
+        Parameters:
+            None.
 
         Returns:
             None.
@@ -490,9 +504,6 @@ class DDO(commands.Cog):
         Clears internal caches and immediately and forcefully exits any discord.ext.tasks.
 
         Parameters:
-            None.
-
-        Output:
             None.
 
         Returns:
