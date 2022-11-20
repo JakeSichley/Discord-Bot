@@ -438,13 +438,13 @@ class DDO(commands.Cog):
             None.
         """
 
-        async def backoff() -> None:
+        async def backoff(current_server: str) -> None:
             """
             A local function for handling exponential backoff during network errors.
             Backoff behavior is desirable during any exception, though other behavior is exception-specific.
 
             Parameters:
-                None.
+                current_server (str) The current iteration's server.
 
             Returns:
                 None.
@@ -461,6 +461,8 @@ class DDO(commands.Cog):
                     f'DDOAudit Total Backoff Duration Will Exceed 5 Minutes. '
                     f'Clearing all LFM data and backing off for {self.backoff.str_time}.'
                 )
+            else:
+                self.api_data[current_server] = None
 
             await sleep(self.backoff.total_backoff_seconds)
 
@@ -474,16 +476,17 @@ class DDO(commands.Cog):
             )
             self.backoff.reset()
 
-        except (ClientError, JSONDecodeError, UnicodeError) as e:
+        except ClientError:
+            await backoff(server)
+
+        except (JSONDecodeError, UnicodeError) as e:
             bot_logger.warning(f'DDOAudit Query[{server}] Error: {type(e)} - {e}')
-            self.api_data[server] = None
-            await backoff()
+            await backoff(server)
 
         except Exception as e:
             bot_logger.error(f'DDOAudit Query[{server}] Unhandled Exception: {type(e)} - {e}')
             await self.bot.report_exception(e)
-            self.api_data[server] = None
-            await backoff()
+            await backoff(server)
 
     @query_ddo_audit.before_loop
     async def before_api_query_loop(self) -> None:

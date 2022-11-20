@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.4.2
+### Internal
+* Reduce NetworkRequest exception logging
+
 ## 2.4.1
 ### Internal
 * Refactor Firebase Error Reporting to be accessible globally

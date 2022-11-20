@@ -24,7 +24,7 @@ SOFTWARE.
 
 from dataclasses import dataclass, field
 from typing import List, Optional, Union
-from aiohttp import ClientSession, ClientResponseError
+from aiohttp import ClientSession, ClientError
 from utils.context import Context
 from utils.network_utils import network_request, NetworkReturnType
 from utils.logging_formatter import bot_logger
@@ -364,7 +364,7 @@ class EmojiManager:
                     f'https://cdn.discordapp.com/emojis/{emoji.id}.{emoji.extension}?size=96&quality=lossless',
                     return_type=NetworkReturnType.BYTES
                 )
-            except ClientResponseError:
+            except ClientError:
                 emoji.set_failed(f'**{emoji.name}** failed with Error: `ContentDoesNotExist`')
 
         if self.__no_viable_emoji:
