@@ -46,7 +46,7 @@ async def network_request(session: aiohttp.ClientSession, url: str, **options) -
     Parameters:
         session (aiohttp.ClientSession): The bot's current client session.
         url (str): The url of the request.
-        options (**kwargs): Optional, keyword only arguments.
+        options (**kwargs): Optional, keyword-only arguments.
             SUPPORTED:
                 'return_type' (NetworkReturnType)
                 'header' (Dict)
