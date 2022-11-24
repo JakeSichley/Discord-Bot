@@ -22,11 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from discord.ext import commands
-from utils.database.helpers import execute_query
-from utils.context import Context
-from dreambot import DreamBot
 from aiosqlite import Error as aiosqliteError
+from discord.ext import commands
+
+from dreambot import DreamBot
+from utils.context import Context
+from utils.database.helpers import execute_query
 from utils.logging_formatter import bot_logger
 
 

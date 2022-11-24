@@ -22,9 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from discord.ext import commands
-from discord import Message
 from typing import Optional
+
+from discord import Message
+from discord.ext import commands
+
 from utils.context import Context
 
 

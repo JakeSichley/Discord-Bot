@@ -22,12 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Optional, Union, Any, Callable
-from discord.ext import commands
-from utils.context import Context
-from dreambot import DreamBot
-import discord
 import re
+from typing import Optional, Union, Any, Callable
+
+import discord
+from discord.ext import commands
+
+from dreambot import DreamBot
+from utils.context import Context
 
 
 class GuildConverter(commands.IDConverter):

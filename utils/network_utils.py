@@ -22,11 +22,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Any
-from enum import Enum
-from utils.logging_formatter import bot_logger
 from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any
+
 import aiohttp
+
+from utils.logging_formatter import bot_logger
 
 
 class NetworkReturnType(Enum):
@@ -46,7 +48,7 @@ async def network_request(session: aiohttp.ClientSession, url: str, **options) -
     Parameters:
         session (aiohttp.ClientSession): The bot's current client session.
         url (str): The url of the request.
-        options (**kwargs): Optional, keyword only arguments.
+        options (**kwargs): Optional, keyword-only arguments.
             SUPPORTED:
                 'return_type' (NetworkReturnType)
                 'header' (Dict)

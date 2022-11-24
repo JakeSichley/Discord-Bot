@@ -22,19 +22,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from PIL import Image, ImageDraw, ImageFont
-from textwrap import wrap
+from inspect import Parameter
 from io import BytesIO
+from os import path
 from re import search
-from discord.ext.commands import MissingRequiredArgument, BadArgument
+from textwrap import wrap
 from typing import List, Tuple, Union
+
+import PIL.ImageOps
+import discord
+from PIL import Image, ImageDraw, ImageFont
+from aiohttp import ClientSession
+from discord.ext.commands import MissingRequiredArgument, BadArgument
+
 from utils.network_utils import network_request, NetworkReturnType
 from utils.utils import run_in_executor
-from os import path
-from inspect import Parameter
-from aiohttp import ClientSession
-import discord
-import PIL.ImageOps
 
 
 async def extract_image_as_bytes(session: ClientSession, source: Union[discord.Message, str]) -> BytesIO:

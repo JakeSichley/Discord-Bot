@@ -23,8 +23,10 @@ SOFTWARE.
 """
 
 from typing import List, Tuple, Any, Optional
-from utils.logging_formatter import bot_logger
+
 import aiosqlite
+
+from utils.logging_formatter import bot_logger
 
 
 async def execute_query(connection: aiosqlite.Connection, query: str, values: Tuple[Any, ...] = None) -> Optional[int]:

@@ -23,12 +23,15 @@ SOFTWARE.
 """
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import List, Optional, Union
-from aiohttp import ClientSession, ClientError
-from utils.context import Context
-from utils.network_utils import network_request, NetworkReturnType
-from utils.logging_formatter import bot_logger
+
 import discord
+from aiohttp import ClientSession, ClientError
+
+from utils.context import Context
+from utils.logging_formatter import bot_logger
+from utils.network_utils import network_request, NetworkReturnType
 
 
 @dataclass
@@ -97,7 +100,36 @@ class EmojiComponent:
         self.status = status
 
 
-class NoRemainingEmojiSlots(Exception):
+class FailureStage(Enum):
+    """
+    An Enum class that representing the stage at which an exception was raised.
+    """
+
+    UNKNOWN = -1
+    NO_NETWORKING = 0
+    NETWORKING = 1
+
+
+class FailureStageException(Exception):
+    """
+    An Exception class that contains `FailureStage` information.
+
+    Attributes:
+        stage (FailureStage): The stage the exception was raised at.
+    """
+
+    def __init__(self, stage: FailureStage = FailureStage.UNKNOWN) -> None:
+        """
+        The constructor for the UtilityFunctions class.
+
+        Parameters:
+            stage (FailureStage): The stage the exception was raised at.
+        """
+
+        self.stage: FailureStage = stage
+
+
+class NoRemainingEmojiSlots(FailureStageException):
     """
     Error raised when the invocation guild has no remaining emoji slots.
     """
@@ -105,7 +137,7 @@ class NoRemainingEmojiSlots(Exception):
     pass
 
 
-class NoViableEmoji(Exception):
+class NoViableEmoji(FailureStageException):
     """
     Error raised when all potential emoji are marked as failed during execution.
     """
@@ -113,7 +145,7 @@ class NoViableEmoji(Exception):
     pass
 
 
-class NoEmojisFound(Exception):
+class NoEmojisFound(FailureStageException):
     """
     Error raised when no `EmojiComponents` are able to be extract from the source message or provided arguments.
     """
@@ -277,7 +309,7 @@ class EmojiManager:
         """
 
         if not self.__emojis:
-            raise NoEmojisFound
+            raise NoEmojisFound(FailureStage.NO_NETWORKING)
 
         self.__check_for_duplicate_emoji()
         self.__check_emojis_slots()
@@ -308,7 +340,7 @@ class EmojiManager:
                 emoji.set_failed(f'Emoji **{emoji.name}** failed with Error: `DuplicateName`')
 
         if self.__no_viable_emoji:
-            raise NoViableEmoji
+            raise NoViableEmoji(FailureStage.NO_NETWORKING)
 
     def __check_emojis_slots(self) -> None:
         """
@@ -328,7 +360,7 @@ class EmojiManager:
         """
 
         if self.__available_static_slots == self.__available_animated_slots == 0:
-            raise NoRemainingEmojiSlots
+            raise NoRemainingEmojiSlots(FailureStage.NO_NETWORKING)
 
         # fail extra static emojis
         for index, emoji in enumerate(filter(lambda x: not x.animated and not x.failed, self.__emojis)):
@@ -341,7 +373,7 @@ class EmojiManager:
                 emoji.set_failed(f'Emoji **{emoji.name}** failed with Error: `NotEnoughSlots [Animated]`')
 
         if self.__no_viable_emoji:
-            raise NoViableEmoji
+            raise NoViableEmoji(FailureStage.NO_NETWORKING)
 
     async def __fetch_partial_emoji_content(self, session: ClientSession) -> None:
         """
@@ -351,7 +383,7 @@ class EmojiManager:
             session (ClientSession): The bot's current ClientSession.
 
         Raises:
-            NoViableEmoji
+            NoViableEmoji.
 
         Returns:
             None.
@@ -368,7 +400,7 @@ class EmojiManager:
                 emoji.set_failed(f'**{emoji.name}** failed with Error: `ContentDoesNotExist`')
 
         if self.__no_viable_emoji:
-            raise NoViableEmoji
+            raise NoViableEmoji(FailureStage.NETWORKING)
 
     async def __create_emoji(self, ctx: Context) -> None:
         """
@@ -376,6 +408,9 @@ class EmojiManager:
 
         Parameters:
             None.
+
+        Raises:
+            NoViableEmoji.
 
         Returns:
             None.
@@ -394,3 +429,6 @@ class EmojiManager:
             except discord.HTTPException as e:
                 bot_logger.error(f'Yoink Creation Error. {e.status}. {e.text}')
                 emoji.set_failed = f'**{emoji.name}** failed with Error: `FailedToCreateEmoji`'
+
+        if self.__no_viable_emoji:
+            raise NoViableEmoji(FailureStage.NETWORKING)

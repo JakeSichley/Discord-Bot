@@ -22,12 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Tuple
 import datetime
 import logging
-import discord
 import os
+from typing import Tuple
 
+import discord
 
 cyan = '\x1b[36m'
 yellow = '\x1b[33;20m'

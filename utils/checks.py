@@ -22,14 +22,37 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from discord.ext import commands
 from typing import Callable
+
+from discord.ext import commands
+
 from utils.context import Context
+from utils.cooldowns import cooldown_predicate
+
+
+def dynamic_cooldown() -> Callable:
+    """
+    Dynamic Cooldown Check.
+
+    Parameters:
+        None.
+
+    Returns:
+        (Callable[[], Context]): The resulting wrapped predicate.
+    """
+
+    return commands.check(cooldown_predicate)
 
 
 def check_memecoin_channel() -> Callable:
     """
     Memecoin Channel Check.
+
+    Parameters:
+        None.
+
+    Returns:
+        (Callable[[], Context]): The resulting wrapped predicate.
     """
 
     def predicate(ctx: Context) -> bool:
@@ -40,16 +63,23 @@ def check_memecoin_channel() -> Callable:
             ctx (Context): The invocation context.
 
         Returns:
-            (boolean): Whether the invocation channel is the authorized MemeCoin channel.
+            (bool): Whether the invocation channel is the authorized MemeCoin channel.
         """
 
         return ctx.message.channel.id == 636356259255287808
+
     return commands.check(predicate)
 
 
 def ensure_git_credentials() -> Callable:
     """
     Admin.Git Group Check.
+
+    Parameters:
+        None.
+
+    Returns:
+        (Callable[[], Context]): The resulting wrapped predicate.
     """
 
     def predicate(ctx: Context) -> bool:
@@ -60,8 +90,9 @@ def ensure_git_credentials() -> Callable:
             ctx (Context): The invocation context.
 
         Returns:
-            (boolean): Whether the bot was initialized with git credentials.
+            (bool): Whether the bot was initialized with git credentials.
         """
 
         return ctx.bot.git
+
     return commands.check(predicate)

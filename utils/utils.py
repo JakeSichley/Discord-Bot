@@ -22,17 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable
-from re import search
-from utils.logging_formatter import bot_logger
-import discord
-import datetime
-import pytz
-import functools
 import asyncio
+import datetime
+import functools
 import subprocess
+from re import search
+from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable
 
-VERSION = '2.4.2'
+import discord
+import pytz
+
+from utils.logging_formatter import bot_logger
+
+VERSION = '2.5.0'
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.TextChannel) -> None:

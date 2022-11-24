@@ -22,13 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from asyncio import TimeoutError
+from typing import List, Tuple, Optional
+
+import discord
+from discord.ext import commands
 
 from dreambot import DreamBot
-from typing import List, Tuple, Optional
-from asyncio import TimeoutError
-from discord.ext import commands
 from utils.context import Context
-import discord
 
 
 async def prompt_user_for_voice_channel(
