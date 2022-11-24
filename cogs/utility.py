@@ -22,18 +22,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from discord.ext import commands
-from utils.utils import localize_time, readable_flags
-from utils.defaults import MessageReply
-from utils.context import Context
-from typing import Optional, Union, List
-from re import findall
-from dreambot import DreamBot
-from utils.logging_formatter import bot_logger
-from utils.emoji_manager import EmojiManager, EmojiComponent, NoViableEmoji, NoRemainingEmojiSlots, NoEmojisFound
 import datetime
-import pytz
+from re import findall
+from typing import Optional, Union, List
+
 import discord
+import pytz
+from discord.ext import commands
+
+from dreambot import DreamBot
+from utils.checks import dynamic_cooldown
+from utils.context import Context
+from utils.defaults import MessageReply
+from utils.emoji_manager import (
+    EmojiManager, EmojiComponent, NoViableEmoji, NoRemainingEmojiSlots, NoEmojisFound, FailureStage
+)
+from utils.logging_formatter import bot_logger
+from utils.utils import localize_time, readable_flags
 
 
 class Utility(commands.Cog):
@@ -174,6 +179,7 @@ class Utility(commands.Cog):
 
     @commands.has_guild_permissions(manage_emojis=True)
     @commands.bot_has_guild_permissions(manage_emojis=True)
+    @dynamic_cooldown()
     @commands.command(name='raw_yoink', aliases=['rawyoink'], help='Yoinks an emoji based on its id.')
     async def raw_yoink_emoji(self, ctx: Context, source: int, name: Optional[str] = None,
                               animated: Optional[bool] = False) -> None:
@@ -200,6 +206,7 @@ class Utility(commands.Cog):
 
     @commands.has_guild_permissions(manage_emojis=True)
     @commands.bot_has_guild_permissions(manage_emojis=True)
+    @dynamic_cooldown()
     @commands.command(name='yoink', help='Yoinks emojis from the specified message.')
     async def yoink_emoji(self, ctx: Context, source: discord.Message = MessageReply) -> None:
         """
@@ -250,8 +257,12 @@ async def create_emojis(bot: DreamBot, ctx: Context, emojis: Union[EmojiComponen
     except NoEmojisFound:
         await ctx.send('I could not find any emojis in the specified message!')
         return
-    except NoViableEmoji:
-        pass  # status message will detail all failures
+    except NoViableEmoji as e:
+        # this is currently the only exception that may be raised with a networking stage
+        if e.stage == FailureStage.NETWORKING:
+            bot.report_command_failure(ctx)
+    else:
+        bot.reset_dynamic_cooldown(ctx)
 
     await ctx.send(emoji_manager.status_message())
 

@@ -145,7 +145,7 @@ async def cooldown_predicate(ctx: Context) -> bool:
         ctx (Context) The invocation context.
 
     Raises:
-        commands.CommandOnCooldown
+        commands.CommandOnCooldown.
 
     Returns:
         (bool).
