@@ -34,7 +34,7 @@ import pytz
 
 from utils.logging_formatter import bot_logger
 
-VERSION = '2.4.2'
+VERSION = '2.5.0'
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.TextChannel) -> None:
