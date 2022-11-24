@@ -1,81 +1,75 @@
-""" --- Docs ---
-def cooldown_for_everyone_but_me(interaction: discord.Interaction) -> Optional[app_commands.Cooldown]:
-    if interaction.user.id == 80088516616269824:
-        return None
-    return app_commands.Cooldown(1, 10.0)
-
-@tree.command()
-@app_commands.checks.dynamic_cooldown(cooldown_for_everyone_but_me)
-async def test(interaction: discord.Interaction):
-    await interaction.response.send_message('Hello')
-
-@test.error
-async def on_test_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
-    if isinstance(error, app_commands.CommandOnCooldown):
-        await interaction.response.send_message(str(error), ephemeral=True)
 """
-import discord
+MIT License
 
-""" --- Discord Example --- 
-class CooldownModified:
-    def __init__(self, rate, per):
-        self.rate = rate
-        self.per = per
-    
-    async def __call__(self, message):
-        if message.author is bot owner:
-            return None
-        else:
-            return commands.Cooldown(self.rate, self.per)
+Copyright (c) 2019-2022 Jake Sichley
 
-#in a command
-@commands.dynamic_cooldown(CooldownModified(2, 30), type = commands.BucketType.user)
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-#another command
-@commands.dynamic_cooldown(CooldownModified(3, 180), type = commands.BucketType.channel)
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 """
 
-"""
-Mapping -> User { num_failures, expiration_time }
-
-Access bot from ctx or itx
-self.bot.dynamic_cooldowns[qualified_command_name, ExponentialCooldown]
-
-Don't need to initial actual rate in ExponentialCooldown() unless default cooldown is desired
-"""
-
-from dataclasses import dataclass
 from discord.ext import commands
-from typing import TypeVar, Hashable, Optional, Dict, Protocol
+from typing import Optional
 from datetime import datetime, timedelta
-import discord
+from utils.context import Context
 
 
-@dataclass
 class CooldownMapping:
-    count: int = 0
-    expires: Optional[datetime] = None
+    def __init__(self, max_cooldown: float = 604800) -> None:
+        self.count: int = 0
+        self.start_time: Optional[datetime] = None
+        self.max_cooldown: float = max_cooldown
 
-    # this needs to have actual cooldown logic in it
-    #  maybe have some fancy __get__ logic to expire cooldowns automatically
+    def __repr__(self) -> str:
+        return f'{self.count=}, {self.start_time=}, {self.max_cooldown=}'
 
-    """ --- Cases ---
-        - User repeatedly fails
-            - Need to know to increase cooldown after current cooldown ends
-                - If now() > expires_at, no cooldown
-            - When to reset cooldown for user who fails
-                - User fails once, then succeeds, reset to 0? Decrement failure_count by amount?
-    """
+    @property
+    def base_duration(self) -> float:
+        return min(2 ** (5 + self.count), self.max_cooldown)
+
+    @property
+    def remaining_cooldown(self) -> Optional[commands.Cooldown]:
+        # don't impose cooldowns for the first two failures
+        if self.count < 2:
+            return None
+
+        remaining_time = (self.start_time + timedelta(seconds=self.base_duration)) - datetime.now()
+
+        if remaining_time.total_seconds() <= 0:
+            return None
+
+        return commands.Cooldown(1, remaining_time.total_seconds())
+
+    def increment_failure_count(self) -> None:
+        self.count += 1
+        self.start_time = datetime.now()
+
+    def reset(self) -> None:
+        self.count = 0
+        self.start_time = None
 
 
+async def cooldown_predicate(ctx: Context) -> bool:
+    default_mapping = CooldownMapping()
+    cooldown_mapping = ctx.bot.dynamic_cooldowns.get(ctx.command.qualified_name, {}).get(ctx.author.id, default_mapping)
 
-class ExponentialCommandCooldown:
-    def __init__(self, rate: float, per: float) -> None:
-        self.__rate = rate
-        self.__per = per
-        self.__mapping: Dict[int, CooldownMapping] = {}
+    if cooldown := cooldown_mapping.remaining_cooldown:
+        raise commands.CommandOnCooldown(cooldown, cooldown.per, commands.BucketType.user)
 
-    async def __call__(self, message: discord.Message) -> Optional[commands.Cooldown]:
-        # call method doesn't ever directly modify mapping, only checks
+    return True
 
-        cooldown = self.__mapping.get(message.author.id, CooldownMapping())
+

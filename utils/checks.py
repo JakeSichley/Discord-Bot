@@ -25,9 +25,14 @@ SOFTWARE.
 from discord.ext import commands
 from typing import Callable
 from utils.context import Context
+from utils.cooldowns import cooldown_predicate
 
 
-def check_memecoin_channel() -> Callable:
+def dynamic_cooldown() -> Callable[[], Context]:
+    return commands.check(cooldown_predicate)
+
+
+def check_memecoin_channel() -> Callable[[], Context]:
     """
     Memecoin Channel Check.
     """
@@ -47,7 +52,7 @@ def check_memecoin_channel() -> Callable:
     return commands.check(predicate)
 
 
-def ensure_git_credentials() -> Callable:
+def ensure_git_credentials() -> Callable[[], Context]:
     """
     Admin.Git Group Check.
     """

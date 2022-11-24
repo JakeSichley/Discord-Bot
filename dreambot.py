@@ -25,17 +25,19 @@ SOFTWARE.
 from os import getcwd, listdir, path
 from discord.ext.commands import ExtensionError, Bot, when_mentioned
 from datetime import datetime
-from typing import Optional, List, Any, Dict, Type
+from typing import Optional, List, Any, Dict, Type, DefaultDict
 from utils.database.helpers import retrieve_query
 from aiosqlite import Error as aiosqliteError
 from utils.context import Context
 from utils.utils import generate_activity
+from utils.cooldowns import CooldownMapping
 from discord.ext import tasks
 from copy import deepcopy
 from utils.logging_formatter import bot_logger
 from sys import stderr
 from google.cloud import errorreporting_v1beta1 as error_reporting
 from traceback import print_exception, format_exception
+from collections import defaultdict
 import discord
 
 
@@ -90,6 +92,10 @@ class DreamBot(Bot):
         self.uptime = datetime.now()
         self.default_prefix = prefix
         self.environment = environment
+        self.dynamic_cooldowns: Dict[str, DefaultDict[int, CooldownMapping]] = {
+            'raw_yoink': defaultdict(CooldownMapping),
+            'yoink': defaultdict(CooldownMapping)
+        }
 
         # optionals
         # noinspection PyTypeChecker
@@ -132,6 +138,15 @@ class DreamBot(Bot):
                 except ExtensionError as error:
                     bot_logger.error(f'Failed Setup for Cog: {cog[:-3].capitalize()}. {error}')
                     print_exception(type(error), error, error.__traceback__, file=stderr)
+
+    def report_command_failure(self, ctx: Context) -> None:
+        try:
+            self.dynamic_cooldowns[ctx.command.qualified_name][ctx.author.id].increment_failure_count()
+        except KeyError:
+            pass
+
+    def reset_dynamic_cooldown(self, ctx) -> None:
+        self.dynamic_cooldowns.get(ctx.command.qualified_name, {}).pop(ctx.author.id, None)
 
     @tasks.loop(minutes=30)
     async def refresh_presence(self) -> None:
