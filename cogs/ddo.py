@@ -175,6 +175,7 @@ class DDO(commands.Cog):
                 await ctx.send('Die Evaluation Timeout Error')
 
     # noinspection GrazieInspection
+    @commands.is_owner()  # needs cleanup
     @commands.command(name='ddoitem', help='Pulls basic information about an item in Dungeons & Dragons Online '
                                            'from the wiki')
     async def ddo_item(self, ctx: Context, *, item: str) -> None:
