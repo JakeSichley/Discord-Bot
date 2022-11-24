@@ -140,12 +140,34 @@ class DreamBot(Bot):
                     print_exception(type(error), error, error.__traceback__, file=stderr)
 
     def report_command_failure(self, ctx: Context) -> None:
+        """
+        Used to report a failure in the provided context, for the purpose of dynamic cooldowns.
+
+        Parameters:
+            ctx (Context): The invocation context.
+
+        Returns:
+            None.
+        """
+
+        # use try -> except rather .get chaining, since .get would require creating unnecessary objects
         try:
             self.dynamic_cooldowns[ctx.command.qualified_name][ctx.author.id].increment_failure_count()
         except KeyError:
             pass
 
-    def reset_dynamic_cooldown(self, ctx) -> None:
+    def reset_dynamic_cooldown(self, ctx: Context) -> None:
+        """
+        Used to reset command failures in the provided context, for the purpose of dynamic cooldowns.
+
+        Parameters:
+            ctx (Context): The invocation context.
+
+        Returns:
+            None.
+        """
+
+        # .get chaining is acceptable since we're only removing entries
         self.dynamic_cooldowns.get(ctx.command.qualified_name, {}).pop(ctx.author.id, None)
 
     @tasks.loop(minutes=30)

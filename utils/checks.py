@@ -29,12 +29,28 @@ from utils.cooldowns import cooldown_predicate
 
 
 def dynamic_cooldown() -> Callable[[], Context]:
+    """
+    Dynamic Cooldown Check.
+
+    Parameters:
+        None.
+
+    Returns:
+        (Callable[[], Context]): The resulting wrapped predicate.
+    """
+
     return commands.check(cooldown_predicate)
 
 
 def check_memecoin_channel() -> Callable[[], Context]:
     """
     Memecoin Channel Check.
+
+    Parameters:
+        None.
+
+    Returns:
+        (Callable[[], Context]): The resulting wrapped predicate.
     """
 
     def predicate(ctx: Context) -> bool:
@@ -45,7 +61,7 @@ def check_memecoin_channel() -> Callable[[], Context]:
             ctx (Context): The invocation context.
 
         Returns:
-            (boolean): Whether the invocation channel is the authorized MemeCoin channel.
+            (bool): Whether the invocation channel is the authorized MemeCoin channel.
         """
 
         return ctx.message.channel.id == 636356259255287808
@@ -55,6 +71,12 @@ def check_memecoin_channel() -> Callable[[], Context]:
 def ensure_git_credentials() -> Callable[[], Context]:
     """
     Admin.Git Group Check.
+
+    Parameters:
+        None.
+
+    Returns:
+        (Callable[[], Context]): The resulting wrapped predicate.
     """
 
     def predicate(ctx: Context) -> bool:
@@ -65,7 +87,7 @@ def ensure_git_credentials() -> Callable[[], Context]:
             ctx (Context): The invocation context.
 
         Returns:
-            (boolean): Whether the bot was initialized with git credentials.
+            (bool): Whether the bot was initialized with git credentials.
         """
 
         return ctx.bot.git
