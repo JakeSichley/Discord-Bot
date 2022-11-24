@@ -28,7 +28,7 @@ from utils.context import Context
 from utils.cooldowns import cooldown_predicate
 
 
-def dynamic_cooldown() -> Callable[[], Context]:
+def dynamic_cooldown() -> Callable:
     """
     Dynamic Cooldown Check.
 
@@ -42,7 +42,7 @@ def dynamic_cooldown() -> Callable[[], Context]:
     return commands.check(cooldown_predicate)
 
 
-def check_memecoin_channel() -> Callable[[], Context]:
+def check_memecoin_channel() -> Callable:
     """
     Memecoin Channel Check.
 
@@ -68,7 +68,7 @@ def check_memecoin_channel() -> Callable[[], Context]:
     return commands.check(predicate)
 
 
-def ensure_git_credentials() -> Callable[[], Context]:
+def ensure_git_credentials() -> Callable:
     """
     Admin.Git Group Check.
 
