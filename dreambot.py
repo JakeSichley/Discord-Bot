@@ -97,7 +97,8 @@ class DreamBot(Bot):
         self.environment = environment
         self.dynamic_cooldowns: Dict[str, DefaultDict[int, CooldownMapping]] = {
             'raw_yoink': defaultdict(CooldownMapping),
-            'yoink': defaultdict(CooldownMapping)
+            'yoink': defaultdict(CooldownMapping),
+            'invert': defaultdict(CooldownMapping)
         }
 
         # optionals

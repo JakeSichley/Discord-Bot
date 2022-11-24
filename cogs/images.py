@@ -77,9 +77,11 @@ class Images(commands.Cog):
                 await ctx.send('No image was provided.')
                 return
             except image_utils.BufferSizeExceeded:
+                self.bot.report_command_failure(ctx)
                 await ctx.send('The supplied image is too large. Bots are limited to images of size < 8 Megabytes.')
                 return
             except discord.HTTPException as e:
+                self.bot.report_command_failure(ctx)
                 bot_logger.error(f'File Download Failure. {e.status}. {e.text}')
                 await ctx.send(f'Could not download image. Details: [Status {e.status} | {e.text}]')
                 return
@@ -87,9 +89,11 @@ class Images(commands.Cog):
             try:
                 await ctx.send(file=discord.File(inverted, filename="inverted.png"))
             except discord.HTTPException as e:
+                self.bot.report_command_failure(ctx)
                 bot_logger.error(f'File Send Failure. {e.status}. {e.text}')
                 await ctx.send(f'Could not send image. Details: [Status {e.status} | {e.text}]')
-                return
+            else:
+                self.bot.reset_dynamic_cooldown(ctx)
 
     @commands.command(name='iasip', aliases=['sun', 'sunny', 'title'])
     async def iasip_title_card(self, ctx: Context, *, title: str) -> None:
