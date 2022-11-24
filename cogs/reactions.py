@@ -22,18 +22,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from discord.ext import commands
 from asyncio import TimeoutError
-from utils.database.helpers import execute_query, retrieve_query
+from math import ceil
+from typing import Union, Optional, List, Tuple
+
+import discord
+from discord.ext import commands
+
+from dreambot import DreamBot
+from utils.context import Context
 from utils.converters import GuildConverter
+from utils.database.helpers import execute_query, retrieve_query
+from utils.logging_formatter import bot_logger
 from utils.prompts import prompt_user_for_role, prompt_user_for_discord_message
 from utils.utils import cleanup
-from utils.context import Context
-from typing import Union, Optional, List, Tuple
-from math import ceil
-from dreambot import DreamBot
-from utils.logging_formatter import bot_logger
-import discord
 
 
 class ReactionRoles(commands.Cog):

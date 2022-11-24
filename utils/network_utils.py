@@ -22,11 +22,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Any
-from enum import Enum
-from utils.logging_formatter import bot_logger
 from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any
+
 import aiohttp
+
+from utils.logging_formatter import bot_logger
 
 
 class NetworkReturnType(Enum):

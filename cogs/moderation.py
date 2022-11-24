@@ -22,17 +22,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from discord.ext import commands
-from utils.database.helpers import execute_query, retrieve_query
-from typing import Union
-from dreambot import DreamBot
-from utils.converters import AggressiveDefaultMemberConverter
-from aiosqlite import Error as aiosqliteError
-from utils.context import Context
 from re import findall, sub
-from utils.logging_formatter import bot_logger
-import discord
+from typing import Union
 
+import discord
+from aiosqlite import Error as aiosqliteError
+from discord.ext import commands
+
+from dreambot import DreamBot
+from utils.context import Context
+from utils.converters import AggressiveDefaultMemberConverter
+from utils.database.helpers import execute_query, retrieve_query
+from utils.logging_formatter import bot_logger
 
 CHANNEL_OBJECT = Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]
 PERMISSIONS_PARENT = Union[discord.Role, discord.Member]
@@ -189,7 +190,7 @@ class Moderation(commands.Cog):
                 else:
                     failed.append(str(member))
 
-            summary = f'Successfully added {role.mention} to the following members:\n'\
+            summary = f'Successfully added {role.mention} to the following members:\n' \
                       f'```{", ".join(success) if success else "None"}```\n'
 
             if failed:

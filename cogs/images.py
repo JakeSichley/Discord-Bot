@@ -22,13 +22,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from typing import Union
+
+import discord
 from discord.ext import commands
+
 from dreambot import DreamBot
 from utils import image_utils
-from utils.defaults import MessageReply
-from typing import Union
 from utils.context import Context
-import discord
+from utils.defaults import MessageReply
 from utils.logging_formatter import bot_logger
 
 

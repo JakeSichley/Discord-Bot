@@ -22,30 +22,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from discord.ext import commands
-from discord.abc import Messageable
-from io import StringIO
+import re
+import sys
+from asyncio import sleep
 from contextlib import redirect_stdout
+from copy import copy
+from datetime import datetime, timedelta
+from importlib import reload
+from io import StringIO
+from re import finditer
 from textwrap import indent
 from traceback import format_exc
-from utils.utils import localize_time, pairs, run_in_subprocess, generate_activity
-from re import finditer
 from typing import Union, Optional
+
+import discord
+from aiosqlite import Error as aiosqliteError
+from discord.abc import Messageable
+from discord.ext import commands
+from discord.ext import tasks
+
 from dreambot import DreamBot
 from utils.checks import ensure_git_credentials
-from utils.network_utils import network_request, NetworkReturnType
-from utils.database.helpers import execute_query, retrieve_query
-from aiosqlite import Error as aiosqliteError
-from datetime import datetime, timedelta
 from utils.context import Context
-from copy import copy
-from importlib import reload
+from utils.database.helpers import execute_query, retrieve_query
 from utils.logging_formatter import bot_logger
-from asyncio import sleep
-from discord.ext import tasks
-import discord
-import sys
-import re
+from utils.network_utils import network_request, NetworkReturnType
+from utils.utils import localize_time, pairs, run_in_subprocess, generate_activity
 
 
 class Admin(commands.Cog):

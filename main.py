@@ -22,17 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+import asyncio
 from os import getenv
 from sys import version
-from dotenv import load_dotenv
-from dreambot import DreamBot
-from utils.utils import VERSION
-from utils.logging_formatter import format_loggers, bot_logger
-from utils.database.migrations import Migrator
-import discord
-import asyncio
-import aiosqlite
+
 import aiohttp
+import aiosqlite
+import discord
+from dotenv import load_dotenv
+
+from dreambot import DreamBot
+from utils.database.migrations import Migrator
+from utils.logging_formatter import format_loggers, bot_logger
+from utils.utils import VERSION
 
 
 async def main() -> None:
@@ -92,6 +94,7 @@ async def main() -> None:
         bot.connection = connection
         bot.session = session
         await bot.start(token)
+
 
 # Run the bot
 if __name__ == '__main__':

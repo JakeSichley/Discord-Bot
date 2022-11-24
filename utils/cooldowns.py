@@ -22,9 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from discord.ext import commands
-from typing import Optional
 from datetime import datetime, timedelta
+from typing import Optional
+
+from discord.ext import commands
+
 from utils.context import Context
 
 
@@ -158,5 +160,3 @@ async def cooldown_predicate(ctx: Context) -> bool:
         raise commands.CommandOnCooldown(cooldown, cooldown.per, commands.BucketType.user)
 
     return True
-
-

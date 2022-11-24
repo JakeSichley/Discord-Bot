@@ -22,13 +22,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from utils.logging_formatter import bot_logger
-from typing import Type, List
-from types import TracebackType
-import aiosqlite
-import aiofiles
 import asyncio
 import os
+from types import TracebackType
+from typing import Type, List
+
+import aiofiles
+import aiosqlite
+
+from utils.logging_formatter import bot_logger
 
 
 class MigrationVersionMismatch(Exception):

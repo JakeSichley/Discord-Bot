@@ -22,8 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from discord.ext import commands
 from typing import Callable
+
+from discord.ext import commands
+
 from utils.context import Context
 from utils.cooldowns import cooldown_predicate
 
@@ -65,6 +67,7 @@ def check_memecoin_channel() -> Callable:
         """
 
         return ctx.message.channel.id == 636356259255287808
+
     return commands.check(predicate)
 
 
@@ -91,4 +94,5 @@ def ensure_git_credentials() -> Callable:
         """
 
         return ctx.bot.git
+
     return commands.check(predicate)

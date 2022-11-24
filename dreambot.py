@@ -22,23 +22,25 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from os import getcwd, listdir, path
-from discord.ext.commands import ExtensionError, Bot, when_mentioned
-from datetime import datetime
-from typing import Optional, List, Any, Dict, Type, DefaultDict
-from utils.database.helpers import retrieve_query
-from aiosqlite import Error as aiosqliteError
-from utils.context import Context
-from utils.utils import generate_activity
-from utils.cooldowns import CooldownMapping
-from discord.ext import tasks
-from copy import deepcopy
-from utils.logging_formatter import bot_logger
-from sys import stderr
-from google.cloud import errorreporting_v1beta1 as error_reporting
-from traceback import print_exception, format_exception
 from collections import defaultdict
+from copy import deepcopy
+from datetime import datetime
+from os import getcwd, listdir, path
+from sys import stderr
+from traceback import print_exception, format_exception
+from typing import Optional, List, Any, Dict, Type, DefaultDict
+
 import discord
+from aiosqlite import Error as aiosqliteError
+from discord.ext import tasks
+from discord.ext.commands import ExtensionError, Bot, when_mentioned
+from google.cloud import errorreporting_v1beta1 as error_reporting
+
+from utils.context import Context
+from utils.cooldowns import CooldownMapping
+from utils.database.helpers import retrieve_query
+from utils.logging_formatter import bot_logger
+from utils.utils import generate_activity
 
 
 class DreamBot(Bot):
@@ -53,6 +55,7 @@ class DreamBot(Bot):
         default_prefix (str): The default prefix to use if a guild has not specified one.
         environment (str): Environment string. Disable features (such as firebase logging) when not 'PROD'.
         wavelink (wavelink.Client): The bot's wavelink client. This initialization prevents attr errors in 'Music'.
+        dynamic_cooldowns (Dict[str, DefaultDict[int, CooldownMapping]]): Dynamic Cooldown mapping for commands.
         _disabled_cogs (List[str]): A list of cogs the bot should not load on initialization.
         _status_type (Optional[int]): The discord.ActivityType to set the bot's status to.
         _status_text (Optional[str]): The text of the bot's status.
@@ -304,6 +307,6 @@ def generate_error_event(exception: Exception, project_name: str) -> error_repor
 
     # noinspection PyTypeChecker
     return error_reporting.ReportErrorEventRequest(
-            project_name=project_name,
-            event=event
-        )
+        project_name=project_name,
+        event=event
+    )

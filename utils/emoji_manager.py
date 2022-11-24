@@ -23,13 +23,15 @@ SOFTWARE.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Union
-from aiohttp import ClientSession, ClientError
-from utils.context import Context
-from utils.network_utils import network_request, NetworkReturnType
-from utils.logging_formatter import bot_logger
 from enum import Enum
+from typing import List, Optional, Union
+
 import discord
+from aiohttp import ClientSession, ClientError
+
+from utils.context import Context
+from utils.logging_formatter import bot_logger
+from utils.network_utils import network_request, NetworkReturnType
 
 
 @dataclass

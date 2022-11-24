@@ -22,18 +22,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from discord.ext import commands
-from utils.database.helpers import execute_query, retrieve_query
-from aiosqlite import Error as aiosqliteError
-from utils.utils import cleanup
 from asyncio import sleep
-from dreambot import DreamBot
-from utils.prompts import prompt_user_for_voice_channel, prompt_user_for_role
-from utils.context import Context
-from cache import ExpiringCache
-from utils.logging_formatter import bot_logger
 from typing import List, Optional
+
 import discord
+from aiosqlite import Error as aiosqliteError
+from cache import ExpiringCache
+from discord.ext import commands
+
+from dreambot import DreamBot
+from utils.context import Context
+from utils.database.helpers import execute_query, retrieve_query
+from utils.logging_formatter import bot_logger
+from utils.prompts import prompt_user_for_voice_channel, prompt_user_for_role
+from utils.utils import cleanup
 
 
 class VoiceRoles(commands.Cog):

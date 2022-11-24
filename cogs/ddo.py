@@ -22,20 +22,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from discord import Embed
-from discord.ext import commands, tasks
+from asyncio import sleep, wait_for, TimeoutError
+from functools import reduce
+from json.decoder import JSONDecodeError
 from random import seed, shuffle, randrange
 from re import search, findall
 from time import time
-from bs4 import BeautifulSoup
-from dreambot import DreamBot
-from asyncio import sleep, wait_for, TimeoutError
-from json.decoder import JSONDecodeError
-from functools import reduce
+
 from aiohttp import ClientError
-from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
+from bs4 import BeautifulSoup
+from discord import Embed
+from discord.ext import commands, tasks
+
+from dreambot import DreamBot
 from utils.context import Context
 from utils.logging_formatter import bot_logger
+from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
 
 
 class DDO(commands.Cog):

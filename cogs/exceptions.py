@@ -22,13 +22,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from discord.ext import commands
-from discord import HTTPException, Interaction
-from discord.app_commands import AppCommandError
 from sys import stderr
 from traceback import print_exception, format_exception
-from dreambot import DreamBot
+
 from aiohttp import ClientResponseError
+from discord import HTTPException, Interaction
+from discord.app_commands import AppCommandError
+from discord.ext import commands
+
+from dreambot import DreamBot
 from utils.context import Context
 from utils.logging_formatter import bot_logger
 

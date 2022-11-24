@@ -22,13 +22,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from discord.ext import commands
+import io
+from asyncio import TimeoutError
 from typing import Any, Union, Optional
 from uuid import uuid4
-from asyncio import TimeoutError
-from utils.logging_formatter import bot_logger
+
 import discord
-import io
+from discord.ext import commands
+
+from utils.logging_formatter import bot_logger
 
 
 class Context(commands.Context):
