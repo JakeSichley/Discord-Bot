@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.6.0
+### Internal
+* Replace manual datetime localization with Discord-native datetime markdown
+
 ## 2.5.0
 ### Internal
 * Add Dynamic Cooldowns to commands with network requests
