@@ -644,6 +644,11 @@ class Admin(commands.Cog):
         """
         Inserts a logging line break at the start of each day.
 
+        While `tasks.loop` does support a specific time parameter (ie: time=time(tzinfo=timezone('US/Pacific')), this is
+        vulnerable to clock drifting. This is not a time-sensitive task and the library prints an absurd amount of
+        'Clock drift detected' warnings. Consequently, we manually sleep until the next day and then repeat every 24
+        hours, per the hours parameter.
+
         Parameters:
             None.
 
