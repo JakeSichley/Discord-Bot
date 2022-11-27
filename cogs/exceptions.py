@@ -116,8 +116,15 @@ class Exceptions(commands.Cog):
             if ctx.author.id == self.bot.owner_id:
                 await ctx.reinvoke()
             else:
-                await ctx.send(f'{ctx.message.author.mention}, please wait {int(error.retry_after)} seconds '
+                retry_after = int(error.retry_after)
+                await ctx.send(f'{ctx.message.author.mention}, please wait {retry_after} seconds '
                                f'before calling this command again!')
+
+                if retry_after > 21600:  # 6 hours
+                    bot_logger.warning(
+                        f'{str(ctx.author)} ({ctx.author.id}) triggered a cooldown in command '
+                        f'{ctx.command.qualified_name} longer than 6 hours ({retry_after}).'
+                    )
             return
 
         # External network error
