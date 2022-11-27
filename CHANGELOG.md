@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.6.1
+### Internal
+* Bump Pillow to `9.2.0` (CVE-2022-45198)
+
 ## 2.6.0
 ### Internal
 * Replace manual datetime localization with Discord-native datetime markdown
