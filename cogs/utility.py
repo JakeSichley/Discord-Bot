@@ -29,6 +29,7 @@ from typing import Optional, Union, List
 import discord
 import pytz
 from discord.ext import commands
+from discord.utils import format_dt
 
 from dreambot import DreamBot
 from utils.checks import dynamic_cooldown
@@ -38,7 +39,7 @@ from utils.emoji_manager import (
     EmojiManager, EmojiComponent, NoViableEmoji, NoRemainingEmojiSlots, NoEmojisFound, FailureStage
 )
 from utils.logging_formatter import bot_logger
-from utils.utils import localize_time, readable_flags
+from utils.utils import readable_flags
 
 
 class Utility(commands.Cog):
@@ -117,13 +118,7 @@ class Utility(commands.Cog):
             None.
         """
 
-        time = datetime.datetime.now() - self.bot.uptime
-        days = time.days % 7
-        weeks = int(time.days / 7)
-        hours, remainder = divmod(time.seconds, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        await ctx.send(f'Bot Epoch: {self.bot.uptime.strftime("%I:%M %p on %A, %B %d, %Y")}'
-                       f'\nBot Uptime: {weeks} Weeks, {days} Days, {hours} Hours, {minutes} Minutes, {seconds} Seconds')
+        await ctx.send(format_dt(self.bot.uptime, 'R'))
 
     @commands.guild_only()
     @commands.command(name='userinfo', aliases=['ui'],
@@ -147,8 +142,8 @@ class Utility(commands.Cog):
         if user.nick:
             embed.description = f'Known as **{user.nick}** round\' these parts'
         embed.set_thumbnail(url=user.avatar.url)
-        embed.add_field(name='Account Created', value=localize_time(user.created_at))
-        embed.add_field(name='Joined Server', value=localize_time(user.joined_at))
+        embed.add_field(name='Account Created', value=format_dt(user.created_at, 'R'))
+        embed.add_field(name='Joined Server', value=format_dt(user.joined_at, 'R'))
         members = sorted(ctx.guild.members, key=lambda x: x.joined_at)
         embed.add_field(name='Join Position', value=str(members.index(user)))
         embed.add_field(name='User ID', value=str(user.id), inline=False)

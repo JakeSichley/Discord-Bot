@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from datetime import datetime, timedelta
 from sys import stderr
 from traceback import print_exception, format_exception
 
@@ -29,6 +30,7 @@ from aiohttp import ClientResponseError
 from discord import HTTPException, Interaction
 from discord.app_commands import AppCommandError
 from discord.ext import commands
+from discord.utils import format_dt
 
 from dreambot import DreamBot
 from utils.context import Context
@@ -116,8 +118,18 @@ class Exceptions(commands.Cog):
             if ctx.author.id == self.bot.owner_id:
                 await ctx.reinvoke()
             else:
-                await ctx.send(f'{ctx.message.author.mention}, please wait {int(error.retry_after)} seconds '
-                               f'before calling this command again!')
+                retry_after = int(error.retry_after)
+                cooldown_expiration = datetime.now() + timedelta(seconds=error.retry_after)
+
+                await ctx.send(
+                    f'{ctx.author.mention}, you can use this command {format_dt(cooldown_expiration, "R")}.'
+                )
+
+                if retry_after > 21600:  # 6 hours
+                    bot_logger.warning(
+                        f'{str(ctx.author)} ({ctx.author.id}) triggered a cooldown in command '
+                        f'`{ctx.command.qualified_name}` longer than 6 hours ({retry_after}).'
+                    )
             return
 
         # External network error

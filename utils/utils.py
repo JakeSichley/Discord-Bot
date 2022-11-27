@@ -23,18 +23,16 @@ SOFTWARE.
 """
 
 import asyncio
-import datetime
 import functools
 import subprocess
 from re import search
 from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable
 
 import discord
-import pytz
 
 from utils.logging_formatter import bot_logger
 
-VERSION = '2.5.0'
+VERSION = '2.6.0'
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.TextChannel) -> None:
@@ -58,22 +56,6 @@ async def cleanup(messages: List[discord.Message], channel: discord.TextChannel)
             await messages.pop().delete()
     except discord.HTTPException as e:
         bot_logger.error(f'Message Cleanup Error. {e.status}. {e.text}')
-
-
-def localize_time(time: datetime.datetime) -> str:
-    """
-    Localizes datetime objects to Pacific time and converts the format to a readable string.
-
-    Parameters:
-        time (datetime.datetime): The datetime object to localize.
-
-    Returns:
-        (str): The readable and localized date and time.
-    """
-
-    pacific = datetime.datetime.now(pytz.timezone('US/Pacific'))
-    offset_time = time + datetime.timedelta(seconds=pacific.utcoffset().total_seconds())
-    return offset_time.strftime('%I:%M %p on %A, %B %d, %Y')
 
 
 def pairs(sequence: Sequence[Any]) -> Iterator[Tuple[Any, Any]]:

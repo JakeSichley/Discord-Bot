@@ -36,10 +36,12 @@ from traceback import format_exc
 from typing import Union, Optional
 
 import discord
+import pytz
 from aiosqlite import Error as aiosqliteError
 from discord.abc import Messageable
 from discord.ext import commands
 from discord.ext import tasks
+from discord.utils import format_dt
 
 from dreambot import DreamBot
 from utils.checks import ensure_git_credentials
@@ -47,7 +49,7 @@ from utils.context import Context
 from utils.database.helpers import execute_query, retrieve_query
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, NetworkReturnType
-from utils.utils import localize_time, pairs, run_in_subprocess, generate_activity
+from utils.utils import pairs, run_in_subprocess, generate_activity
 
 
 class Admin(commands.Cog):
@@ -629,10 +631,10 @@ class Admin(commands.Cog):
         )
         embed.set_thumbnail(url=thumbnail)
         for branch, commit in latest_commit_data.items():
+            date = datetime.strptime(commit['commit']['author']['date'], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=pytz.UTC)
             embed.add_field(
                 name=branch,
-                value=f"{commit['commit']['author']['name']} - "
-                      f"{localize_time(datetime.strptime(commit['commit']['author']['date'], '%Y-%m-%dT%H:%M:%SZ'))}",
+                value=f"{commit['commit']['author']['name']} - {format_dt(date, 'R')}",
                 inline=False
             )
         embed.set_footer(text="Please report any issues to my owner!")
@@ -643,6 +645,11 @@ class Admin(commands.Cog):
     async def logging_line_break(self) -> None:
         """
         Inserts a logging line break at the start of each day.
+
+        While `tasks.loop` does support a specific time parameter (ie: time=time(tzinfo=timezone('US/Pacific')), this is
+        vulnerable to clock drifting. This is not a time-sensitive task and the library prints an absurd amount of
+        'Clock drift detected' warnings. Consequently, we manually sleep until the next day and then repeat every 24
+        hours, per the hours parameter.
 
         Parameters:
             None.
@@ -759,7 +766,7 @@ class Admin(commands.Cog):
                             await try_to_send_buffer(channel, buffer, True)
 
                             # new buffer contents are the contents of the current message
-                            buffer = f'\n\n**{message.author} - {localize_time(message.created_at)}**\n'
+                            buffer = f'\n\n**{message.author} - {format_dt(message.created_at, "F")}**\n'
                             buffer += message.content
 
                             # if the current message contents exceed the limit, send the maximum first portion
@@ -777,7 +784,7 @@ class Admin(commands.Cog):
                         # case 2: attachments or embeds with an empty buffer
                         elif attachments or embeds:
                             # since the buffer is empty, new buffer contents are the contents of the current message
-                            buffer = f'\n\n**{message.author} - {localize_time(message.created_at)}**\n'
+                            buffer = f'\n\n**{message.author} - {format_dt(message.created_at, "F")}**\n'
                             buffer += message.content
 
                             # if the current message contents don't exceed the limit, send everything
@@ -800,7 +807,7 @@ class Admin(commands.Cog):
                         # case 3: no attachments or embeds and a non-empty buffer
                         else:
                             # add the current message contents to the buffer
-                            buffer += f'\n\n**{message.author} - {localize_time(message.created_at)}**\n'
+                            buffer += f'\n\n**{message.author} - {format_dt(message.created_at, "F")}**\n'
                             buffer += message.content
 
                             # if the buffer exceeds the maximum length, try to send the buffer (and preserve the extra)
