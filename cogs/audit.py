@@ -23,6 +23,7 @@ SOFTWARE.
 """
 
 from asyncio import Condition
+from dataclasses import dataclass
 from enum import Enum
 from typing import List
 
@@ -32,8 +33,22 @@ from discord.ext import commands, menus
 
 from dreambot import DreamBot
 from utils.context import Context
-from utils.database.helpers import execute_query, retrieve_query
+from utils.database.helpers import execute_query, typed_retrieve_query, DatabaseDataclass
 from utils.logging_formatter import bot_logger
+
+
+@dataclass
+class PartialLoggingAction(DatabaseDataclass):
+    """
+    A DatabaseDataclass that stores the logging channel_id and bits for a guild.
+
+    Attributes:
+        channel_id (int): The logging channel id for the guild.
+        bits (int): The logging bits for the guild.
+    """
+
+    channel_id: int
+    bits: int
 
 
 class Audit(commands.Cog):
@@ -70,11 +85,19 @@ class Audit(commands.Cog):
         """
 
         # retrieve logging information
-        if logging_info := (await retrieve_query(self.bot.connection,
-                                                 'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
-                                                 (member.guild.id,))):
-            await log_to_channel(self.bot, LoggingActions.USER_JOINED, logging_info[0][1], logging_info[0][0],
-                                 f'**{str(member)}** joined the guild.')
+        if logging_info := (await typed_retrieve_query(
+                self.bot.connection,
+                PartialLoggingAction,
+                'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
+                (member.guild.id,))
+        ):
+            await log_to_channel(
+                self.bot,
+                LoggingActions.USER_JOINED,
+                logging_info[0].bits,
+                logging_info[0].channel_id,
+                f'**{str(member)}** joined the guild.'
+            )
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:
@@ -92,11 +115,19 @@ class Audit(commands.Cog):
         """
 
         # retrieve logging information
-        if logging_info := (await retrieve_query(self.bot.connection,
-                                                 'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
-                                                 (member.guild.id,))):
-            await log_to_channel(self.bot, LoggingActions.USER_LEFT, logging_info[0][1], logging_info[0][0],
-                                 f'**{str(member)}** left the guild.')
+        if logging_info := (await typed_retrieve_query(
+                self.bot.connection,
+                PartialLoggingAction,
+                'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
+                (member.guild.id,))
+        ):
+            await log_to_channel(
+                self.bot,
+                LoggingActions.USER_LEFT,
+                logging_info[0].bits,
+                logging_info[0].channel_id,
+                f'**{str(member)}** left the guild.'
+            )
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild: discord.Guild, member: discord.Member) -> None:
@@ -115,11 +146,19 @@ class Audit(commands.Cog):
         """
 
         # retrieve logging information
-        if logging_info := (await retrieve_query(self.bot.connection,
-                                                 'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
-                                                 (guild.id,))):
-            await log_to_channel(self.bot, LoggingActions.USER_BANNED, logging_info[0][1], logging_info[0][0],
-                                 f'**{str(member)}** was banned from the guild.')
+        if logging_info := (await typed_retrieve_query(
+                self.bot.connection,
+                PartialLoggingAction,
+                'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
+                (guild.id,))
+        ):
+            await log_to_channel(
+                self.bot,
+                LoggingActions.USER_BANNED,
+                logging_info[0].bits,
+                logging_info[0].channel_id,
+                f'**{str(member)}** was banned from the guild.'
+            )
 
     @commands.Cog.listener()
     async def on_member_unban(self, guild: discord.Guild, member: discord.Member) -> None:
@@ -138,11 +177,19 @@ class Audit(commands.Cog):
         """
 
         # retrieve logging information
-        if logging_info := (await retrieve_query(self.bot.connection,
-                                                 'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
-                                                 (guild.id,))):
-            await log_to_channel(self.bot, LoggingActions.USER_UNBANNED, logging_info[0][1], logging_info[0][0],
-                                 f'**{str(member)}** was unbanned from the guild.')
+        if logging_info := (await typed_retrieve_query(
+                self.bot.connection,
+                PartialLoggingAction,
+                'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
+                (guild.id,))
+        ):
+            await log_to_channel(
+                self.bot,
+                LoggingActions.USER_UNBANNED,
+                logging_info[0].bits,
+                logging_info[0].channel_id,
+                f'**{str(member)}** was unbanned from the guild.'
+            )
 
     @commands.group(name='auditaction', aliases=['aa', 'auditactions'])
     async def audit_actions(self, ctx: Context) -> None:
@@ -174,10 +221,15 @@ class Audit(commands.Cog):
             None.
         """
 
-        if logging_info := (await retrieve_query(self.bot.connection,
-                                                 'SELECT BITS FROM LOGGING WHERE GUILD_ID=?',
-                                                 (ctx.guild.id,))):
-            await ctx.send(embed=build_actions_embed(LoggingActions.all_actions((logging_info[0][0]))))
+        if logging_info := (await typed_retrieve_query(
+                self.bot.connection,
+                int,
+                'SELECT BITS FROM LOGGING WHERE GUILD_ID=?',
+                (ctx.guild.id,))
+        ):
+            # noinspection PyTypeChecker
+            # PyCharm Error: List[Type[T]] instead of List[T]
+            await ctx.send(embed=build_actions_embed(LoggingActions.all_actions((logging_info[0]))))
         else:
             await ctx.send('You must first set an audit channel before viewing audit actions.'
                            '\n_See `auditactions setchannel` for more information._')
@@ -203,16 +255,17 @@ class Audit(commands.Cog):
             None.
         """
 
-        if logging_info := (await retrieve_query(self.bot.connection,
-                                                 'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
-                                                 (ctx.guild.id,))):
-            bits = int(logging_info[0][1])
-
+        if logging_info := (await typed_retrieve_query(
+                self.bot.connection,
+                PartialLoggingAction,
+                'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
+                (ctx.guild.id,))
+        ):
             # create an asyncio.Condition to allow for concurrency checking
             condition = Condition()
 
             # start the menu
-            menu = ActionBitMenu(LoggingActions.all_actions(bits), bits, condition)
+            menu = ActionBitMenu(LoggingActions.all_actions(logging_info[0].bits), logging_info[0].bits, condition)
             await menu.start(ctx)
 
             # while the menu is active, this method is active
