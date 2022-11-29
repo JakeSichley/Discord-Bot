@@ -22,11 +22,44 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import List, Tuple, Any, Optional
+import dataclasses
+from typing import List, Tuple, Any, Optional, TypeVar
 
 import aiosqlite
 
 from utils.logging_formatter import bot_logger
+
+T = TypeVar('T')
+
+
+@dataclasses.dataclass
+class DatabaseDataclass:
+    """
+    A `dataclass` used to enforce type-safety for type-specified database retrievals.
+
+    This class no attributes of its own, and is meant to subclassed.
+    """
+
+    def __post_init__(self) -> None:
+        """
+        A method called after the initialization of a `dataclass`.
+        Using the built-in fields attribute, we can check the actual fields vs the intended fields, and raise
+        an exception if they don't match.
+
+        Parameters:
+            None.
+
+        Raises:
+            ValueError.
+
+        Returns:
+            None.
+        """
+
+        for field in dataclasses.fields(self):
+            value = getattr(self, field.name)
+            if not isinstance(value, field.type):
+                raise ValueError(f'Expected {field.name} to be {field.type}, got {type(value)}')
 
 
 async def execute_query(connection: aiosqlite.Connection, query: str, values: Tuple[Any, ...] = None) -> Optional[int]:
@@ -38,6 +71,9 @@ async def execute_query(connection: aiosqlite.Connection, query: str, values: Tu
         connection (aiosqlite.Connection): The bot's current database connection.
         query (str): The statement to execute.
         values (Tuple[Any, ...]): The values to insert into the query.
+
+    Raises:
+        aiosqlite.Error.
 
     Returns:
         (Optional[int]): The number of affect rows.
@@ -55,7 +91,9 @@ async def execute_query(connection: aiosqlite.Connection, query: str, values: Tu
         raise error
 
 
-async def retrieve_query(connection: aiosqlite.Connection, query: str, values: Tuple[Any, ...] = None) -> List[Any]:
+async def retrieve_query(
+        connection: aiosqlite.Connection, query: str, values: Tuple[Any, ...] = None
+) -> List[Tuple[Any, ...]]:
     """
     A method that returns the result of a sqlite3 'SELECT' statement.
     Note: Use execute_query() for non-'SELECT' statements.
@@ -65,8 +103,11 @@ async def retrieve_query(connection: aiosqlite.Connection, query: str, values: T
         query (str): The statement to execute.
         values (Tuple[Any, ...]): The values to insert into the query.
 
+    Raises:
+        aiosqlite.Error.
+
     Returns:
-        (List[Any]): A list of sqlite3 row objects. Can be empty.
+        (List[Tuple[Any, ...]]): A list of sqlite3 row objects. Can be empty.
     """
 
     values = values if values else tuple()
@@ -78,3 +119,102 @@ async def retrieve_query(connection: aiosqlite.Connection, query: str, values: T
     except aiosqlite.Error as error:
         bot_logger.error(f'Retrieve Query ("{query}"). {error}.')
         raise error
+
+
+async def typed_retrieve_query(
+        connection: aiosqlite.Connection, data_type: T, query: str, values: Tuple[Any, ...] = None,
+) -> List[T]:
+    """
+    An advanced SQLite 'SELECT' query. Attempts to coerced retrieved rows to the specified data type.
+
+    Warnings:
+        PyCharm incorrectly warns for primitive types. List[Type[int]] instead of List[int].
+
+    Examples:
+        There's three primary ways to use `typed_retrieve_query`:
+            (1) Primitive types,
+            (2) Named Tuples,
+            (3) DatabaseDataclass subclasses
+
+        Primitives and NamedTuples are quick and easy ways to work with more structured data, but don't enforce
+        type safety. `DatabaseDataclass` subclasses require more work to set up, but enforce type safety.
+
+        (1) Primitive Types
+            Useful for selecting a single column from a table.
+
+            typed_retrieve_query(
+                ...,
+                str,
+                'SELECT PREFIX FROM PREFIXES WHERE GUILD_ID=...',
+                ...
+            )
+
+        (2) NamedTuples
+            Useful for selecting multiple (but still partial) data from a table.
+            Provides named attribute access to the requested data, but does not force type coercion.
+
+            typed_retrieve_query(
+                ...,
+                NamedTuple('PartialVoiceRole', [('channel_id', int), ('role_id', int)]),
+                'SELECT CHANNEL_ID, ROLE_ID FROM VOICE_ROLES WHERE GUILD_ID=...',
+                ...
+            )
+
+        (3) `DatabaseDataclass` subclasses
+            Useful for selecting full rows from a table.
+            Provides named attribute access to the requested data with full type safety.
+
+            Note:
+                If this level of type-safety is desirable (or required) for all queries, the data_type parameter
+                can be narrowed to TypeVar('T', bound=Type[DatabaseDataclass], covariant=True).
+
+            @dataclass
+            class VoiceRole(DatabaseDataclass):
+                guild_id: int
+                channel_id: int
+                role_id: int
+
+            typed_retrieve_query(
+                ...,
+                VoiceRole,
+                'SELECT * FROM VOICE_ROLES WHERE GUILD_ID=...',
+                ...
+            )
+
+    Parameters:
+        connection (aiosqlite.Connection): The bot's current database connection.
+        data_type (T): The data type to coerce returned rows to.
+        query (str): The statement to execute.
+        values (Tuple[Any, ...]): The values to insert into the query.
+
+    Raises:
+        aiosqlite.Error.
+
+    Returns:
+        (List[Any]): A list of sqlite3 row objects. Can be empty.
+    """
+
+    values = values if values else tuple()
+
+    try:
+        async with connection.execute(query, values) as cursor:
+            data = await cursor.fetchall()
+    except aiosqlite.Error as error:
+        bot_logger.error(f'Retrieve Query ("{query}"). {error}.')
+        raise error
+
+    transformed_entries = []
+
+    for entry in data:
+        try:
+            transformed_entries.append(data_type(*entry))
+        except (TypeError, ValueError) as e:  # data couldn't be coerced to T
+            bot_logger.error(
+                f'Bad Entry for type {data_type} - {e}.\n'
+                f'Data: {entry}\n'
+                f'Query: {query}\n'
+                f'Params: {values}'
+            )
+            pass
+
+    return transformed_entries

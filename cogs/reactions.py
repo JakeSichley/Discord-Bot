@@ -23,6 +23,7 @@ SOFTWARE.
 """
 
 from asyncio import TimeoutError
+from dataclasses import dataclass
 from math import ceil
 from typing import Union, Optional, List, Tuple
 
@@ -32,10 +33,44 @@ from discord.ext import commands
 from dreambot import DreamBot
 from utils.context import Context
 from utils.converters import GuildConverter
-from utils.database.helpers import execute_query, retrieve_query
+from utils.database.helpers import execute_query, typed_retrieve_query, DatabaseDataclass
 from utils.logging_formatter import bot_logger
 from utils.prompts import prompt_user_for_role, prompt_user_for_discord_message
 from utils.utils import cleanup
+
+
+@dataclass
+class PartialReactionRole(DatabaseDataclass):
+    """
+    A DatabaseDataclass that stores the reaction, role_id, and channel_id of a ReactionRole.
+
+    Attributes:
+        guild_id (int): The guild id associated with the reaction role.
+        channel_id (int): The channel id associated with the reaction role.
+        message_id (int): The message id associated with the reaction role.
+        reaction (str): The reaction associated with the reaction role.
+        role_id (int): The role id associated with the reaction role.
+    """
+
+    guild_id: int
+    channel_id: int
+    message_id: int
+    reaction: str
+    role_id: int
+
+    @property
+    def jump_url(self) -> str:
+        """
+        Generates a Discord 'jump url' for this reaction role's message.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str).
+        """
+
+        return f'https://discordapp.com/channels/{self.guild_id}/{self.channel_id}/{self.message_id}'
 
 
 class ReactionRoles(commands.Cog):
@@ -216,7 +251,7 @@ class ReactionRoles(commands.Cog):
         cleanup_messages = []
 
         if not message:
-            initial_message = 'Please specify the message you want to set up Reaction Roles for!\nYou can right ' \
+            initial_message = 'Please specify the message you want to remove a Reaction Role for!\nYou can right ' \
                               'click on a message and send either the Message ID or you can also send the entire ' \
                               'Message Link!'
             cleanup_messages, message = await prompt_user_for_discord_message(self.bot, ctx, initial_message)
@@ -231,12 +266,15 @@ class ReactionRoles(commands.Cog):
             return
 
         # once we have a message id, proceed with deletion confirmation
-        if roles := await retrieve_query(self.bot.connection,
-                                         'SELECT REACTION, ROLE_ID, CHANNEL_ID FROM REACTION_ROLES '
-                                         'WHERE MESSAGE_ID=?', (message.id,)):
+        if reaction_roles := await typed_retrieve_query(
+                self.bot.connection,
+                PartialReactionRole,
+                'SELECT * FROM REACTION_ROLES WHERE MESSAGE_ID=?',
+                (message.id,)
+        ):
             # roles contain reactions, roles
             # build embed
-            data = [(reaction, ctx.guild.get_role(role)) for reaction, role, _, in roles]
+            data = [(data.reaction, ctx.guild.get_role(data.role_id)) for data in reaction_roles]
             reaction_role_pagination = ReactionRolePagination(ctx, data)
 
             await reaction_role_pagination.start(message)
@@ -344,7 +382,7 @@ class ReactionRoles(commands.Cog):
         cleanup_messages = []
 
         if not message:
-            initial_message = 'Please specify the message you want to set up Reaction Roles for!\nYou can right ' \
+            initial_message = 'Please specify the message you want to clear Reaction Roles for!\nYou can right ' \
                               'click on a message and send either the Message ID or you can also send the entire ' \
                               'Message Link!'
             cleanup_messages, message = await prompt_user_for_discord_message(self.bot, ctx, initial_message)
@@ -359,12 +397,17 @@ class ReactionRoles(commands.Cog):
             return
 
         # once we have a message id, proceed with deletion confirmation
-        if roles := await retrieve_query(self.bot.connection,
-                                         'SELECT REACTION, ROLE_ID, CHANNEL_ID FROM REACTION_ROLES '
-                                         'WHERE MESSAGE_ID=?', (message.id,)):
-            response = await ctx.send(f'Are you sure want to remove **{len(roles)}** reaction roles from '
-                                      f'<https://discordapp.com/channels/{ctx.guild.id}/{roles[0][2]}/{message.id}>? '
-                                      f'This cannot be undone. If you wish to proceed, react to this message with ✅.')
+        if reaction_roles := await typed_retrieve_query(
+                self.bot.connection,
+                PartialReactionRole,
+                'SELECT * FROM REACTION_ROLES WHERE MESSAGE_ID=?',
+                (message.id,)
+        ):
+            response = await ctx.send(
+                f'Are you sure want to remove **{len(reaction_roles)}** reaction roles from '
+                f'<{reaction_roles[0].jump_url}>? This cannot be undone. If you wish to proceed, '
+                f'react to this message with ✅.'
+            )
             cleanup_messages.append(response)
 
             # make sure the reaction is added to the correct message and the reaction is added by our author
@@ -438,15 +481,18 @@ class ReactionRoles(commands.Cog):
                 details (Optional[str]): Details about the reaction roles of the message if possible. Could be None.
             """
 
-            if roles := await retrieve_query(self.bot.connection,
-                                             'SELECT REACTION, ROLE_ID, CHANNEL_ID FROM REACTION_ROLES '
-                                             'WHERE MESSAGE_ID=?', (message_id,)):
-                details = ('\t' * indent_level) + f'Reaction Roles for **Message:** <https://discordapp.com/channels/' \
-                                                  f'{ctx.guild.id}/{roles[0][2]}/{message_id}>\n'
+            if reaction_roles := await typed_retrieve_query(
+                    self.bot.connection,
+                    PartialReactionRole,
+                    'SELECT * FROM REACTION_ROLES WHERE MESSAGE_ID=?',
+                    (message_id,)
+            ):
+                details = ('\t' * indent_level) + f'Reaction Roles for **Message:** <{reaction_roles[0].jump_url}>\n'
 
-                for pair in roles:
-                    role_name = ctx.guild.get_role(pair[1])
-                    details += ('\t' * (indent_level + 2)) + f'{pair[0]} {role_name if role_name else "Invalid Role"}\n'
+                for data in reaction_roles:
+                    role_name = ctx.guild.get_role(data.role_id)
+                    details += ('\t' * (indent_level + 2)) + f'{data.reaction} ' \
+                                                             f'{role_name if role_name else "Invalid Role"}\n'
 
                 return details
             else:
@@ -464,13 +510,18 @@ class ReactionRoles(commands.Cog):
                 details (Optional[str]): Details about the reaction roles of the channel if possible. Could be None.
             """
 
-            if messages := await retrieve_query(self.bot.connection,
-                                                'SELECT DISTINCT MESSAGE_ID FROM REACTION_ROLES WHERE CHANNEL_ID=?',
-                                                (channel_id,)):
+            if messages := await typed_retrieve_query(
+                    self.bot.connection,
+                    int,
+                    'SELECT DISTINCT MESSAGE_ID FROM REACTION_ROLES WHERE CHANNEL_ID=?',
+                    (channel_id,)
+            ):
                 details = ('\t' * indent_level) + f'Reaction Roles for **Channel:** <#{channel_id}>\n'
 
-                for message in messages:
-                    message_details = await message_selection(message[0], indent_level + 1)
+                for message_id in messages:
+                    # noinspection PyTypeChecker
+                    # PyCharm Error: List[Type[T]] instead of List[T]
+                    message_details = await message_selection(message_id, indent_level + 1)
                     details += ('\t' * indent_level) + message_details + '\n' if message_details is not None else 'None'
 
                 return details
@@ -488,13 +539,18 @@ class ReactionRoles(commands.Cog):
                 details (Optional[str]): Details about the reaction roles of the guild if possible. Could be None.
             """
 
-            if channels := await retrieve_query(self.bot.connection,
-                                                'SELECT DISTINCT CHANNEL_ID FROM REACTION_ROLES WHERE GUILD_ID=?',
-                                                (guild_id,)):
+            if channels := await typed_retrieve_query(
+                    self.bot.connection,
+                    int,
+                    'SELECT DISTINCT CHANNEL_ID FROM REACTION_ROLES WHERE GUILD_ID=?',
+                    (guild_id,)
+            ):
                 details = f'Reaction Roles for **Guild: {ctx.guild.name}**\n'
 
-                for channel in channels:
-                    channel_details = await channel_selection(channel[0], 1)
+                for channel_id in channels:
+                    # noinspection PyTypeChecker
+                    # PyCharm Error: List[Type[T]] instead of List[T]
+                    channel_details = await channel_selection(channel_id, 1)
                     details += channel_details if channel_details is not None else 'None'
 
                 return details
@@ -544,13 +600,18 @@ class ReactionRoles(commands.Cog):
         if payload.user_id == self.bot.user.id:
             return
 
-        if role_id := await retrieve_query(self.bot.connection,
-                                           'SELECT ROLE_ID FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
-                                           (payload.message_id, str(payload.emoji))):
+        if roles := await typed_retrieve_query(
+                self.bot.connection,
+                int,
+                'SELECT ROLE_ID FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
+                (payload.message_id, str(payload.emoji))
+        ):
             # if there's a role for the given message + reaction, attempt to fetch the guild
             if guild := self.bot.get_guild(payload.guild_id):
                 # if we fetched the guild, try to fetch the member and the role
-                role = guild.get_role(role_id[0][0])
+                # noinspection PyTypeChecker
+                # PyCharm Error: List[Type[T]] instead of List[T]
+                role = guild.get_role(roles[0])
                 member = guild.get_member(payload.user_id)
                 # if we fetched all our prerequisites, attempt to add the role to the member
                 if role and member:
@@ -577,13 +638,18 @@ class ReactionRoles(commands.Cog):
         if payload.user_id == self.bot.user.id:
             return
 
-        if role_id := await retrieve_query(self.bot.connection,
-                                           'SELECT ROLE_ID FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
-                                           (payload.message_id, str(payload.emoji))):
+        if roles := await typed_retrieve_query(
+                self.bot.connection,
+                int,
+                'SELECT ROLE_ID FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
+                (payload.message_id, str(payload.emoji))
+        ):
             # if there's a role for the given message + reaction, attempt to fetch the guild
             if guild := self.bot.get_guild(payload.guild_id):
                 # if we fetched the guild, try to fetch the member and the role
-                role = guild.get_role(role_id[0][0])
+                # noinspection PyTypeChecker
+                # PyCharm Error: List[Type[T]] instead of List[T]
+                role = guild.get_role(roles[0])
                 member = guild.get_member(payload.user_id)
                 # if we fetched all our prerequisites, attempt to remove the role from the member
                 if role and member:

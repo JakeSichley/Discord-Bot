@@ -149,7 +149,7 @@ class Context(commands.Context):
         except TimeoutError:
             result = None
         else:
-            result = True if str(payload.emoji) == '✅' else False
+            result = str(payload.emoji) == '✅'
         finally:
             if ephemeral:
                 await prompt.delete()

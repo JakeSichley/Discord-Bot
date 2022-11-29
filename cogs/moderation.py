@@ -32,7 +32,7 @@ from discord.ext import commands
 from dreambot import DreamBot
 from utils.context import Context
 from utils.converters import AggressiveDefaultMemberConverter
-from utils.database.helpers import execute_query, retrieve_query
+from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.logging_formatter import bot_logger
 
 CHANNEL_OBJECT = Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]
@@ -218,9 +218,15 @@ class Moderation(commands.Cog):
             None.
         """
 
-        if role := (await retrieve_query(self.bot.connection, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
-                                         (ctx.guild.id,))):
-            role = ctx.guild.get_role(role[0][0])
+        if role := (await typed_retrieve_query(
+                self.bot.connection,
+                int,
+                'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+                (ctx.guild.id,))
+        ):
+            # noinspection PyTypeChecker
+            # PyCharm Error: List[Type[T]] instead of List[T]
+            role = ctx.guild.get_role(role[0])
             await ctx.send(f'The default role for the server is **{role.name}**')
         else:
             await ctx.send(f'There is no default role set for the server.')
@@ -300,16 +306,25 @@ class Moderation(commands.Cog):
         if 'MEMBER_VERIFICATION_GATE_ENABLED' in member.guild.features:
             return
 
-        if role := (await retrieve_query(self.bot.connection, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
-                                         (member.guild.id,))):
-            role = member.guild.get_role(role[0][0])
+        if role := (await typed_retrieve_query(
+                self.bot.connection,
+                int,
+                'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+                (member.guild.id,))
+        ):
+            # noinspection PyTypeChecker
+            # PyCharm Error: List[Type[T]] instead of List[T]
+            role = member.guild.get_role(role[0])
 
             try:
                 await member.add_roles(role, reason='Default Role Assignment')
             except discord.HTTPException as e:
                 bot_logger.error(f'Role Addition Failure. {e.status}. {e.text}')
-                await execute_query(self.bot.connection, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
-                                    (member.guild.id,))
+                await execute_query(
+                    self.bot.connection,
+                    'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+                    (member.guild.id,)
+                )
 
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
@@ -328,9 +343,15 @@ class Moderation(commands.Cog):
         """
 
         if 'MEMBER_VERIFICATION_GATE_ENABLED' in after.guild.features and before.pending and not after.pending:
-            if role := (await retrieve_query(self.bot.connection, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
-                                             (after.guild.id,))):
-                role = after.guild.get_role(role[0][0])
+            if role := (await typed_retrieve_query(
+                    self.bot.connection,
+                    int,
+                    'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+                    (after.guild.id,))
+            ):
+                # noinspection PyTypeChecker
+                # PyCharm Error: List[Type[T]] instead of List[T]
+                role = after.guild.get_role(role[0])
 
                 try:
                     await after.add_roles(role, reason='Default Role [Membership Screening] Assignment')

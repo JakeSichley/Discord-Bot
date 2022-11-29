@@ -24,6 +24,7 @@ SOFTWARE.
 
 from collections import defaultdict
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime
 from os import getcwd, listdir, path
 from sys import stderr
@@ -38,9 +39,24 @@ from google.cloud import errorreporting_v1beta1 as error_reporting
 
 from utils.context import Context
 from utils.cooldowns import CooldownMapping
-from utils.database.helpers import retrieve_query
+from utils.database.helpers import DatabaseDataclass, typed_retrieve_query
 from utils.logging_formatter import bot_logger
 from utils.utils import generate_activity
+
+
+@dataclass
+class Prefix(DatabaseDataclass):
+    """
+    A DatabaseDataclass that stores a guild's prefix information.
+
+    Attributes:
+        guild_id (int): The id of the guild.
+        prefix (str): A prefix of the guild.
+
+    """
+
+    guild_id: int
+    prefix: str
 
 
 class DreamBot(Bot):
@@ -228,9 +244,9 @@ class DreamBot(Bot):
 
         try:
             self.prefixes.clear()
-            result = await retrieve_query(self.connection, 'SELECT * FROM PREFIXES')
+            prefixes = await typed_retrieve_query(self.connection, Prefix, 'SELECT * FROM PREFIXES')
 
-            for guild, prefix in result:
+            for guild, prefix in prefixes:
                 if int(guild) in self.prefixes:
                     self.prefixes[int(guild)].append(prefix)
                 else:
