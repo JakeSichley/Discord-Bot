@@ -91,11 +91,44 @@ async def execute_query(connection: aiosqlite.Connection, query: str, values: Tu
         raise error
 
 
+async def retrieve_query(
+        connection: aiosqlite.Connection, query: str, values: Tuple[Any, ...] = None
+) -> List[Tuple[Any, ...]]:
+    """
+    A method that returns the result of a sqlite3 'SELECT' statement.
+    Note: Use execute_query() for non-'SELECT' statements.
+
+    Parameters:
+        connection (aiosqlite.Connection): The bot's current database connection.
+        query (str): The statement to execute.
+        values (Tuple[Any, ...]): The values to insert into the query.
+
+    Raises:
+        aiosqlite.Error.
+
+    Returns:
+        (List[Tuple[Any, ...]]): A list of sqlite3 row objects. Can be empty.
+    """
+
+    values = values if values else tuple()
+
+    try:
+        async with connection.execute(query, values) as cursor:
+            return await cursor.fetchall()
+
+    except aiosqlite.Error as error:
+        bot_logger.error(f'Retrieve Query ("{query}"). {error}.')
+        raise error
+
+
 async def typed_retrieve_query(
         connection: aiosqlite.Connection, data_type: T, query: str, values: Tuple[Any, ...] = None,
 ) -> List[T]:
     """
     An advanced SQLite 'SELECT' query. Attempts to coerced retrieved rows to the specified data type.
+
+    Warnings:
+        PyCharm incorrectly warns for primitive types. List[Type[int]] instead of List[int].
 
     Examples:
         There's three primary ways to use `typed_retrieve_query`:
@@ -122,7 +155,7 @@ async def typed_retrieve_query(
 
             typed_retrieve_query(
                 ...,
-                NamedTuple('PartialVoiceRole', [('channel_id', int), ('role_id', str)]),
+                NamedTuple('PartialVoiceRole', [('channel_id', int), ('role_id', int)]),
                 'SELECT CHANNEL_ID, ROLE_ID FROM VOICE_ROLES WHERE GUILD_ID=...',
                 ...
             )
@@ -144,7 +177,7 @@ async def typed_retrieve_query(
             typed_retrieve_query(
                 ...,
                 VoiceRole,
-                'SELECT CHANNEL_ID, ROLE_ID FROM VOICE_ROLES WHERE GUILD_ID=...',
+                'SELECT * FROM VOICE_ROLES WHERE GUILD_ID=...',
                 ...
             )
 
@@ -179,33 +212,3 @@ async def typed_retrieve_query(
             pass
 
     return transformed_entries
-
-
-async def retrieve_query(
-        connection: aiosqlite.Connection, query: str, values: Tuple[Any, ...] = None
-) -> List[Tuple[Any, ...]]:
-    """
-    A method that returns the result of a sqlite3 'SELECT' statement.
-    Note: Use execute_query() for non-'SELECT' statements.
-
-    Parameters:
-        connection (aiosqlite.Connection): The bot's current database connection.
-        query (str): The statement to execute.
-        values (Tuple[Any, ...]): The values to insert into the query.
-
-    Raises:
-        aiosqlite.Error.
-
-    Returns:
-        (List[Tuple[Any, ...]]): A list of sqlite3 row objects. Can be empty.
-    """
-
-    values = values if values else tuple()
-
-    try:
-        async with connection.execute(query, values) as cursor:
-            return await cursor.fetchall()
-
-    except aiosqlite.Error as error:
-        bot_logger.error(f'Retrieve Query ("{query}"). {error}.')
-        raise error
