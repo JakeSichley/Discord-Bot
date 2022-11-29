@@ -34,7 +34,7 @@ from discord.ext import commands
 from dreambot import DreamBot
 from utils.context import Context
 from utils.converters import StringConverter
-from utils.database.helpers import execute_query, retrieve_query
+from utils.database.helpers import execute_query, typed_retrieve_query, DatabaseDataclass
 from utils.logging_formatter import bot_logger
 from utils.prompts import prompt_user_for_content
 from utils.utils import cleanup, valid_content
@@ -55,7 +55,7 @@ TagName = StringConverter(
 
 
 @dataclass
-class Tag:
+class Tag(DatabaseDataclass):
     """
     A dataclass that represents the internal structure of a Tag.
 
@@ -65,7 +65,7 @@ class Tag:
         guild_id (int): The guild this tag belongs to.
         owner_id (int): The user that created this tag.
         uses (int): The number of times this tag has been used.
-        created (datetime): The time this tag was created.
+        created (int): The time this tag was created.
 
     """
 
@@ -74,7 +74,7 @@ class Tag:
     guild_id: int
     owner_id: int
     uses: int
-    created: datetime
+    created: int
 
 
 class Tags(commands.Cog):
@@ -367,12 +367,14 @@ async def fetch_tag(connection: Connection, guild_id: int, tag_name: str = None)
         query = 'SELECT * FROM TAGS WHERE GUILD_ID=? ORDER BY RANDOM() LIMIT 1'
         params = (guild_id,)
 
-    result = await retrieve_query(connection, query, params)
+    result = await typed_retrieve_query(connection, Tag, query, params)
 
     if not result:
         return None
 
-    return Tag(*result[0])
+    # noinspection PyTypeChecker
+    # PyCharm Error: List[Type[T]] instead of List[T]
+    return result[0]
 
 
 async def search_tags(connection: Connection, guild_id: int, tag_name: str) -> Optional[List[Tag]]:
@@ -389,15 +391,18 @@ async def search_tags(connection: Connection, guild_id: int, tag_name: str) -> O
     """
 
     try:
-        result = await retrieve_query(
+        result = await typed_retrieve_query(
             connection,
+            Tag,
             'SELECT * FROM TAGS WHERE NAME LIKE ? AND GUILD_ID=? LIMIT 5',
             (f'%{tag_name}%', guild_id)
         )
     except aiosqliteError:
         return None
     else:
-        return [Tag(*x) for x in result]
+        # noinspection PyTypeChecker
+        # PyCharm Error: List[Type[T]] instead of List[T]
+        return result
 
 
 async def increment_tag_count(connection: Connection, tag_name: str, guild_id: int) -> None:
