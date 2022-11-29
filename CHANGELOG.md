@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+# 2.6.3
+### Issues
+* Fix prefix iteration for Raspberry Pi
+
 ## 2.6.2
 ### Internal
 * Add typing to database retrieval queries
