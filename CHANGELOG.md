@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.6.2
+### Internal
+* Add typing to database retrieval queries
+
+### Issues
+* Fix several `VoiceRole` prompts
+
 ## 2.6.1
 ### Internal
 * Bump Pillow to `9.2.0` (CVE-2022-45198)
