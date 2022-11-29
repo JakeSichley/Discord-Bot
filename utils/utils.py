@@ -162,7 +162,7 @@ async def generate_activity(status_text: str, status_type: discord.ActivityType)
     try:
         git_status = result[0].decode()
         git_commit = search(r'(?<=commit )([A-z0-9]{7})', git_status).group()
-        git_description = search(r'(?<=JakeSichley/)([A-z0-9-]+)', git_status).group()
+        git_description = search(r'(?<=JakeSichley/)([A-z0-9-.]+)', git_status).group()
     except AttributeError:
         return discord.Activity(name=status_text, type=status_type)
     else:
