@@ -208,7 +208,13 @@ async def typed_retrieve_query(
     for entry in data:
         try:
             transformed_entries.append(data_type(*entry))
-        except (TypeError, ValueError):  # data couldn't be coerced to T
+        except (TypeError, ValueError) as e:  # data couldn't be coerced to T
+            bot_logger.error(
+                f'Bad Entry for type {data_type} - {e}.\n'
+                f'Data: {entry}\n'
+                f'Query: {query}\n'
+                f'Params: {values}'
+            )
             pass
 
     return transformed_entries

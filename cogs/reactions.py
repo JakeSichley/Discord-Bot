@@ -251,7 +251,7 @@ class ReactionRoles(commands.Cog):
         cleanup_messages = []
 
         if not message:
-            initial_message = 'Please specify the message you want to set up Reaction Roles for!\nYou can right ' \
+            initial_message = 'Please specify the message you want to remove a Reaction Role for!\nYou can right ' \
                               'click on a message and send either the Message ID or you can also send the entire ' \
                               'Message Link!'
             cleanup_messages, message = await prompt_user_for_discord_message(self.bot, ctx, initial_message)
@@ -382,7 +382,7 @@ class ReactionRoles(commands.Cog):
         cleanup_messages = []
 
         if not message:
-            initial_message = 'Please specify the message you want to set up Reaction Roles for!\nYou can right ' \
+            initial_message = 'Please specify the message you want to clear Reaction Roles for!\nYou can right ' \
                               'click on a message and send either the Message ID or you can also send the entire ' \
                               'Message Link!'
             cleanup_messages, message = await prompt_user_for_discord_message(self.bot, ctx, initial_message)
