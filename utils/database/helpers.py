@@ -22,11 +22,25 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import List, Tuple, Any, Optional
+from typing import List, Tuple, Any, Optional, TypeVar
 
 import aiosqlite
 
 from utils.logging_formatter import bot_logger
+
+# import dataclasses
+#
+#
+# @dataclasses.dataclass
+# class DatabaseDataclass:
+#     def __post_init__(self):
+#         for field in dataclasses.fields(self):
+#             value = getattr(self, field.name)
+#             if not isinstance(value, field.type):
+#                 raise ValueError(f'Expected {field.name} to be {field.type}, got {type(value)}')
+#
+#
+# T = TypeVar('T', bound=DatabaseDataclass, contravariant=True)
 
 
 async def execute_query(connection: aiosqlite.Connection, query: str, values: Tuple[Any, ...] = None) -> Optional[int]:
@@ -55,7 +69,9 @@ async def execute_query(connection: aiosqlite.Connection, query: str, values: Tu
         raise error
 
 
-async def retrieve_query(connection: aiosqlite.Connection, query: str, values: Tuple[Any, ...] = None) -> List[Any]:
+async def retrieve_query(
+        connection: aiosqlite.Connection, query: str, values: Tuple[Any, ...] = None
+) -> List[Tuple[Any, ...]]:
     """
     A method that returns the result of a sqlite3 'SELECT' statement.
     Note: Use execute_query() for non-'SELECT' statements.

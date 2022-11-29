@@ -200,7 +200,7 @@ class VoiceRoles(commands.Cog):
                 'SELECT ROLE_ID FROM VOICE_ROLES WHERE CHANNEL_ID=?',
                 (channel.id,)
         ):
-            role = ctx.guild.get_role(role[0])
+            role = ctx.guild.get_role(role[0][0])
 
             if not role:
                 await ctx.send('Channel or Role data could not be fetched. Deleting invalid voice role.')
@@ -252,7 +252,7 @@ class VoiceRoles(commands.Cog):
                 'SELECT ROLE_ID FROM VOICE_ROLES WHERE CHANNEL_ID=?',
                 (channel.id,)
         ):
-            role = ctx.guild.get_role(role[0])
+            role = ctx.guild.get_role(role[0][0])
 
             if not role:
                 await ctx.send(f'There is currently an invalid role associated with the channel **{channel.name}**.')
