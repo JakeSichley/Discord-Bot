@@ -113,7 +113,7 @@ class VoiceRoles(commands.Cog):
             return
 
         if not channel:
-            initial_message = 'Please specify the channel you want to remove a Voice Role for!\nYou can right click ' \
+            initial_message = 'Please specify the channel you want to add a Voice Role for!\nYou can right click ' \
                               'on a channel and send either the Channel ID or you can also send the quoted name ' \
                               '("My Voice Channel")!'
             cleanup_messages, channel = await prompt_user_for_voice_channel(self.bot, ctx, initial_message)
@@ -182,7 +182,10 @@ class VoiceRoles(commands.Cog):
         """
 
         if not channel:
-            cleanup_messages, channel = await prompt_user_for_voice_channel(self.bot, ctx)
+            initial_message = 'Please specify the channel you want to remove a Voice Role for!\nYou can right click ' \
+                              'on a channel and send either the Channel ID or you can also send the quoted name ' \
+                              '("My Voice Channel")!'
+            cleanup_messages, channel = await prompt_user_for_voice_channel(self.bot, ctx, initial_message)
 
             if not channel:
                 await cleanup(cleanup_messages, ctx.channel)
@@ -231,7 +234,7 @@ class VoiceRoles(commands.Cog):
         """
 
         if not channel:
-            initial_message = 'Please specify the channel you want to remove a Voice Role for!\nYou can right click ' \
+            initial_message = 'Please specify the channel you want to check a Voice Role for!\nYou can right click ' \
                               'on a channel and send either the Channel ID or you can also send the quoted name ' \
                               '("My Voice Channel")!'
             cleanup_messages, channel = await prompt_user_for_voice_channel(self.bot, ctx, initial_message)
