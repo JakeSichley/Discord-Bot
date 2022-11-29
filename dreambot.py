@@ -246,11 +246,11 @@ class DreamBot(Bot):
             self.prefixes.clear()
             prefixes = await typed_retrieve_query(self.connection, Prefix, 'SELECT * FROM PREFIXES')
 
-            for guild, prefix in prefixes:
-                if int(guild) in self.prefixes:
-                    self.prefixes[int(guild)].append(prefix)
+            for prefix in prefixes:
+                if prefix.guild_id in self.prefixes:
+                    self.prefixes[prefix.guild_id].append(prefix)
                 else:
-                    self.prefixes[int(guild)] = [prefix]
+                    self.prefixes[prefix.guild_id] = [prefix]
 
         except aiosqliteError as e:
             bot_logger.error(f'Failed prefix retrieval. {e}')
