@@ -23,13 +23,13 @@ SOFTWARE.
 """
 
 import dataclasses
-from typing import List, Tuple, Any, Optional, TypeVar
+from typing import List, Tuple, Any, Optional, TypeVar, Iterable, Callable
 
 import aiosqlite
 
 from utils.logging_formatter import bot_logger
 
-T = TypeVar('T')
+T = TypeVar('T', bound=Callable)
 
 
 @dataclasses.dataclass
@@ -62,7 +62,9 @@ class DatabaseDataclass:
                 raise ValueError(f'Expected {field.name} to be {field.type}, got {type(value)}')
 
 
-async def execute_query(connection: aiosqlite.Connection, query: str, values: Tuple[Any, ...] = None) -> Optional[int]:
+async def execute_query(
+        connection: aiosqlite.Connection, query: str, values: Optional[Tuple[Any, ...]] = None
+) -> Optional[int]:
     """
     A method that executes a sqlite3 statement.
     Note: Use retrieve_query() for 'SELECT' statements.
@@ -79,7 +81,7 @@ async def execute_query(connection: aiosqlite.Connection, query: str, values: Tu
         (Optional[int]): The number of affect rows.
     """
 
-    values = values if values else tuple()
+    values = values or tuple()
 
     try:
         affected = await connection.execute(query, values)
@@ -92,8 +94,8 @@ async def execute_query(connection: aiosqlite.Connection, query: str, values: Tu
 
 
 async def retrieve_query(
-        connection: aiosqlite.Connection, query: str, values: Tuple[Any, ...] = None
-) -> List[Tuple[Any, ...]]:
+        connection: aiosqlite.Connection, query: str, values: Optional[Tuple[Any, ...]] = None
+) -> Iterable[aiosqlite.Row]:
     """
     A method that returns the result of a sqlite3 'SELECT' statement.
     Note: Use execute_query() for non-'SELECT' statements.
@@ -110,7 +112,7 @@ async def retrieve_query(
         (List[Tuple[Any, ...]]): A list of sqlite3 row objects. Can be empty.
     """
 
-    values = values if values else tuple()
+    values = values or tuple()
 
     try:
         async with connection.execute(query, values) as cursor:
@@ -122,7 +124,7 @@ async def retrieve_query(
 
 
 async def typed_retrieve_query(
-        connection: aiosqlite.Connection, data_type: T, query: str, values: Tuple[Any, ...] = None,
+        connection: aiosqlite.Connection, data_type: T, query: str, values: Optional[Tuple[Any, ...]] = None,
 ) -> List[T]:
     """
     An advanced SQLite 'SELECT' query. Attempts to coerced retrieved rows to the specified data type.
