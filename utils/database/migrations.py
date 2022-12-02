@@ -41,6 +41,14 @@ class MigrationVersionMismatch(Exception):
     pass
 
 
+class DatabaseVersionMissing(Exception):
+    """
+    Error raised when the database's version couldn't be fetched.
+    """
+
+    pass
+
+
 class Migration:
     """
     A class that holding information related to a SQL migration file.
@@ -139,7 +147,7 @@ class Migrator:
 
         self.database = database
         self.version = 0
-        self._migrations = []
+        self._migrations: List[Migration] = []
 
     async def __aenter__(self) -> 'Migrator':
         """
@@ -172,7 +180,6 @@ class Migrator:
         """
 
         if exc_type:
-            exc_val = exc_val or 'N/A'
             bot_logger.error(f'Encountered {exc_type}: {exc_val} while applying migrations.')
         if exc_tb:
             bot_logger.error(f'Traceback: {exc_tb}')
@@ -207,7 +214,7 @@ class Migrator:
             None.
         """
 
-        await self._create_database()
+        await self._get_version()
 
         migration_count = len(self._available_migrations)
 
@@ -231,9 +238,12 @@ class Migrator:
 
         bot_logger.info(f'Successfully applied all migrations.')
 
-    async def _create_database(self) -> None:
+    async def _get_version(self) -> None:
         """
         Connects to (and implicitly creates if necessary) and fetches the current database version.
+
+        Raises:
+            DatabaseVersionMissing.
 
         Parameters:
             None.
@@ -244,13 +254,22 @@ class Migrator:
 
         async with aiosqlite.connect(self.database) as connection:
             async with connection.execute('PRAGMA user_version') as cursor:
-                self.version = (await cursor.fetchone())[0]
+                result = await cursor.fetchone()
+
+                if result and len(result) == 1:
+                    self.version = result[0]
+                else:
+                    raise DatabaseVersionMissing
 
     async def _migrate(self, migration: Migration) -> None:
         """
         Applies a given migration.
 
         If the current migration is not strictly sequential relative to the current version, the migration fails.
+
+        Raises:
+            MigrationVersionMismatch.
+            DatabaseVersionMissing.
 
         Parameters:
             migration (Migration): The migration to apply.
@@ -265,7 +284,12 @@ class Migrator:
         async with aiosqlite.connect(self.database) as connection:
             await connection.executescript(migration.script)
             async with connection.execute('PRAGMA user_version') as cursor:
-                self.version = (await cursor.fetchone())[0]
+                result = await cursor.fetchone()
+
+                if result and len(result) == 1:
+                    self.version = result[0]
+                else:
+                    raise DatabaseVersionMissing
 
     async def _prepare_migrations(self) -> None:
         """
