@@ -159,7 +159,7 @@ class StreamLoggingFormatter(logging.Formatter):
             (str): The formatted record.
         """
 
-        log_format = self.formats.get(record.levelno, logging.INFO)
+        log_format = self.formats.get(record.levelno, self.basic_format)
         formatter = logging.Formatter(log_format, datefmt=self.datefmt)
         return formatter.format(record)
 
@@ -210,7 +210,7 @@ class FileLoggingFormatter(logging.Formatter):
             (str): The formatted record.
         """
 
-        log_format: str = self.formats.get(record.levelno, logging.DEBUG)
+        log_format = self.formats.get(record.levelno, self.basic_format)
         formatter = logging.Formatter(log_format, datefmt=self.datefmt)
         return formatter.format(record)
 
