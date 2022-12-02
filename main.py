@@ -31,7 +31,7 @@ import aiosqlite
 import discord
 from dotenv import load_dotenv
 
-from dreambot import DreamBot
+from dreambot import DreamBot, Optionals, GitOptionals
 from utils.database.migrations import Migrator
 from utils.logging_formatter import format_loggers, bot_logger
 from utils.utils import VERSION
@@ -53,47 +53,50 @@ async def main() -> None:
 
     # required
     token = getenv('DISCORD_TOKEN')
-    owner = int(getenv('OWNER_ID'))
-    prefix = getenv('PREFIX', '>')
     database = getenv('DATABASE')
+    prefix = getenv('PREFIX', '>')
+    owner = int(getenv('OWNER_ID', '-1'))
     environment = getenv('ENVIRONMENT', 'DEV')
+
+    assert database is not None
+    assert token is not None
 
     # apply database migrations
     async with Migrator(database) as m:
         await m.apply_migrations()
 
-    # optional
-    # noinspection PyTypeChecker
-    options = {
-        'status_type': discord.ActivityType(int(getenv('STATUS_TYPE', 1))),
-        'status_text': getenv('STATUS_TEXT'),
-        'firebase_project': getenv('FIREBASE_PROJECT')
-    }
-
-    # explicitly disabled cogs
+    # optionals
+    # disabled cogs
     try:
-        options['disabled_cogs'] = getenv('DISABLED_COGS').split(',')
+        disabled_cogs = getenv('DISABLED_COGS', '').split(',')
     except AttributeError:
-        pass
+        disabled_cogs = []
 
     # git optionals
-    git_options = {
+    git_options: GitOptionals = {
         'git_user': getenv('GITHUB_USER'),
         'git_repo': getenv('GITHUB_REPO'),
         'git_token': getenv('GITHUB_TOKEN')
     }
 
-    if all(git_options.values()):
-        options['git'] = git_options
+    # noinspection PyTypeChecker
+    options: Optionals = {
+        'status_type': discord.ActivityType(int(getenv('STATUS_TYPE', 1))),
+        'status_text': getenv('STATUS_TEXT'),
+        'firebase_project': getenv('FIREBASE_PROJECT'),
+        'disabled_cogs':  disabled_cogs,
+        'git': git_options
+    }
 
     async with (
         DreamBot(prefix, owner, environment, options=options) as bot,
         aiosqlite.connect(database) as connection,
         aiohttp.ClientSession() as session
     ):
-        bot.connection = connection
-        bot.session = session
-        await bot.start(token)
+        # mypy seems to lose context with multiple async with
+        bot.connection = connection  # type: ignore[attr-defined]
+        bot.session = session  # type: ignore[attr-defined]
+        await bot.start(token)  # type: ignore[attr-defined]
 
 
 # Run the bot

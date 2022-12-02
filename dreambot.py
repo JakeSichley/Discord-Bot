@@ -29,10 +29,10 @@ from datetime import datetime
 from os import getcwd, listdir, path
 from sys import stderr
 from traceback import print_exception, format_exception
-from typing import Optional, List, Any, Dict, Type, DefaultDict
+from typing import Optional, List, Dict, Type, DefaultDict, TypedDict, Union
 
 import discord
-from aiosqlite import Error as aiosqliteError
+from aiosqlite import Error as aiosqliteError, Connection
 from discord.ext import tasks
 from discord.ext.commands import ExtensionError, Bot, when_mentioned
 from google.cloud import errorreporting_v1beta1 as error_reporting
@@ -42,6 +42,27 @@ from utils.cooldowns import CooldownMapping
 from utils.database.helpers import DatabaseDataclass, typed_retrieve_query
 from utils.logging_formatter import bot_logger
 from utils.utils import generate_activity
+
+GitOptionals = TypedDict(
+    'GitOptionals',
+    {
+        'git_user': Optional[str],
+        'git_repo': Optional[str],
+        'git_token': Optional[str]
+    }
+)
+
+Optionals = TypedDict(
+    'Optionals',
+    {
+        'status_type': discord.ActivityType,
+        'status_text': Optional[str],
+        'disabled_cogs': List[str],
+        'firebase_project': Optional[str],
+        'git': Optional[GitOptionals]
+    },
+    total=False
+)
 
 
 @dataclass
@@ -79,7 +100,7 @@ class DreamBot(Bot):
         _reporting_client (Optional[ReportErrorsServiceAsyncClient]): The Firebase reporting client.
     """
 
-    def __init__(self, prefix: str, owner: int, environment: str, options: Optional[Dict[str, Optional[Any]]]) -> None:
+    def __init__(self, prefix: str, owner: int, environment: str, options: Optionals) -> None:
         """
         The constructor for the DreamBot class.
 
@@ -104,10 +125,11 @@ class DreamBot(Bot):
             command_prefix=get_prefix, case_insensitive=True, owner_id=owner, max_messages=None, intents=intents
         )
 
-        self.connection = None
+        # this will always be set as part of async initialization with context managers
+        self.connection: Connection = None  # type: ignore[assignment]
         self.session = None
         self.wavelink = None
-        self.prefixes = {}
+        self.prefixes: Dict[int, List[str]] = {}
         self.uptime = datetime.now()
         self.default_prefix = prefix
         self.environment = environment
@@ -118,10 +140,11 @@ class DreamBot(Bot):
         }
 
         # optionals
+        options = options or dict()
         # noinspection PyTypeChecker
         self._status_type = options.pop('status_type', discord.ActivityType(0))
         self._status_text = options.pop('status_text', None)
-        self._disabled_cogs = options.pop('disabled_cogs', [])
+        self._disabled_cogs: List[str] = options.pop('disabled_cogs')
         self._firebase_project = options.pop('firebase_project', None)
         self._reporting_client = None
 
@@ -170,6 +193,9 @@ class DreamBot(Bot):
             None.
         """
 
+        if ctx.command is None:
+            return
+
         # use try -> except rather .get chaining, since .get would require creating unnecessary objects
         try:
             self.dynamic_cooldowns[ctx.command.qualified_name][ctx.author.id].increment_failure_count()
@@ -187,8 +213,13 @@ class DreamBot(Bot):
             None.
         """
 
+        if ctx.command is None:
+            return
+
         # .get chaining is acceptable since we're only removing entries
-        self.dynamic_cooldowns.get(ctx.command.qualified_name, {}).pop(ctx.author.id, None)
+        self.dynamic_cooldowns.get(
+            ctx.command.qualified_name, {}
+        ).pop(ctx.author.id, None)  # type: ignore[call-overload]
 
     @tasks.loop(minutes=30)
     async def refresh_presence(self) -> None:
@@ -209,7 +240,7 @@ class DreamBot(Bot):
             bot_logger.error(f"Couldn't get a member instance of bot. Exception type: {type(e)}.")
             return
 
-        if bot_member.activity:
+        if bot_member.activity or self._status_text is None:
             return
 
         activity = await generate_activity(self._status_text, self._status_type)
@@ -244,13 +275,13 @@ class DreamBot(Bot):
 
         try:
             self.prefixes.clear()
-            prefixes = await typed_retrieve_query(self.connection, Prefix, 'SELECT * FROM PREFIXES')
+            prefix_rows = await typed_retrieve_query(self.connection, Prefix, 'SELECT * FROM PREFIXES')
 
-            for prefix in prefixes:
-                if prefix.guild_id in self.prefixes:
-                    self.prefixes[prefix.guild_id].append(prefix)
+            for row in prefix_rows:
+                if row.guild_id in self.prefixes:
+                    self.prefixes[row.guild_id].append(row.prefix)
                 else:
-                    self.prefixes[prefix.guild_id] = [prefix]
+                    self.prefixes[row.guild_id] = [row.prefix]
 
         except aiosqliteError as e:
             bot_logger.error(f'Failed prefix retrieval. {e}')
@@ -258,19 +289,21 @@ class DreamBot(Bot):
         else:
             bot_logger.info('Completed prefix retrieval')
 
-    async def get_context(self, message: discord.Message, *, cls: Type[Context] = Context) -> Context:
+    async def get_context(  # type: ignore[override]
+            self, origin: Union[discord.Message, discord.Interaction], /, *, cls=Context
+    ) -> Context:
         """
         Creates a Context instance for the current command invocation.
 
         Parameters:
-            message (discord.Message): The message to generate a context instance for.
-            cls (classmethod): The classmethod to generate the context instance with.
+            origin: (Union[discord.Message, discord.Interaction]): The message/interaction to generate a context for.
+            cls (Type[Context]): The classmethod to generate the context instance with.
 
         Returns:
             (Context): The custom context instance.
         """
 
-        return await super().get_context(message, cls=cls)
+        return await super().get_context(origin, cls=cls)  # type: ignore[override]
 
     async def report_exception(self, exception: Exception) -> None:
         """
@@ -300,7 +333,7 @@ async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:
         (List[str]): An iterable of valid prefix(es), including when the bot is mentioned.
     """
 
-    guild_id = message.guild.id if message.guild else None
+    guild_id = message.guild.id if message.guild else -1
     mentions = when_mentioned(bot, message)
     additional_prefixes = list(bot.prefixes.get(guild_id, bot.default_prefix))
 
