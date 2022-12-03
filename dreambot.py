@@ -355,7 +355,6 @@ def generate_error_event(exception: Exception, project_name: str) -> error_repor
     event = error_reporting.ReportedErrorEvent()
     event.message = ''.join(format_exception(type(exception), exception, exception.__traceback__))
 
-    # noinspection PyTypeChecker
     return error_reporting.ReportErrorEventRequest(
         project_name=project_name,
         event=event

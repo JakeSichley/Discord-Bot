@@ -156,10 +156,14 @@ async def cooldown_predicate(ctx: Context) -> bool:
     if ctx.command is None:
         return True
 
-    default_mapping = CooldownMapping()
-    cooldown_mapping = ctx.bot.dynamic_cooldowns.get(ctx.command.qualified_name, {}).get(ctx.author.id, default_mapping)
+    command_cooldown_mapping = ctx.bot.dynamic_cooldowns.get(ctx.command.qualified_name)
 
-    if cooldown := cooldown_mapping.remaining_cooldown:
+    if command_cooldown_mapping is None:
+        return True
+
+    author_mapping = command_cooldown_mapping.get(ctx.author.id, CooldownMapping())
+
+    if cooldown := author_mapping.remaining_cooldown:
         raise commands.CommandOnCooldown(cooldown, cooldown.per, commands.BucketType.user)
 
     return True

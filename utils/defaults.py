@@ -24,6 +24,7 @@ SOFTWARE.
 
 from typing import Optional
 
+import discord
 from discord import Message
 from discord.ext import commands
 
@@ -42,7 +43,8 @@ def default_message_reply(ctx: Context) -> Optional[Message]:
     """
 
     try:
-        return ctx.message.reference.resolved
+        reference = ctx.message.reference.resolved  # type: ignore[union-attr]
+        return reference if isinstance(reference, Message) else None
     except AttributeError:
         raise commands.BadArgument()
 

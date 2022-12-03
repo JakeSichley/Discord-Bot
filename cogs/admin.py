@@ -33,7 +33,7 @@ from io import StringIO
 from re import finditer
 from textwrap import indent
 from traceback import format_exc
-from typing import Union, Optional
+from typing import Union, Optional, Coroutine, Any
 
 import discord
 import pytz
@@ -76,7 +76,7 @@ class Admin(commands.Cog):
         self._last_result = None
         self.logging_line_break.start()
 
-    async def cog_check(self, ctx: Context) -> bool:
+    async def cog_check(self, ctx: Context) -> bool:  # type: ignore[override]
         """
         A method that registers a cog-wide check.
         Requires the invoking user to be the bot's owner.
@@ -165,6 +165,10 @@ class Admin(commands.Cog):
         Returns:
             None.
         """
+
+        if ctx.guild is None:
+            await ctx.send('`ctx.guild` was None.')
+            return
 
         if sync_type == 'global':
             synced = await ctx.bot.tree.sync()
@@ -319,7 +323,7 @@ class Admin(commands.Cog):
         await ctx.send('Reloaded Prefixes.')
 
     @commands.command(name='resetcooldown', aliases=['rc'], hidden=True)
-    async def reset_cooldown(self, ctx: Context, command: str) -> None:
+    async def reset_cooldown(self, ctx: Context, command_name: str) -> None:
         """
         A command to reset the cooldown of a command.
 
@@ -328,7 +332,7 @@ class Admin(commands.Cog):
 
         Parameters:
             ctx (Context): The invocation context.
-            command (str): The command for which the cooldown will be reset.
+            command_name (str): The command for which the cooldown will be reset.
 
         Output:
             'Reset cooldown of Command: (command)'.
@@ -337,8 +341,11 @@ class Admin(commands.Cog):
             None.
         """
 
-        self.bot.get_command(command).reset_cooldown(ctx)
-        await ctx.send(f'Reset cooldown of Command: `{command}`')
+        if command := self.bot.get_command(command_name):
+            command.reset_cooldown(ctx)
+            await ctx.send(f'Reset cooldown of Command: `{command_name}`')
+        else:
+            await ctx.send(f'Failed to get Command: `{command_name}`')
 
     @commands.command(name='exec', aliases=['execute'], hidden=True)
     async def _exec(self, ctx: Context, *, body: str) -> None:
@@ -394,7 +401,7 @@ class Admin(commands.Cog):
         # noinspection PyBroadException
         try:
             with redirect_stdout(stdout):
-                ret = await func()
+                ret = await func()  # type: ignore[operator]
 
         except Exception:
             value = stdout.getvalue()
@@ -437,6 +444,8 @@ class Admin(commands.Cog):
         Returns:
             None.
         """
+
+        assert self.bot.git is not None  # `@ensure_git_credentials` handles this
 
         result = await run_in_subprocess('git fetch && git diff --stat HEAD origin/master')
         actual_result = [x for x in result if x]

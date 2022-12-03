@@ -110,7 +110,6 @@ class Tags(commands.Cog):
         """
 
         if ctx.invoked_subcommand is None and tag_name:
-            # noinspection PyTypeChecker
             await ctx.invoke(self.get_tag, tag_name=tag_name)
         elif ctx.invoked_subcommand is None:
             await ctx.send_help('tag')
@@ -372,8 +371,6 @@ async def fetch_tag(connection: Connection, guild_id: int, tag_name: str = None)
     if not result:
         return None
 
-    # noinspection PyTypeChecker
-    # PyCharm Error: List[Type[T]] instead of List[T]
     return result[0]
 
 
@@ -400,8 +397,6 @@ async def search_tags(connection: Connection, guild_id: int, tag_name: str) -> O
     except aiosqliteError:
         return None
     else:
-        # noinspection PyTypeChecker
-        # PyCharm Error: List[Type[T]] instead of List[T]
         return result
 
 

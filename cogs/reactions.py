@@ -519,8 +519,6 @@ class ReactionRoles(commands.Cog):
                 details = ('\t' * indent_level) + f'Reaction Roles for **Channel:** <#{channel_id}>\n'
 
                 for message_id in messages:
-                    # noinspection PyTypeChecker
-                    # PyCharm Error: List[Type[T]] instead of List[T]
                     message_details = await message_selection(message_id, indent_level + 1)
                     details += ('\t' * indent_level) + message_details + '\n' if message_details is not None else 'None'
 
@@ -548,8 +546,6 @@ class ReactionRoles(commands.Cog):
                 details = f'Reaction Roles for **Guild: {ctx.guild.name}**\n'
 
                 for channel_id in channels:
-                    # noinspection PyTypeChecker
-                    # PyCharm Error: List[Type[T]] instead of List[T]
                     channel_details = await channel_selection(channel_id, 1)
                     details += channel_details if channel_details is not None else 'None'
 
@@ -609,8 +605,6 @@ class ReactionRoles(commands.Cog):
             # if there's a role for the given message + reaction, attempt to fetch the guild
             if guild := self.bot.get_guild(payload.guild_id):
                 # if we fetched the guild, try to fetch the member and the role
-                # noinspection PyTypeChecker
-                # PyCharm Error: List[Type[T]] instead of List[T]
                 role = guild.get_role(roles[0])
                 member = guild.get_member(payload.user_id)
                 # if we fetched all our prerequisites, attempt to add the role to the member
@@ -647,8 +641,6 @@ class ReactionRoles(commands.Cog):
             # if there's a role for the given message + reaction, attempt to fetch the guild
             if guild := self.bot.get_guild(payload.guild_id):
                 # if we fetched the guild, try to fetch the member and the role
-                # noinspection PyTypeChecker
-                # PyCharm Error: List[Type[T]] instead of List[T]
                 role = guild.get_role(roles[0])
                 member = guild.get_member(payload.user_id)
                 # if we fetched all our prerequisites, attempt to remove the role from the member

@@ -83,7 +83,7 @@ class EmojiComponent:
             (bool).
         """
 
-        return self.content and not self.failed
+        return bool(self.content) and not self.failed
 
     def set_failed(self, status: str) -> None:
         """
@@ -418,6 +418,10 @@ class EmojiManager:
 
         for emoji in filter(lambda x: not x.failed, self.__emojis):
             try:
+                if emoji.name is None or emoji.content is None:
+                    emoji.set_failed(f'**{emoji.name}** failed with Error: `MissingNameOrContent`')
+                    continue
+
                 created_emoji = await self.__guild.create_custom_emoji(
                     name=emoji.name, image=emoji.content, reason=f'Yoink\'d by {ctx.author}'
                 )
@@ -428,7 +432,7 @@ class EmojiManager:
                     bot_logger.warning(f'Yoink Add Reaction Error. {e.status}. {e.text}')
             except discord.HTTPException as e:
                 bot_logger.error(f'Yoink Creation Error. {e.status}. {e.text}')
-                emoji.set_failed = f'**{emoji.name}** failed with Error: `FailedToCreateEmoji`'
+                emoji.set_failed(f'**{emoji.name}** failed with Error: `FailedToCreateEmoji`')
 
         if self.__no_viable_emoji:
             raise NoViableEmoji(FailureStage.NETWORKING)

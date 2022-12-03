@@ -36,7 +36,7 @@ green = '\x1b[32m'
 red = '\x1b[31;20m'
 reset = '\x1b[0m'
 
-bot_logger = logging.getLogger('DreamBot')
+bot_logger: logging.Logger = logging.getLogger('DreamBot')
 
 
 def format_loggers() -> None:

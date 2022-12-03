@@ -224,8 +224,6 @@ class Moderation(commands.Cog):
                 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                 (ctx.guild.id,))
         ):
-            # noinspection PyTypeChecker
-            # PyCharm Error: List[Type[T]] instead of List[T]
             role = ctx.guild.get_role(role[0])
             await ctx.send(f'The default role for the server is **{role.name}**')
         else:
@@ -312,8 +310,6 @@ class Moderation(commands.Cog):
                 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                 (member.guild.id,))
         ):
-            # noinspection PyTypeChecker
-            # PyCharm Error: List[Type[T]] instead of List[T]
             role = member.guild.get_role(role[0])
 
             try:
@@ -349,8 +345,6 @@ class Moderation(commands.Cog):
                     'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                     (after.guild.id,))
             ):
-                # noinspection PyTypeChecker
-                # PyCharm Error: List[Type[T]] instead of List[T]
                 role = after.guild.get_role(role[0])
 
                 try:

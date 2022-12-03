@@ -201,8 +201,6 @@ class VoiceRoles(commands.Cog):
                 'SELECT ROLE_ID FROM VOICE_ROLES WHERE CHANNEL_ID=?',
                 (channel.id,)
         ):
-            # noinspection PyTypeChecker
-            # PyCharm Error: List[Type[T]] instead of List[T]
             role = ctx.guild.get_role(role[0])
 
             if not role:
@@ -256,8 +254,6 @@ class VoiceRoles(commands.Cog):
                 'SELECT ROLE_ID FROM VOICE_ROLES WHERE CHANNEL_ID=?',
                 (channel.id,)
         ):
-            # noinspection PyTypeChecker
-            # PyCharm Error: List[Type[T]] instead of List[T]
             role = ctx.guild.get_role(role[0])
 
             if not role:

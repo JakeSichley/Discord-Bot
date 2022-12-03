@@ -44,7 +44,7 @@ class GuildConverter(commands.IDConverter):
     2. Lookup by name
     """
 
-    async def convert(self, ctx: Context, argument: Any) -> Optional[discord.Guild]:
+    async def convert(self, ctx: Context, argument: Any) -> Optional[discord.Guild]:  # type: ignore[override]
         """
         Attempts to convert the argument into a discord.Guild object.
 
@@ -56,16 +56,18 @@ class GuildConverter(commands.IDConverter):
             result (discord.Guild): The resulting discord.Guild. Could be None if conversion failed without exceptions.
         """
 
+        if ctx.guild is None:
+            return None
+
         match = self._get_id_match(argument)
         result = None
-        guild = ctx.guild
 
         if match is None:
-            if argument.casefold() == guild.name.casefold():
+            if argument.casefold() == ctx.guild.name.casefold():
                 result = ctx.guild
         else:
             guild_id = int(match.group(1))
-            if guild and guild.id == guild_id:
+            if ctx.guild.id == guild_id:
                 result = ctx.guild
 
         if not isinstance(result, discord.Guild):
@@ -94,7 +96,7 @@ class DefaultMemberConverter(commands.MemberConverter):
     rather than the command failing.
     """
 
-    async def convert(self, ctx: Context, argument: Any) -> Union[discord.Member, str]:
+    async def convert(self, ctx: Context, argument: Any) -> Union[discord.Member, str]:  # type: ignore[override]
         """
         Attempts to convert the argument into a discord.Member object.
 
@@ -238,7 +240,7 @@ class AggressiveDefaultMemberConverter(commands.IDConverter):
             return None
         return members[0]
 
-    async def convert(self, ctx: Context, argument: Any) -> Union[discord.Member, str]:
+    async def convert(self, ctx: Context, argument: Any) -> Union[discord.Member, str]:  # type: ignore[override]
         """
         Attempts to aggressively convert the argument into a discord.Member object.
 
@@ -253,7 +255,7 @@ class AggressiveDefaultMemberConverter(commands.IDConverter):
         bot = ctx.bot
         match = self._get_id_match(argument) or re.match(r'<@!?([0-9]+)>$', argument)
         guild = ctx.guild
-        result = None
+        result: Optional[Union[discord.Member, discord.User]] = None
         user_id = None
         if match is None:
             if guild:
@@ -275,7 +277,7 @@ class AggressiveDefaultMemberConverter(commands.IDConverter):
             if not result:
                 return argument
 
-        return result if result else argument
+        return result if isinstance(result, discord.Member) else argument
 
 
 class StringConverter(commands.Converter):
@@ -286,19 +288,21 @@ class StringConverter(commands.Converter):
     groups or cogs when this behavior is desirable.
     """
 
-    def __init__(self, *, mutator: Callable = None, constraint: Callable = None):
+    def __init__(
+            self, *, mutator: Optional[Callable[[str], str]] = None, constraint: Optional[Callable[[str], bool]] = None
+    ) -> None:
         """
         The constructor for the StringConverter class.
 
         Parameters:
-            mutator (Callable): The mutation to apply during conversions.
-            constraint (Callable): The constraint to apply to the converted argument.
+            mutator (Optional[Callable[[str], str]]): The mutation to apply during conversions.
+            constraint (Optional[Callable[[str], bool]]): The constraint to apply to the converted argument.
         """
 
         self.mutator = mutator
         self.constraint = constraint
 
-    async def convert(self, ctx: Context, argument: str) -> str:
+    async def convert(self, ctx: Context, argument: str) -> str:  # type: ignore[override]
         """
         Attempts to convert the argument to a string. If successful, attempts to apply to specified mutator.
 
@@ -313,7 +317,7 @@ class StringConverter(commands.Converter):
         try:
             result = self.mutator(str(argument)) if self.mutator else str(argument)
 
-            if not self.constraint or (self.constraint and self.constraint(result)):
+            if not self.constraint or (self.constraint is not None and self.constraint(result)):
                 return result
             else:
                 raise commands.BadArgument(f'{result} failed constraint.')

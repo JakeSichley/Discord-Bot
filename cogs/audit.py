@@ -227,8 +227,6 @@ class Audit(commands.Cog):
                 'SELECT BITS FROM LOGGING WHERE GUILD_ID=?',
                 (ctx.guild.id,))
         ):
-            # noinspection PyTypeChecker
-            # PyCharm Error: List[Type[T]] instead of List[T]
             await ctx.send(embed=build_actions_embed(LoggingActions.all_actions((logging_info[0]))))
         else:
             await ctx.send('You must first set an audit channel before viewing audit actions.'
@@ -346,7 +344,6 @@ class LoggingActions(Enum):
             (bool): Whether the action flag is enabled.
         """
 
-        # noinspection PyTypeChecker
         return bool(action.value & action_bits)
 
     @staticmethod
@@ -361,7 +358,6 @@ class LoggingActions(Enum):
             ([Enum]): All logging actions that are enabled.
         """
 
-        # noinspection PyTypeChecker
         return [action.name for action in LoggingActions if action.value & action_bits]
 
     @staticmethod
