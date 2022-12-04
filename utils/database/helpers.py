@@ -23,14 +23,14 @@ SOFTWARE.
 """
 
 import dataclasses
-from typing import List, Tuple, Any, Optional, TypeVar, Callable, Iterable
-from typing_extensions import TypeGuard
+from typing import List, Tuple, Any, Optional, Iterable, Type, TypeVar
 
 import aiosqlite
+from typing_extensions import TypeGuard
 
 from utils.logging_formatter import bot_logger
 
-T = TypeVar('T', bound=Callable)
+T = TypeVar('T')
 
 
 @dataclasses.dataclass
@@ -118,7 +118,7 @@ async def retrieve_query(
     try:
         async with connection.execute(query, values) as cursor:
             rows = await cursor.fetchall()
-            assert(Sqlite3Typing.fetchall(rows))
+            assert (Sqlite3Typing.fetchall(rows))
 
             return rows
 
@@ -128,13 +128,10 @@ async def retrieve_query(
 
 
 async def typed_retrieve_query(
-        connection: aiosqlite.Connection, data_type: T, query: str, values: Optional[Tuple[Any, ...]] = None,
+        connection: aiosqlite.Connection, data_type: Type[T], query: str, values: Optional[Tuple[Any, ...]] = None,
 ) -> List[T]:
     """
-    An advanced SQLite 'SELECT' query. Attempts to coerced retrieved rows to the specified data type.
-
-    Warnings:
-        PyCharm incorrectly warns for primitive types. List[Type[int]] instead of List[int].
+    A typed SQLite 'SELECT' query. Attempts to coerced retrieved rows to the specified data type.
 
     Examples:
         There's three primary ways to use `typed_retrieve_query`:
