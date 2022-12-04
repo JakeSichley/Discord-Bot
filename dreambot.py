@@ -43,6 +43,8 @@ from utils.database.helpers import DatabaseDataclass, typed_retrieve_query
 from utils.logging_formatter import bot_logger
 from utils.utils import generate_activity
 
+from aiohttp import ClientSession
+
 GitOptionals = TypedDict(
     'GitOptionals',
     {
@@ -127,7 +129,7 @@ class DreamBot(Bot):
 
         # this will always be set as part of async initialization with context managers
         self.connection: Connection = None  # type: ignore[assignment]
-        self.session = None
+        self.session: ClientSession = None  # type: ignore[assignment]
         self.wavelink = None
         self.prefixes: Dict[int, List[str]] = {}
         self.uptime = datetime.now()
@@ -154,7 +156,7 @@ class DreamBot(Bot):
             )
 
         # git optionals
-        self.git = options.pop('git', None)
+        self.git: Optional[GitOptionals] = options.pop('git', None)
 
         # tasks
         self.refresh_presence.start()
@@ -355,6 +357,7 @@ def generate_error_event(exception: Exception, project_name: str) -> error_repor
     event = error_reporting.ReportedErrorEvent()
     event.message = ''.join(format_exception(type(exception), exception, exception.__traceback__))
 
+    # noinspection PyTypeChecker
     return error_reporting.ReportErrorEventRequest(
         project_name=project_name,
         event=event

@@ -33,7 +33,7 @@ from io import StringIO
 from re import finditer
 from textwrap import indent
 from traceback import format_exc
-from typing import Union, Optional, Coroutine, Any
+from typing import Union, Optional, Coroutine, Any, List, Sequence
 
 import discord
 import pytz
@@ -497,7 +497,12 @@ class Admin(commands.Cog):
 
         embed = discord.Embed(title='Git Pull Changes', color=0x00bbff)
         embed.url = f"https://github.com/{self.bot.git['git_user']}/{self.bot.git['git_repo']}"
-        embed.set_thumbnail(url=self.bot.user.avatar.url)
+
+        try:
+            embed.set_thumbnail(url=self.bot.user.avatar.url) # type: ignore[union-attr]
+        except AttributeError:
+            pass
+
         for field, value in fields.items():
             if value:
                 embed.add_field(name=field, value='\n'.join(value))
@@ -515,7 +520,7 @@ class Admin(commands.Cog):
         util_statuses, cog_statuses = [], []
 
         # -- utils --
-        ordered_reloads = []
+        ordered_reloads: List[str] = []
 
         for file in utils:
             if file in ['utils', 'network_utils']:
@@ -568,7 +573,8 @@ class Admin(commands.Cog):
         output += '\n```'
 
         # -- finalize --
-        await self.bot.change_presence(activity=await generate_activity(self.bot._status_text, self.bot._status_type))
+        if self.bot._status_text is not None and self.bot._status_type is not None:
+            await self.bot.change_presence(activity=await generate_activity(self.bot._status_text, self.bot._status_type))
         await ctx.safe_send(output)
 
     @git.command(name='dry_run', aliases=['dry', 'd'], hidden=True)
@@ -604,6 +610,8 @@ class Admin(commands.Cog):
         Returns:
             None.
         """
+
+        assert self.bot.git is not None  # `@ensure_git_credentials` handles this
 
         headers = {
             'User-Agent': f"{self.bot.git['git_user']}-{self.bot.git['git_repo']}",
@@ -702,10 +710,11 @@ class Admin(commands.Cog):
 
         message = copy(ctx.message)
         message.author = invoker
-        message.content = ctx.prefix + command
+        message.content = (ctx.prefix or ctx.bot.default_prefix) + command
         context = await self.bot.get_context(message)
         await self.bot.invoke(context)
 
+    @commands.guild_only()
     @commands.command(name='archive', hidden=True)
     async def archive(self, ctx: Context, target: int) -> None:
         """
@@ -720,18 +729,24 @@ class Admin(commands.Cog):
             None.
         """
 
-        target = self.bot.get_channel(target)
+        assert ctx.guild is not None  # `@guild_only` handles this
+
+        target_channel = self.bot.get_channel(target)
+
+        if target_channel is None or not isinstance(target_channel, (discord.TextChannel, discord.CategoryChannel)):
+            await ctx.send("Couldn't fetch target channel.")
+            return
 
         # try to create the new archive channel
-        category = await ctx.guild.create_category(name=target.name)
+        category = await ctx.guild.create_category(name=target_channel.name)
 
-        if isinstance(target, discord.TextChannel):
-            channel_list = [target]
+        if isinstance(target_channel, discord.TextChannel):
+            channel_list: Sequence[discord.abc.GuildChannel] = [target_channel]
         else:
-            channel_list = target.channels
+            channel_list = target_channel.channels
 
         # if the original or the new destination is unavailable, stop the process
-        if target is None or category is None:
+        if target_channel is None or category is None:
             await ctx.send('Could not fetch one or more channels.')
 
         # otherwise, begin the archive process
@@ -749,8 +764,11 @@ class Admin(commands.Cog):
                         # check for attachments and if any, try to convert them to files for sending
                         if len(message.attachments) > 0:
                             try:
-                                attachments = [await attachment.to_file() for attachment in message.attachments
-                                               if attachment.size <= 8000000]
+                                attachments = [
+                                    await attachment.to_file()
+                                    for attachment in message.attachments
+                                    if attachment.size <= 8000000
+                                ]
                                 bad_attachments = [f'`<Bad File: {attachment.filename} | File Size: {attachment.size}>`'
                                                    for attachment in message.attachments if attachment.size > 8000000]
 
@@ -784,8 +802,9 @@ class Admin(commands.Cog):
                                 buffer = await try_to_send_buffer(channel, buffer)
 
                             # send the remaining portion of the buffer, attachments or embeds, and clear the buffer
+                            # mypy incorrectly identifies send kwargs as non-optional
                             await channel.send(
-                                content=buffer, embed=embeds, files=attachments,
+                                content=buffer, embed=embeds, files=attachments,  # type: ignore[arg-type]
                                 allowed_mentions=discord.AllowedMentions.none()
                             )
                             buffer = ''
@@ -799,14 +818,14 @@ class Admin(commands.Cog):
                             # if the current message contents don't exceed the limit, send everything
                             if len(buffer) <= 2000:
                                 await channel.send(
-                                    content=buffer, embed=embeds, files=attachments,
+                                    content=buffer, embed=embeds, files=attachments,  # type: ignore[arg-type]
                                     allowed_mentions=discord.AllowedMentions.none()
                                 )
                             # otherwise, break up the buffer where appropriate, then send everything
                             else:
                                 buffer = await try_to_send_buffer(channel, buffer)
                                 await channel.send(
-                                    content=buffer, embed=embeds, files=attachments,
+                                    content=buffer, embed=embeds, files=attachments,  # type: ignore[arg-type]
                                     allowed_mentions=discord.AllowedMentions.none()
                                 )
 
@@ -828,7 +847,7 @@ class Admin(commands.Cog):
                         await try_to_send_buffer(channel, buffer, True)
 
 
-async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool = False) -> Union[discord.Message, str]:
+async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool = False) -> str:
     """
     Parses a string buffer and either sends or returns the buffer in an optimal break point.
 
@@ -844,7 +863,8 @@ async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool =
 
     # if the buffer is within our limit, no special calculations are needed
     if len(buffer) <= 2000:
-        return await messagable.send(buffer, allowed_mentions=discord.AllowedMentions.none())
+        await messagable.send(buffer, allowed_mentions=discord.AllowedMentions.none())
+        return ''
 
     # default break index to 1800
     break_index = 1800
@@ -869,7 +889,8 @@ async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool =
 
     # depending on parameters, either send or return the remaining portion of the buffer
     if force:
-        return await messagable.send(str(buffer[break_index:]), allowed_mentions=discord.AllowedMentions.none())
+        await messagable.send(str(buffer[break_index:]), allowed_mentions=discord.AllowedMentions.none())
+        return ''
     else:
         return str(buffer[break_index:])
 
