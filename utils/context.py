@@ -27,14 +27,13 @@ from asyncio import TimeoutError
 from typing import Any, Union, Optional, Generic, TypeVar
 from uuid import uuid4
 
-from dreambot import DreamBot
 import discord
 from discord.ext import commands
 
 from utils.logging_formatter import bot_logger
 
 
-class Context(commands.Context[DreamBot]):
+class Context(commands.Context):
     """
     A Custom commands.Context class.
 

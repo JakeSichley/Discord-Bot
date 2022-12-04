@@ -33,7 +33,7 @@ from io import StringIO
 from re import finditer
 from textwrap import indent
 from traceback import format_exc
-from typing import Union, Optional, Coroutine, Any, List, Sequence
+from typing import Union, Optional, List, Sequence
 
 import discord
 import pytz
@@ -499,7 +499,7 @@ class Admin(commands.Cog):
         embed.url = f"https://github.com/{self.bot.git['git_user']}/{self.bot.git['git_repo']}"
 
         try:
-            embed.set_thumbnail(url=self.bot.user.avatar.url) # type: ignore[union-attr]
+            embed.set_thumbnail(url=self.bot.user.avatar.url)  # type: ignore[union-attr]
         except AttributeError:
             pass
 
@@ -574,7 +574,9 @@ class Admin(commands.Cog):
 
         # -- finalize --
         if self.bot._status_text is not None and self.bot._status_type is not None:
-            await self.bot.change_presence(activity=await generate_activity(self.bot._status_text, self.bot._status_type))
+            await self.bot.change_presence(
+                activity=await generate_activity(self.bot._status_text, self.bot._status_type)
+            )
         await ctx.safe_send(output)
 
     @git.command(name='dry_run', aliases=['dry', 'd'], hidden=True)

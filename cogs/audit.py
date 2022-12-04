@@ -69,6 +69,20 @@ class Audit(commands.Cog):
 
         self.bot = bot
 
+    async def cog_check(self, ctx: Context) -> bool:  # type: ignore[override]
+        """
+        A method that registers a cog-wide check.
+        Requires these commands be used in a guild only.
+
+        Parameters:
+            ctx (Context): The invocation context.
+
+        Returns:
+            (bool): Whether the command was invoked in a guild.
+        """
+
+        return ctx.guild is not None
+
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
         """
@@ -206,7 +220,7 @@ class Audit(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send_help('auditaction')
 
-    @commands.has_guild_permissions(manage_guild=True, view_audit_log=True)
+    @commands.has_guild_permissions(manage_guild=True, view_audit_log=True)  # type: ignore[arg-type]
     @audit_actions.command(name='viewactions', aliases=['va'],
                            help='Generates an embed detailing the currently enabled and disabled logging actions for'
                                 'this guild.')
@@ -221,19 +235,21 @@ class Audit(commands.Cog):
             None.
         """
 
+        assert ctx.guild is not None  # handle by `cog_check`
+
         if logging_info := (await typed_retrieve_query(
                 self.bot.connection,
                 int,
                 'SELECT BITS FROM LOGGING WHERE GUILD_ID=?',
                 (ctx.guild.id,))
         ):
-            await ctx.send(embed=build_actions_embed(LoggingActions.all_actions((logging_info[0]))))
+            await ctx.send(embed=build_actions_embed(LoggingActions.all_enabled_actions((logging_info[0]))))
         else:
             await ctx.send('You must first set an audit channel before viewing audit actions.'
                            '\n_See `auditactions setchannel` for more information._')
 
-    @commands.max_concurrency(1, commands.BucketType.guild)
-    @commands.has_guild_permissions(manage_guild=True, view_audit_log=True)
+    @commands.max_concurrency(1, commands.BucketType.guild)  # type: ignore[arg-type]
+    @commands.has_guild_permissions(manage_guild=True, view_audit_log=True)  # type: ignore[arg-type]
     @audit_actions.command(name='changeactions', aliases=['ca'],
                            help='Sets the enabled (or disabled) actions you want logged for this guild. To enable or '
                                 'disable an action, react with the corresponding reaction. Once you are satisfied '
@@ -253,6 +269,8 @@ class Audit(commands.Cog):
             None.
         """
 
+        assert ctx.guild is not None  # handle by `cog_check`
+
         if logging_info := (await typed_retrieve_query(
                 self.bot.connection,
                 PartialLoggingAction,
@@ -263,7 +281,9 @@ class Audit(commands.Cog):
             condition = Condition()
 
             # start the menu
-            menu = ActionBitMenu(LoggingActions.all_actions(logging_info[0].bits), logging_info[0].bits, condition)
+            menu = ActionBitMenu(
+                LoggingActions.all_enabled_actions(logging_info[0].bits), logging_info[0].bits, condition
+            )
             await menu.start(ctx)
 
             # while the menu is active, this method is active
@@ -274,7 +294,7 @@ class Audit(commands.Cog):
             await ctx.send('You must first set an audit channel before changing audit actions.'
                            '\n_See `auditactions setchannel` for more information._')
 
-    @commands.has_guild_permissions(manage_guild=True, view_audit_log=True)
+    @commands.has_guild_permissions(manage_guild=True, view_audit_log=True)  # type: ignore[arg-type]
     @audit_actions.command(name='setchannel', aliases=['sc'],
                            help='Sets the Audit Log channel for this guild. Once set, any enabled Logging Actions will '
                                 'be sent to this channel.\n\nNote: attempts to search for the specified channel by: '
@@ -290,6 +310,8 @@ class Audit(commands.Cog):
         Returns:
             None.
         """
+
+        assert ctx.guild is not None  # handle by `cog_check`
 
         try:
             await execute_query(
@@ -317,8 +339,8 @@ class LoggingActions(Enum):
     MESSAGE_EDIT = 32
     MESSAGE_DELETE = 64
 
-    @classmethod
-    def list(cls):
+    @staticmethod
+    def all_action_names() -> List[str]:
         """
         A class method for returning a list of all LoggingAction names.
 
@@ -326,13 +348,13 @@ class LoggingActions(Enum):
             None.
 
         Returns:
-            (List[LoggingAction.name]): A list of the names of the LoggingActions.
+            (List[str]): A list of the names of the LoggingActions.
         """
 
-        return list(map(lambda c: c.name, cls))
+        return list(map(lambda c: c.name, LoggingActions))
 
     @staticmethod
-    def has_action(action: Enum, action_bits: int) -> bool:
+    def has_action(action: 'LoggingActions', action_bits: int) -> bool:
         """
         A class method for checking whether an action flag is enabled.
 
@@ -347,7 +369,7 @@ class LoggingActions(Enum):
         return bool(action.value & action_bits)
 
     @staticmethod
-    def all_actions(action_bits: int) -> [Enum]:
+    def all_enabled_actions(action_bits: int) -> List['LoggingActions']:
         """
         A class method for parsing action bits, returning all enabled actions.
 
@@ -358,10 +380,10 @@ class LoggingActions(Enum):
             ([Enum]): All logging actions that are enabled.
         """
 
-        return [action.name for action in LoggingActions if action.value & action_bits]
+        return [action for action in LoggingActions if action.value & action_bits]
 
     @staticmethod
-    def add_actions_to_bits(actions: [Enum], action_bits: int = 0) -> int:
+    def add_actions_to_bits(actions: List['LoggingActions'], action_bits: int = 0) -> int:
         """
          A class method for constructing the action bits for the specified actions.
 
@@ -374,12 +396,12 @@ class LoggingActions(Enum):
         """
 
         for action in actions:
-            action_bits = action_bits | action.value
+            action_bits |= action.value
 
         return action_bits
 
     @staticmethod
-    def remove_actions_from_bits(actions: [Enum], action_bits: int) -> int:
+    def remove_actions_from_bits(actions: List['LoggingActions'], action_bits: int) -> int:
         """
          A class method for removing the action bits for the specified actions.
 
@@ -393,7 +415,7 @@ class LoggingActions(Enum):
 
         for action in actions:
             if action_bits & action.value:
-                action_bits = action_bits - action.value
+                action_bits -= action.value
 
         return action_bits
 
@@ -584,7 +606,7 @@ class ActionBitMenu(menus.Menu):
             None.
         """
 
-        self.embed = build_actions_embed(LoggingActions.all_actions(self.bits))
+        self.embed = build_actions_embed(LoggingActions.all_enabled_actions(self.bits))
         await self.message.edit(embed=self.embed)
 
     async def finalize(self, timed_out) -> None:
@@ -631,7 +653,7 @@ def build_actions_embed(actions: List[LoggingActions]) -> discord.Embed:
     """
 
     embed = discord.Embed(title='Logging Actions', color=0x00bbff)
-    for index, action in enumerate(LoggingActions.list()):
+    for index, action in enumerate(LoggingActions.all_action_names()):
         embed.add_field(name=f'{index}: {action}', value='✅ Enabled' if action in actions else '❌ Disabled',
                         inline=False)
     embed.set_footer(text='Please report any issues to my owner!')
@@ -657,7 +679,7 @@ def flip_action_bits(action: LoggingActions, bits: int) -> int:
         return LoggingActions.add_actions_to_bits([action], bits)
 
 
-async def log_to_channel(bot: commands.Bot, action: Enum, bits: int, channel: int, message: str) -> None:
+async def log_to_channel(bot: commands.Bot, action: LoggingActions, bits: int, channel_id: int, message: str) -> None:
     """
     A method for performing the various checks necessary to log an action for a guild.
 
@@ -665,7 +687,7 @@ async def log_to_channel(bot: commands.Bot, action: Enum, bits: int, channel: in
         bot (commands.Bot): The Discord bot.
         action (Enum): The action to be logged/checked for.
         bits (int): The permissions integer to check the action against.
-        channel (int): The id of the logging channel.
+        channel_id (int): The id of the logging channel.
         message (str): The message to log to the channel.
 
     Returns:
@@ -673,7 +695,10 @@ async def log_to_channel(bot: commands.Bot, action: Enum, bits: int, channel: in
     """
 
     if LoggingActions.has_action(action, bits):
-        if channel := bot.get_channel(channel):
+        if channel := bot.get_channel(channel_id):
+            if not isinstance(channel, discord.TextChannel):
+                return
+
             try:
                 await channel.send(message)
             except discord.HTTPException:
