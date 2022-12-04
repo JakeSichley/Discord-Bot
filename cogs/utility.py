@@ -138,13 +138,16 @@ class Utility(commands.Cog):
             None.
         """
 
+        assert ctx.guild is not None
+
         embed = discord.Embed(title=f'{str(user)}\'s User Information', color=0x1dcaff)
         if user.nick:
             embed.description = f'Known as **{user.nick}** round\' these parts'
-        embed.set_thumbnail(url=user.avatar.url)
+        if user.avatar is not None:
+            embed.set_thumbnail(url=user.avatar.url)
         embed.add_field(name='Account Created', value=format_dt(user.created_at, 'R'))
-        embed.add_field(name='Joined Server', value=format_dt(user.joined_at, 'R'))
-        members = sorted(ctx.guild.members, key=lambda x: x.joined_at)
+        embed.add_field(name='Joined Server', value=format_dt(user.joined_at, 'R')) if user.joined_at else 'Unknown'
+        members = sorted(ctx.guild.members, key=lambda x: x.joined_at or discord.utils.utcnow())
         embed.add_field(name='Join Position', value=str(members.index(user)))
         embed.add_field(name='User ID', value=str(user.id), inline=False)
         embed.add_field(name='User Flags', value=readable_flags(user.public_flags), inline=False)
@@ -177,7 +180,7 @@ class Utility(commands.Cog):
     @dynamic_cooldown()
     @commands.command(name='raw_yoink', aliases=['rawyoink'], help='Yoinks an emoji based on its id.')
     async def raw_yoink_emoji(self, ctx: Context, source: int, name: Optional[str] = None,
-                              animated: Optional[bool] = False) -> None:
+                              animated: bool = False) -> None:
         """
         A method to "yoink" an emoji. Retrieves the emoji as an asset and uploads it to the current guild.
 
@@ -222,7 +225,7 @@ class Utility(commands.Cog):
             EmojiComponent(
                 animated=bool(x[0] or default.animated),
                 name=x[1] or default.name,
-                id=int(x[2] or default.id)
+                id=int(x[2]) or default.id
             ) for x in raw_emojis
         ]
 
@@ -241,6 +244,8 @@ async def create_emojis(bot: DreamBot, ctx: Context, emojis: Union[EmojiComponen
     Returns:
         None.
     """
+
+    assert ctx.guild is not None
 
     emoji_manager = EmojiManager(ctx.guild, emojis)
 
