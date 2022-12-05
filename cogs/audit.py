@@ -696,7 +696,7 @@ async def log_to_channel(bot: commands.Bot, action: LoggingActions, bits: int, c
 
     if LoggingActions.has_action(action, bits):
         if channel := bot.get_channel(channel_id):
-            if not isinstance(channel, discord.TextChannel):
+            if not isinstance(channel, discord.abc.Messageable):
                 return
 
             try:
