@@ -24,7 +24,7 @@ SOFTWARE.
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional, List, Union, Tuple
+from typing import Optional, List, Union, Tuple, Annotated
 
 import discord
 from aiosqlite import Connection
@@ -97,7 +97,7 @@ class Tags(commands.Cog):
 
     @commands.guild_only()
     @commands.group(name='tag', aliases=['tags'], invoke_without_command=True)
-    async def tag(self, ctx: Context, *, tag_name: TagName = None) -> None:  # type: ignore[valid-type]
+    async def tag(self, ctx: Context, *, tag_name: Annotated[str, TagName] = None) -> None:  # type: ignore[assignment]
         """
         Parent command that handles tag related commands.
 
@@ -111,14 +111,14 @@ class Tags(commands.Cog):
 
         if ctx.invoked_subcommand is None and tag_name:
             # noinspection PyTypeChecker
-            await ctx.invoke(self.get_tag, tag_name=tag_name)
+            await ctx.invoke(self.get_tag, tag_name=tag_name)  # type: ignore[arg-type]
         elif ctx.invoked_subcommand is None:
             await ctx.send_help('tag')
 
     @tag.command(  # type: ignore[arg-type]
         name='create', aliases=['add'], help='Tag names must be 3-100 characters long and cannot be a reserved tag.'
     )
-    async def create_tag(self, ctx: Context, *, tag_name: TagName) -> None:  # type: ignore[valid-type]
+    async def create_tag(self, ctx: Context, *, tag_name: Annotated[str, TagName]) -> None:
         """
         Attempts to create a tag with the specified name.
 
@@ -167,7 +167,7 @@ class Tags(commands.Cog):
             await ctx.send('Tag content cannot be empty - please restart the command.')
 
     @tag.command(name='edit', aliases=['e'])  # type: ignore[arg-type]
-    async def edit_tag(self, ctx: Context, *, tag_name: TagName) -> None:  # type: ignore[valid-type]
+    async def edit_tag(self, ctx: Context, *, tag_name: Annotated[str, TagName]) -> None:
         """
         Attempts to edit an existing tag.
         A user must either own the tag or have the ability to manage messages (guild-wide) to edit the tag.
@@ -219,7 +219,7 @@ class Tags(commands.Cog):
             await ctx.send('Tag content cannot be empty - please restart the command.')
 
     @tag.command(name='get', aliases=['fetch'])  # type: ignore[arg-type]
-    async def get_tag(self, ctx: Context, *, tag_name: TagName) -> None:  # type: ignore[valid-type]
+    async def get_tag(self, ctx: Context, *, tag_name: Annotated[str, TagName]) -> None:
         """
         Attempts to fetch a tag with the specified name.
 
@@ -249,7 +249,7 @@ class Tags(commands.Cog):
             await ctx.send(f'Tag `{tag_name}` does not exist.')
 
     @tag.command(name='search', aliases=['s'])  # type: ignore[arg-type]
-    async def search_tags(self, ctx: Context, *, tag_name: TagName) -> None:  # type: ignore[valid-type]
+    async def search_tags(self, ctx: Context, *, tag_name: Annotated[str, TagName]) -> None:
         """
         Attempts to search for tags with the specified name.
 
@@ -272,7 +272,7 @@ class Tags(commands.Cog):
             await ctx.send(f'No tags found with name `{tag_name}`.')
 
     @tag.command(name='info', aliases=['i'])  # type: ignore[arg-type]
-    async def tag_info(self, ctx: Context, *, tag_name: TagName) -> None:  # type: ignore[valid-type]
+    async def tag_info(self, ctx: Context, *, tag_name: Annotated[str, TagName]) -> None:
         """
         Attempts to fetch information about a tag.
 
@@ -325,7 +325,7 @@ class Tags(commands.Cog):
             await ctx.send(f'No tags exist for this guild.')
 
     @tag.command(name='delete', aliases=['remove', 'del'])  # type: ignore[arg-type]
-    async def delete_tag(self, ctx: Context, *, tag_name: TagName) -> None:  # type: ignore[valid-type]
+    async def delete_tag(self, ctx: Context, *, tag_name: Annotated[str, TagName]) -> None:
         """
         Attempts to delete a tag with the specified name.
         A user must either own the tag or have the ability to manage messages (guild-wide) to delete the tag.

@@ -179,8 +179,9 @@ class Utility(commands.Cog):
     @commands.bot_has_guild_permissions(manage_emojis=True)
     @dynamic_cooldown()
     @commands.command(name='raw_yoink', aliases=['rawyoink'], help='Yoinks an emoji based on its id.')
-    async def raw_yoink_emoji(self, ctx: Context, source: int, name: Optional[str] = None,
-                              animated: bool = False) -> None:
+    async def raw_yoink_emoji(
+            self, ctx: Context, source: int, name: Optional[str] = None, animated: bool = False
+    ) -> None:
         """
         A method to "yoink" an emoji. Retrieves the emoji as an asset and uploads it to the current guild.
 
