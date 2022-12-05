@@ -54,7 +54,7 @@ class Exceptions(commands.Cog):
         """
 
         self.bot = bot
-        bot.tree.on_error = self.on_app_command_error
+        bot.tree.on_error = self.on_app_command_error  # type: ignore[assignment]
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx: Context, error: commands.CommandError) -> None:
@@ -74,11 +74,13 @@ class Exceptions(commands.Cog):
             None.
         """
 
+        assert ctx.command is not None
+
         if hasattr(ctx.command, 'on_error'):
             return
 
         if isinstance(error, commands.CommandInvokeError):
-            error = error.__cause__
+            error = error.__cause__  # type: ignore[assignment]
 
         ignored = (
             commands.CommandNotFound, commands.UserInputError, commands.CheckFailure, ClientResponseError,
@@ -134,7 +136,10 @@ class Exceptions(commands.Cog):
 
         # External network error
         elif isinstance(error, ClientResponseError):
-            await ctx.send(f'`{ctx.command}` encountered a network error: `{error.message} ({error.status})`')
+            await ctx.send(
+                f'`{ctx.command}` encountered a network error: '
+                f'`{error.message} ({error.status})`'  # type: ignore[attr-defined]
+            )
             return
 
         # Check failure
@@ -165,7 +170,10 @@ class Exceptions(commands.Cog):
 
         # Reloading an extension that currently has errors
         elif isinstance(error, commands.ExtensionError):
-            await ctx.send(f'```py\n{"".join(format_exception(type(error), error, error.__traceback__))}```')
+            formatted_error = ''.join(
+                format_exception(type(error), error, error.__traceback__)  # type: ignore[attr-defined]
+            )
+            await ctx.send(f'```py\n{formatted_error}```')
 
     async def on_app_command_error(self, interaction: Interaction, error: AppCommandError) -> None:
         """
@@ -179,9 +187,11 @@ class Exceptions(commands.Cog):
             None.
         """
 
+        assert interaction.command is not None
+
         bot_logger.warning(
             f'Encountered AppCommandError in command {interaction.command.name}. '
-            f'User: {interaction.user}. Guild: {interaction.guild.id}.\n'
+            f'User: {interaction.user}. Guild: {interaction.guild.id if interaction.guild is not None else "None"}.\n'
         )
         print_exception(type(error), error, error.__traceback__, file=stderr)
 

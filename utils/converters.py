@@ -32,50 +32,6 @@ from dreambot import DreamBot
 from utils.context import Context
 
 
-class GuildConverter(commands.IDConverter):
-    """
-    Converts an argument to a discord.Guild object.
-
-    All lookups are via the local guild.
-
-    The lookup strategy is as follows (in order):
-
-    1. Lookup by ID.
-    2. Lookup by name
-    """
-
-    async def convert(self, ctx: Context, argument: Any) -> Optional[discord.Guild]:  # type: ignore[override]
-        """
-        Attempts to convert the argument into a discord.Guild object.
-
-        Parameters:
-            ctx (Context): The invocation context.
-            argument (Any): The arg to be converted.
-
-        Returns:
-            result (discord.Guild): The resulting discord.Guild. Could be None if conversion failed without exceptions.
-        """
-
-        if ctx.guild is None:
-            return None
-
-        match = self._get_id_match(argument)
-        result = None
-
-        if match is None:
-            if argument.casefold() == ctx.guild.name.casefold():
-                result = ctx.guild
-        else:
-            guild_id = int(match.group(1))
-            if ctx.guild.id == guild_id:
-                result = ctx.guild
-
-        if not isinstance(result, discord.Guild):
-            raise commands.BadArgument('Guild "{}" not found.'.format(argument))
-
-        return result
-
-
 class DefaultMemberConverter(commands.MemberConverter):
     """
     Converts an argument to a discord.Member object.

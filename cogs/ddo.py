@@ -121,7 +121,7 @@ class DDO(commands.Cog):
             Turns a die string into a computed value without exposing the string to eval.
 
             Parameters:
-                string (str): The die string to be evaluated.
+                die_string (str): The die string to be evaluated.
 
             Returns:
                 (str): The evaluated result.

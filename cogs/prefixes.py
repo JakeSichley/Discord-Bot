@@ -62,12 +62,10 @@ class Prefixes(commands.Cog):
         """
 
         if ctx.invoked_subcommand is None:
-            command: commands.Command = self.bot.get_command('prefix get')
+            # noinspection PyTypeChecker
+            await ctx.invoke(self.get_prefix)
 
-            if command is not None:
-                await ctx.invoke(command)
-
-    @commands.cooldown(1, 2, commands.BucketType.guild)
+    @commands.cooldown(1, 2, commands.BucketType.guild)  # type: ignore[arg-type]
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
     @prefix.command(name='add', aliases=['set'])
@@ -87,6 +85,8 @@ class Prefixes(commands.Cog):
         Returns:
             None.
         """
+
+        assert ctx.guild is not None  # guild only
 
         prefixes = self.bot.prefixes.get(ctx.guild.id, [])
 
@@ -120,7 +120,7 @@ class Prefixes(commands.Cog):
 
             await ctx.send(f'Added `{prefix}` as a prefix for this guild.')
 
-    @commands.cooldown(1, 2, commands.BucketType.guild)
+    @commands.cooldown(1, 2, commands.BucketType.guild)  # type: ignore[arg-type]
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
     @prefix.command(name='remove', aliases=['delete', 'del'])
@@ -140,6 +140,8 @@ class Prefixes(commands.Cog):
         Returns:
             None.
         """
+
+        assert ctx.guild is not None  # guild only
 
         prefixes = self.bot.prefixes.get(ctx.guild.id, None)
         prefix = prefix.strip()
@@ -168,7 +170,7 @@ class Prefixes(commands.Cog):
 
             await ctx.send(f'Removed `{prefix}` as a prefix for this guild.')
 
-    @commands.cooldown(1, 2, commands.BucketType.guild)
+    @commands.cooldown(1, 2, commands.BucketType.guild)  # type: ignore[arg-type]
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
     @prefix.command(name='replace', aliases=['swap', 'switch'])
@@ -189,6 +191,8 @@ class Prefixes(commands.Cog):
         Returns:
             None.
         """
+
+        assert ctx.guild is not None  # guild only
 
         prefixes = self.bot.prefixes.get(ctx.guild.id, None)
         old_prefix, new_prefix = old_prefix.strip(), new_prefix.strip()
@@ -219,7 +223,7 @@ class Prefixes(commands.Cog):
 
             await ctx.send(f'Replaced `{old_prefix}` with `{new_prefix}` as a prefix for this guild.')
 
-    @commands.cooldown(1, 2, commands.BucketType.guild)
+    @commands.cooldown(1, 2, commands.BucketType.guild)  # type: ignore[arg-type]
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
     @prefix.command(name='clear')
@@ -238,6 +242,8 @@ class Prefixes(commands.Cog):
         Returns:
             None.
         """
+
+        assert ctx.guild is not None  # guild only
 
         prefixes = self.bot.prefixes.get(ctx.guild.id, None)
 
@@ -264,7 +270,7 @@ class Prefixes(commands.Cog):
 
             await ctx.send(f'Cleared all prefixes for the guild.')
 
-    @commands.cooldown(1, 2, commands.BucketType.guild)
+    @commands.cooldown(1, 2, commands.BucketType.guild)  # type: ignore[arg-type]
     @prefix.command(name='get')
     async def get_prefix(self, ctx: Context) -> None:
         """
@@ -283,6 +289,8 @@ class Prefixes(commands.Cog):
         Returns:
             None.
         """
+
+        assert self.bot.user is not None  # always logged in
 
         if not ctx.guild:
             await ctx.send(f'Prefix: `{self.bot.default_prefix}`')

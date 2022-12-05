@@ -32,7 +32,6 @@ from discord.ext import commands
 
 from dreambot import DreamBot
 from utils.context import Context
-from utils.converters import GuildConverter
 from utils.database.helpers import execute_query, typed_retrieve_query, DatabaseDataclass
 from utils.logging_formatter import bot_logger
 from utils.prompts import prompt_user_for_role, prompt_user_for_discord_message
@@ -91,6 +90,20 @@ class ReactionRoles(commands.Cog):
 
         self.bot = bot
 
+    async def cog_check(self, ctx: Context) -> bool:  # type: ignore[override]
+        """
+        A method that registers a cog-wide check.
+        Requires these commands be used in a guild only.
+
+        Parameters:
+            ctx (Context): The invocation context.
+
+        Returns:
+            (bool): Whether the command was invoked in a guild.
+        """
+
+        return ctx.guild is not None
+
     @commands.group(name='reactionrole', aliases=['rr', 'reactionroles'])
     async def reaction_role(self, ctx: Context) -> None:
         """
@@ -106,7 +119,7 @@ class ReactionRoles(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send_help('reactionrole')
 
-    @commands.bot_has_permissions(manage_roles=True)
+    @commands.bot_has_permissions(manage_roles=True)  # type: ignore[arg-type]
     @commands.has_permissions(manage_roles=True)
     @reaction_role.command(name='add', help='Begins the process of setting up a Reaction Role.\nYou can invoke this '
                                             'command without any arguments to go through the entire setup process.\n'
@@ -115,8 +128,9 @@ class ReactionRoles(commands.Cog):
                                             ' the role name in order for it to be properly parsed ("my role").\nYou can'
                                             ' also use this method to change the role of an existing reaction. Specify'
                                             ' the same message and reaction and simply supply a new role!')
-    async def add_reaction_role(self, ctx: Context, message: discord.Message = None,
-                                role: discord.Role = None) -> None:
+    async def add_reaction_role(
+            self, ctx: Context, message: Optional[discord.Message] = None, role: Optional[discord.Role] = None
+    ) -> None:
         """
         Adds a reaction role to a specified message.
 
@@ -129,7 +143,12 @@ class ReactionRoles(commands.Cog):
             None.
         """
 
-        cleanup_messages = []
+        assert isinstance(ctx.me, discord.Member)  # guild only
+        assert isinstance(ctx.author, discord.Member)  # guild only
+        assert isinstance(ctx.channel, discord.TextChannel)  # guild only
+        assert ctx.guild is not None
+
+        cleanup_messages: List[discord.Message] = []
 
         # check these properties early to try to avoid wasting the user's time
         bot_role = ctx.me.top_role
@@ -154,7 +173,7 @@ class ReactionRoles(commands.Cog):
             await ctx.send('No Message')
             return
 
-        if message.guild.id != ctx.guild.id:
+        if message.guild is None or message.guild.id != ctx.guild.id:
             await ctx.send("That message doesn't belong to this guild.")
             return
 
@@ -228,7 +247,7 @@ class ReactionRoles(commands.Cog):
                        f"{payload.emoji}, I'll assign them the **{role.name}** role!")
         await cleanup(cleanup_messages, ctx.channel)
 
-    @commands.bot_has_permissions(manage_roles=True)
+    @commands.bot_has_permissions(manage_roles=True)  # type: ignore[arg-type]
     @commands.has_permissions(manage_roles=True)
     @reaction_role.command(name='remove', help='Begins the process of removing an existing Reaction Role.\nIf you '
                                                'invoke this command without a supplying a message, you will be '
@@ -236,7 +255,7 @@ class ReactionRoles(commands.Cog):
                                                'specific reaction, consider using "add" instead!\nIf you wish to '
                                                'remove all reaction roles from a message, consider using "clear" '
                                                'instead!')
-    async def remove_reaction_role(self, ctx: Context, message: discord.Message = None) -> None:
+    async def remove_reaction_role(self, ctx: Context, message: Optional[discord.Message] = None) -> None:
         """
         Removes a reaction role from a specified message.
 
@@ -248,7 +267,12 @@ class ReactionRoles(commands.Cog):
             None.
         """
 
-        cleanup_messages = []
+        assert isinstance(ctx.me, discord.Member)  # guild only
+        # assert isinstance(ctx.author, discord.Member)  # guild only
+        assert isinstance(ctx.channel, discord.TextChannel)  # guild only
+        assert ctx.guild is not None
+
+        cleanup_messages: List[discord.Message] = []
 
         if not message:
             initial_message = 'Please specify the message you want to remove a Reaction Role for!\nYou can right ' \
@@ -261,7 +285,7 @@ class ReactionRoles(commands.Cog):
                 return
 
         # check to make sure the message is from this guild (full message link check)
-        if message.guild.id != ctx.guild.id:
+        if message.guild is None or message.guild.id != ctx.guild.id:
             await ctx.send("That message doesn't belong to this guild.")
             return
 
@@ -278,7 +302,9 @@ class ReactionRoles(commands.Cog):
             reaction_role_pagination = ReactionRolePagination(ctx, data)
 
             await reaction_role_pagination.start(message)
-            cleanup_messages.append(reaction_role_pagination.message)
+
+            if pagination_message := reaction_role_pagination.message:
+                cleanup_messages.append(pagination_message)
 
             def reaction_check(pl: discord.RawReactionActionEvent):
                 """
@@ -296,6 +322,9 @@ class ReactionRoles(commands.Cog):
                 Returns:
                     (bool): Whether the payload meets our check criteria.
                 """
+
+                if reaction_role_pagination.message is None or reaction_role_pagination.active_reactions is None:
+                    return False
 
                 return pl.message_id == reaction_role_pagination.message.id and \
                     pl.member == ctx.author and \
@@ -361,13 +390,13 @@ class ReactionRoles(commands.Cog):
 
         await cleanup(cleanup_messages, ctx.channel)
 
-    @commands.bot_has_permissions(manage_roles=True)
+    @commands.bot_has_permissions(manage_roles=True)  # type: ignore[arg-type]
     @commands.has_permissions(manage_roles=True)
     @reaction_role.command(name='clear', help='Begins the process of clearing all existing Reaction Roles.\nIf you'
                                               ' invoke this command without a supplying a message, you will be prompted'
                                               ' for one.\nIf you wish to remove only a single reaction role, consider'
                                               ' using "remove" instead!')
-    async def clear_reaction_roles(self, ctx: Context, message: discord.Message = None) -> None:
+    async def clear_reaction_roles(self, ctx: Context, message: Optional[discord.Message] = None) -> None:
         """
         Clears all reaction roles from a specified message.
 
@@ -379,7 +408,10 @@ class ReactionRoles(commands.Cog):
             None.
         """
 
-        cleanup_messages = []
+        assert ctx.guild is not None  # guild only
+        assert isinstance(ctx.channel, discord.TextChannel)  # guild only
+
+        cleanup_messages: List[discord.Message] = []
 
         if not message:
             initial_message = 'Please specify the message you want to clear Reaction Roles for!\nYou can right ' \
@@ -392,7 +424,7 @@ class ReactionRoles(commands.Cog):
                 return
 
         # check to make sure the message is from this guild (full message link check)
-        if message.guild.id != ctx.guild.id:
+        if message.guild is None or message.guild.id != ctx.guild.id:
             await ctx.send("That message doesn't belong to this guild.")
             return
 
@@ -448,11 +480,11 @@ class ReactionRoles(commands.Cog):
 
         await cleanup(cleanup_messages, ctx.channel)
 
-    @commands.has_permissions(manage_roles=True)
+    @commands.has_permissions(manage_roles=True)  # type: ignore[arg-type]
     @reaction_role.command(name='check', help='Generates a breakdown of reaction roles for the given scope. Valid '
                                               'scopes: Guild, Channel, Message.')
     async def check_reaction_roles(
-            self, ctx: Context, source: Union[GuildConverter, discord.TextChannel, discord.Message]
+            self, ctx: Context, source: Union[discord.Guild, discord.TextChannel, discord.Message]
     ) -> None:
         """
         Generates a breakdown of reaction roles for the given scope. Valid scopes: Guild, Channel, Message.
@@ -469,6 +501,8 @@ class ReactionRoles(commands.Cog):
             None.
         """
 
+        assert ctx.guild is not None  # guild only
+
         async def message_selection(message_id: int, indent_level: int = 0) -> Optional[str]:
             """
             Generates a breakdown of reaction roles for a specified message.
@@ -480,6 +514,8 @@ class ReactionRoles(commands.Cog):
             Returns:
                 details (Optional[str]): Details about the reaction roles of the message if possible. Could be None.
             """
+
+            assert ctx.guild is not None  # guild only
 
             if reaction_roles := await typed_retrieve_query(
                     self.bot.connection,
@@ -537,6 +573,8 @@ class ReactionRoles(commands.Cog):
                 details (Optional[str]): Details about the reaction roles of the guild if possible. Could be None.
             """
 
+            assert ctx.guild is not None  # guild only
+
             if channels := await typed_retrieve_query(
                     self.bot.connection,
                     int,
@@ -553,7 +591,10 @@ class ReactionRoles(commands.Cog):
             else:
                 return None
 
-        source_id = source.guild.id if isinstance(source, (discord.TextChannel, discord.Message)) else source.id
+        source_id = source.guild.id if isinstance(
+            source, (discord.TextChannel, discord.Message)
+        ) and source.guild is not None else source.id
+
         if source_id != ctx.guild.id:
             await ctx.send("That object doesn't belong to this guild.")
             return
@@ -593,7 +634,9 @@ class ReactionRoles(commands.Cog):
             None.
         """
 
-        if payload.user_id == self.bot.user.id:
+        assert self.bot.user is not None  # always logged in
+
+        if payload.user_id == self.bot.user.id or payload.guild_id is None:
             return
 
         if roles := await typed_retrieve_query(
@@ -629,7 +672,9 @@ class ReactionRoles(commands.Cog):
             None.
         """
 
-        if payload.user_id == self.bot.user.id:
+        assert self.bot.user is not None  # always logged in
+
+        if payload.user_id == self.bot.user.id or payload.guild_id is None:
             return
 
         if roles := await typed_retrieve_query(
@@ -681,7 +726,7 @@ class ReactionRolePagination:
         u'6\ufe0f\u20e3': 6
     }
 
-    def __init__(self, ctx: Context, data: List[Tuple[str, discord.Role]]) -> None:
+    def __init__(self, ctx: Context, data: List[Tuple[str, Optional[discord.Role]]]) -> None:
         """
         The constructor for the ReactionRolePagination class.
 
@@ -695,11 +740,11 @@ class ReactionRolePagination:
 
         self.ctx = ctx
         self.data = data
-        self.message = None
-        self.embed = None
+        self.message: Optional[discord.Message] = None
+        self.embed: Optional[discord.Embed] = None
         self.page = 0
         self.max_pages = ceil(len(data) / ReactionRolePagination.PAGE_SIZE) - 1
-        self.active_reactions = None
+        self.active_reactions: Optional[List[str]] = None
         self.active = False
 
     async def start(self, message: discord.Message) -> None:
@@ -755,6 +800,9 @@ class ReactionRolePagination:
             None.
         """
 
+        if self.embed is None:
+            return
+
         self.embed.clear_fields()
         start = self.page * ReactionRolePagination.PAGE_SIZE
         end = start + ReactionRolePagination.PAGE_SIZE
@@ -795,6 +843,9 @@ class ReactionRolePagination:
         Returns:
             None.
         """
+
+        if self.message is None or self.embed is None:
+            return
 
         currently_active_reactions = self.active_reactions
         digit_reactions = [f'{i + 1}\ufe0f\u20e3' for i in range(len(self.embed.fields))]
