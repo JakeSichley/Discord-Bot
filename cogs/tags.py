@@ -97,7 +97,7 @@ class Tags(commands.Cog):
 
     @commands.guild_only()
     @commands.group(name='tag', aliases=['tags'], invoke_without_command=True)
-    async def tag(self, ctx: Context, *, tag_name: Optional[TagName] = None) -> None:  # type: ignore[valid-type]
+    async def tag(self, ctx: Context, *, tag_name: TagName = None) -> None:  # type: ignore[valid-type]
         """
         Parent command that handles tag related commands.
 
