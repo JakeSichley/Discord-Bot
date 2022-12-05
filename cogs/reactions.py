@@ -145,7 +145,6 @@ class ReactionRoles(commands.Cog):
 
         assert isinstance(ctx.me, discord.Member)  # guild only
         assert isinstance(ctx.author, discord.Member)  # guild only
-        assert isinstance(ctx.channel, discord.TextChannel)  # guild only
         assert ctx.guild is not None
 
         cleanup_messages: List[discord.Message] = []
@@ -268,8 +267,6 @@ class ReactionRoles(commands.Cog):
         """
 
         assert isinstance(ctx.me, discord.Member)  # guild only
-        # assert isinstance(ctx.author, discord.Member)  # guild only
-        assert isinstance(ctx.channel, discord.TextChannel)  # guild only
         assert ctx.guild is not None
 
         cleanup_messages: List[discord.Message] = []
@@ -409,7 +406,6 @@ class ReactionRoles(commands.Cog):
         """
 
         assert ctx.guild is not None  # guild only
-        assert isinstance(ctx.channel, discord.TextChannel)  # guild only
 
         cleanup_messages: List[discord.Message] = []
 

@@ -97,7 +97,8 @@ class Moderation(commands.Cog):
             None.
         """
 
-        assert isinstance(ctx.channel, discord.TextChannel)
+        if not isinstance(ctx.channel, (discord.TextChannel, discord.Thread, discord.VoiceChannel)):
+            return
 
         if limit > 10:
             if not await ctx.confirmation_prompt(f'Are you sure you want to delete {limit} messages?'):

@@ -130,10 +130,7 @@ class Tags(commands.Cog):
             None.
         """
 
-        # todo: fix isinstance checks to allow for VoiceChannel, Thread, TextChannel
-
         assert ctx.guild is not None  # guild only
-        assert isinstance(ctx.channel, discord.TextChannel)  # guild only
 
         tag = await fetch_tag(self.bot.connection, ctx.guild.id, tag_name)
 
@@ -185,7 +182,6 @@ class Tags(commands.Cog):
 
         assert ctx.guild is not None  # guild only
         assert isinstance(ctx.author, discord.Member)  # guild only
-        assert isinstance(ctx.channel, discord.TextChannel)  # guild only
 
         tag = await fetch_tag(self.bot.connection, ctx.guild.id, tag_name)
 

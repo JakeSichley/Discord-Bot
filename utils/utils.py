@@ -35,7 +35,7 @@ from utils.logging_formatter import bot_logger
 VERSION = '2.6.3'
 
 
-async def cleanup(messages: List[discord.Message], channel: discord.TextChannel) -> None:
+async def cleanup(messages: List[discord.Message], channel: discord.abc.Messageable) -> None:
     """
     Cleans up all prompt messages sent by the bot a command's setup.
     Attempts to bulk delete messages if permissions allow; otherwise messages are deleted individually.
@@ -47,6 +47,9 @@ async def cleanup(messages: List[discord.Message], channel: discord.TextChannel)
     Returns:
         None.
     """
+
+    if not isinstance(channel, (discord.TextChannel, discord.Thread, discord.VoiceChannel)):  # attr: delete_messages
+        return
 
     try:
         await channel.delete_messages(messages)

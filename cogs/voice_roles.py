@@ -65,6 +65,7 @@ class VoiceRoles(commands.Cog):
         self.bot = bot
         self.cache = ExpiringCache(self.CACHE_TTL)
 
+    @commands.guild_only()
     @commands.group(name='voicerole', aliases=['vr', 'voiceroles'])
     async def voice_role(self, ctx: Context) -> None:
         """
@@ -106,7 +107,6 @@ class VoiceRoles(commands.Cog):
 
         assert isinstance(ctx.me, discord.Member)  # guild only
         assert isinstance(ctx.author, discord.Member)  # guild only
-        assert isinstance(ctx.channel, discord.TextChannel)  # guild only
         assert ctx.guild is not None
 
         cleanup_messages: List[discord.Message] = []
@@ -188,7 +188,6 @@ class VoiceRoles(commands.Cog):
             None.
         """
 
-        assert isinstance(ctx.channel, discord.TextChannel)  # guild only
         assert ctx.guild is not None
 
         if not channel:
@@ -244,7 +243,6 @@ class VoiceRoles(commands.Cog):
             None.
         """
 
-        assert isinstance(ctx.channel, discord.TextChannel)  # guild only
         assert ctx.guild is not None
 
         if not channel:
