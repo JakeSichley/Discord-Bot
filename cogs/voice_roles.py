@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 from asyncio import sleep
-from typing import List, Optional, NamedTuple, Type
+from typing import List, Optional, NamedTuple
 
 import discord
 from aiosqlite import Error as aiosqliteError

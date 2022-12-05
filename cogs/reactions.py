@@ -362,8 +362,8 @@ class ReactionRoles(commands.Cog):
                 # noinspection PyMissingOrEmptyDocstring
                 def reaction_check(pl: discord.RawReactionActionEvent):
                     return pl.message_id == confirmation.id and \
-                           pl.member == ctx.author and \
-                           str(pl.emoji) in ['\u2705', '\u274c']
+                        pl.member == ctx.author and \
+                        str(pl.emoji) in ['\u2705', '\u274c']
 
                 # confirm that the user wants to remove the reaction role
                 payload = await self.bot.wait_for('raw_reaction_add', timeout=30.0, check=reaction_check)

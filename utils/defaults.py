@@ -24,7 +24,6 @@ SOFTWARE.
 
 from typing import Optional
 
-import discord
 from discord import Message
 from discord.ext import commands
 

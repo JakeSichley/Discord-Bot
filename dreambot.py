@@ -32,6 +32,7 @@ from traceback import print_exception, format_exception
 from typing import Optional, List, Dict, Type, DefaultDict, TypedDict, Union
 
 import discord
+from aiohttp import ClientSession
 from aiosqlite import Error as aiosqliteError, Connection
 from discord.ext import tasks
 from discord.ext.commands import ExtensionError, Bot, when_mentioned
@@ -42,8 +43,6 @@ from utils.cooldowns import CooldownMapping
 from utils.database.helpers import DatabaseDataclass, typed_retrieve_query
 from utils.logging_formatter import bot_logger
 from utils.utils import generate_activity
-
-from aiohttp import ClientSession
 
 GitOptionals = TypedDict(
     'GitOptionals',

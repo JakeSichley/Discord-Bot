@@ -24,7 +24,7 @@ SOFTWARE.
 
 import io
 from asyncio import TimeoutError
-from typing import Any, Union, Optional, Generic, TypeVar
+from typing import Any, Union, Optional
 from uuid import uuid4
 
 import discord

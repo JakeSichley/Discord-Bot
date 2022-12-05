@@ -28,6 +28,7 @@ from json.decoder import JSONDecodeError
 from random import seed, shuffle, randrange
 from re import search, findall
 from time import time
+from typing import List, no_type_check
 
 from aiohttp import ClientError
 from bs4 import BeautifulSoup
@@ -38,8 +39,6 @@ from dreambot import DreamBot
 from utils.context import Context
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
-
-from typing import List, no_type_check
 
 
 class DDO(commands.Cog):

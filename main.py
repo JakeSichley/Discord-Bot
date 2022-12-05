@@ -84,7 +84,7 @@ async def main() -> None:
         'status_type': discord.ActivityType(int(getenv('STATUS_TYPE', 1))),
         'status_text': getenv('STATUS_TEXT'),
         'firebase_project': getenv('FIREBASE_PROJECT'),
-        'disabled_cogs':  disabled_cogs,
+        'disabled_cogs': disabled_cogs,
         'git': git_options
     }
 
@@ -93,7 +93,7 @@ async def main() -> None:
         aiosqlite.connect(database) as connection,
         aiohttp.ClientSession() as session
     ):
-        # mypy seems to lose context with multiple async with
+        # mypy seems to lose context during multiple async with
         bot.connection = connection  # type: ignore[attr-defined]
         bot.session = session  # type: ignore[attr-defined]
         await bot.start(token)  # type: ignore[attr-defined]
