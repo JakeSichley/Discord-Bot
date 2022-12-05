@@ -122,7 +122,7 @@ class AggressiveDefaultMemberConverter(commands.IDConverter):
             if result is not None:
                 return result
 
-        def pred(m: discord.Member):
+        def pred(m: discord.Member) -> bool:
             """
             The predicate check to use while searching for the potential member.
 

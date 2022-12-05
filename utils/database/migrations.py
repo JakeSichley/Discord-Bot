@@ -76,7 +76,7 @@ class Migration:
         self._version = version
         self.name = name
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         Produces a printable representation of this class.
 

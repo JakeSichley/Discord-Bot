@@ -205,7 +205,7 @@ class ReactionRoles(commands.Cog):
                                           '\nYou can react to this message with the reaction!')
         cleanup_messages.append(reaction_message)
 
-        def reaction_check(pl: discord.RawReactionActionEvent):
+        def reaction_check(pl: discord.RawReactionActionEvent) -> bool:
             """
             Our check criteria to wait for.
 
@@ -306,7 +306,7 @@ class ReactionRoles(commands.Cog):
             if pagination_message := reaction_role_pagination.message:
                 cleanup_messages.append(pagination_message)
 
-            def reaction_check(pl: discord.RawReactionActionEvent):
+            def reaction_check(pl: discord.RawReactionActionEvent) -> bool:
                 """
                 Our check criteria to wait for.
 
@@ -360,7 +360,7 @@ class ReactionRoles(commands.Cog):
                 await confirmation.add_reaction('\u274c')
 
                 # noinspection PyMissingOrEmptyDocstring
-                def reaction_check(pl: discord.RawReactionActionEvent):
+                def reaction_check(pl: discord.RawReactionActionEvent) -> bool:
                     return pl.message_id == confirmation.id and \
                         pl.member == ctx.author and \
                         str(pl.emoji) in ['\u2705', '\u274c']
@@ -444,9 +444,9 @@ class ReactionRoles(commands.Cog):
 
             # make sure the reaction is added to the correct message and the reaction is added by our author
             # noinspection PyMissingOrEmptyDocstring
-            def reaction_check(pl: discord.RawReactionActionEvent):
+            def reaction_check(pl: discord.RawReactionActionEvent) -> bool:
                 if pl.event_type == 'REACTION_REMOVE':
-                    return
+                    return False
                 return pl.message_id == response.id and pl.member == ctx.author
 
             try:

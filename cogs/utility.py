@@ -158,7 +158,7 @@ class Utility(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name='unicodeemoji', aliases=['ue', 'eu'])
-    async def unicode_emoji(self, ctx: Context, emoji: str):
+    async def unicode_emoji(self, ctx: Context, emoji: str) -> None:
         """
         A method to convert emojis to their respective unicode string.
 

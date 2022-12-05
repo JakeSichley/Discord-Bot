@@ -291,7 +291,7 @@ class DreamBot(Bot):
             bot_logger.info('Completed prefix retrieval')
 
     async def get_context(  # type: ignore[override]
-            self, origin: Union[discord.Message, discord.Interaction], /, *, cls=Context
+            self, origin: Union[discord.Message, discord.Interaction], /, *, cls: Type[Context] = Context
     ) -> Context:
         """
         Creates a Context instance for the current command invocation.
@@ -304,7 +304,8 @@ class DreamBot(Bot):
             (Context): The custom context instance.
         """
 
-        return await super().get_context(origin, cls=cls)  # type: ignore[override]
+        # noinspection PyTypeChecker
+        return await super().get_context(origin, cls=cls)
 
     async def report_exception(self, exception: Exception) -> None:
         """

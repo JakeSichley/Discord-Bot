@@ -75,7 +75,7 @@ class Moderation(commands.Cog):
     @commands.bot_has_permissions(manage_messages=True, read_message_history=True)
     @commands.command(name='purge', help='Purges n+1 messages from the current channel. If a user is supplied, the bot '
                                          'will purge any message from that user in the last n messages.')
-    async def purge(self, ctx: Context, limit: int = 0, user: Optional[discord.Member] = None):
+    async def purge(self, ctx: Context, limit: int = 0, user: Optional[discord.Member] = None) -> None:
         """
         A method to purge messages from a channel.
         Should a user ID be supplied, any messages from that user in the last (limit) messages will be deleted.

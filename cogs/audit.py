@@ -249,7 +249,7 @@ class Audit(commands.Cog):
                            '\n_See `auditactions setchannel` for more information._')
 
     @commands.max_concurrency(1, commands.BucketType.guild)  # type: ignore[arg-type]
-    @commands.has_guild_permissions(manage_guild=True, view_audit_log=True)  # type: ignore[arg-type]
+    @commands.has_guild_permissions(manage_guild=True, view_audit_log=True)
     @audit_actions.command(name='changeactions', aliases=['ca'],
                            help='Sets the enabled (or disabled) actions you want logged for this guild. To enable or '
                                 'disable an action, react with the corresponding reaction. Once you are satisfied '
@@ -609,7 +609,7 @@ class ActionBitMenu(menus.Menu):
         self.embed = build_actions_embed(LoggingActions.all_enabled_actions(self.bits))
         await self.message.edit(embed=self.embed)
 
-    async def finalize(self, timed_out) -> None:
+    async def finalize(self, timed_out: bool) -> None:
         """
         A method that is called when the menu loop is closed.
 
