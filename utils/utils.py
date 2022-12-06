@@ -32,7 +32,7 @@ import discord
 
 from utils.logging_formatter import bot_logger
 
-VERSION = '2.6.3'
+VERSION = '2.7.0'
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.abc.Messageable) -> None:
@@ -187,4 +187,4 @@ def valid_content(content: str, *, max_length: int = 2000) -> bool:
         (bool): Whether the content is valid.
     """
 
-    return bool(content) and len(content) <= max_length
+    return content is not None and len(content) <= max_length

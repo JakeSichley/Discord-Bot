@@ -126,7 +126,7 @@ class DreamBot(Bot):
             command_prefix=get_prefix, case_insensitive=True, owner_id=owner, max_messages=None, intents=intents
         )
 
-        # this will always be set as part of async initialization with context managers
+        # connection, session will always be set as part of async initialization with context managers
         self.connection: Connection = None  # type: ignore[assignment]
         self.session: ClientSession = None  # type: ignore[assignment]
         self.wavelink = None
