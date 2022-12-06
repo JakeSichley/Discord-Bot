@@ -32,10 +32,10 @@ import discord
 
 from utils.logging_formatter import bot_logger
 
-VERSION = '2.6.3'
+VERSION = '2.7.0'
 
 
-async def cleanup(messages: List[discord.Message], channel: discord.TextChannel) -> None:
+async def cleanup(messages: List[discord.Message], channel: discord.abc.Messageable) -> None:
     """
     Cleans up all prompt messages sent by the bot a command's setup.
     Attempts to bulk delete messages if permissions allow; otherwise messages are deleted individually.
@@ -47,6 +47,9 @@ async def cleanup(messages: List[discord.Message], channel: discord.TextChannel)
     Returns:
         None.
     """
+
+    if not isinstance(channel, (discord.TextChannel, discord.Thread, discord.VoiceChannel)):  # attr: delete_messages
+        return
 
     try:
         await channel.delete_messages(messages)
@@ -138,11 +141,11 @@ async def run_in_subprocess(command: str) -> Tuple[bytes, bytes]:
     """
 
     try:
-        process = await asyncio.create_subprocess_shell(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return await process.communicate()
+        process_shell = await asyncio.create_subprocess_shell(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return await process_shell.communicate()
     except NotImplementedError:
-        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return await asyncio.get_running_loop().run_in_executor(None, process.communicate)
+        process_program = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return await asyncio.get_running_loop().run_in_executor(None, process_program.communicate)
 
 
 async def generate_activity(status_text: str, status_type: discord.ActivityType) -> discord.Activity:
@@ -161,8 +164,9 @@ async def generate_activity(status_text: str, status_type: discord.ActivityType)
 
     try:
         git_status = result[0].decode()
-        git_commit = search(r'(?<=commit )([A-z0-9]{7})', git_status).group()
-        git_description = search(r'(?<=JakeSichley/)([A-z0-9-.]+)', git_status).group()
+        # type ignores are handled by except AttributeError
+        git_commit = search(r'(?<=commit )([A-z0-9]{7})', git_status).group()  # type: ignore
+        git_description = search(r'(?<=JakeSichley/)([A-z0-9-.]+)', git_status).group()  # type: ignore
     except AttributeError:
         return discord.Activity(name=status_text, type=status_type)
     else:
@@ -183,4 +187,4 @@ def valid_content(content: str, *, max_length: int = 2000) -> bool:
         (bool): Whether the content is valid.
     """
 
-    return content and len(content) <= max_length
+    return content is not None and len(content) <= max_length

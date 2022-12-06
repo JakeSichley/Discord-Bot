@@ -93,6 +93,6 @@ def ensure_git_credentials() -> Callable:
             (bool): Whether the bot was initialized with git credentials.
         """
 
-        return ctx.bot.git
+        return ctx.bot.git is not None
 
     return commands.check(predicate)

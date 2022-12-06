@@ -22,7 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from inspect import Parameter
 from io import BytesIO
 from os import path
 from re import search
@@ -34,6 +33,7 @@ import discord
 from PIL import Image, ImageDraw, ImageFont
 from aiohttp import ClientSession
 from discord.ext.commands import MissingRequiredArgument, BadArgument
+from discord.ext.commands import Parameter
 
 from utils.network_utils import network_request, NetworkReturnType
 from utils.utils import run_in_executor

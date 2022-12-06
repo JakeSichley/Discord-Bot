@@ -28,6 +28,7 @@ from json.decoder import JSONDecodeError
 from random import seed, shuffle, randrange
 from re import search, findall
 from time import time
+from typing import List, no_type_check
 
 from aiohttp import ClientError
 from bs4 import BeautifulSoup
@@ -92,18 +93,18 @@ class DDO(commands.Cog):
             None.
         """
 
-        async def evaluate_dice(dice: str) -> [int]:
+        async def evaluate_dice(dice_pattern: str) -> List[int]:
             """
             Simulate rolling the specified dice.
 
             Parameters:
-                dice (str): The specified dice pattern to generate.
+                dice_pattern (str): The specified dice pattern to generate.
 
             Returns:
                 (List[int]): The result of rolling the specified pattern.
             """
 
-            die = dice.split('d')
+            die = dice_pattern.split('d')
             # create a list of all possible roll outcomes
             # dice = [x for x in range(int(die[0]), int(die[0]) * int(die[1]) + 1)]
             dice = []
@@ -114,12 +115,12 @@ class DDO(commands.Cog):
             # shuffle the list and send the first index's result
             return dice[0]
 
-        async def evaluate_dice_string(string: str) -> str:
+        async def evaluate_dice_string(die_string: str) -> str:
             """
             Turns a die string into a computed value without exposing the string to eval.
 
             Parameters:
-                string (str): The die string to be evaluated.
+                die_string (str): The die string to be evaluated.
 
             Returns:
                 (str): The evaluated result.
@@ -127,18 +128,18 @@ class DDO(commands.Cog):
 
             # avoid exposing eval() to the user -> manually parse the arithmetic expression we've generated
             # while we have valid expressions, break them down into groups
-            while match := search(r'(\d+)([+\-])(\d+)', string):
-                match = match.groups()
+            while match := search(r'(\d+)([+\-])(\d+)', die_string):
+                groups = match.groups()
 
-                if match[1] == '+':
-                    total = int(match[0]) + int(match[2])
+                if groups[1] == '+':
+                    total = int(groups[0]) + int(groups[2])
                 else:
-                    total = int(match[0]) - int(match[2])
+                    total = int(groups[0]) - int(groups[2])
 
                 # replace the expression with the result and continue
-                string = string.replace(f'{"".join(match)}', str(total), 1)
+                die_string = die_string.replace(f'{"".join(groups)}', str(total), 1)
 
-            return string
+            return die_string
 
         # remove all spaces from the string, and manually add a space to the front
         # this allows this regex pattern to find a 'd#' at the beginning
@@ -177,7 +178,9 @@ class DDO(commands.Cog):
                 await ctx.send('Die Evaluation Timeout Error')
 
     # noinspection GrazieInspection
-    @commands.is_owner()  # needs cleanup
+    # needs cleanup
+    @no_type_check
+    @commands.is_owner()
     @commands.command(name='ddoitem', help='Pulls basic information about an item in Dungeons & Dragons Online '
                                            'from the wiki')
     async def ddo_item(self, ctx: Context, *, item: str) -> None:
@@ -505,7 +508,7 @@ class DDO(commands.Cog):
 
         await self.bot.wait_until_ready()
 
-    def cog_unload(self) -> None:
+    async def cog_unload(self) -> None:
         """
         A method detailing custom extension unloading procedures.
         Clears internal caches and immediately and forcefully exits any discord.ext.tasks.
@@ -518,7 +521,7 @@ class DDO(commands.Cog):
         """
 
         self.query_ddo_audit.cancel()
-        self.api_data = None
+        self.api_data = dict()
 
         bot_logger.info('Completed Unload for Cog: DDO')
 

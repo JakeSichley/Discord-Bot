@@ -42,7 +42,8 @@ def default_message_reply(ctx: Context) -> Optional[Message]:
     """
 
     try:
-        return ctx.message.reference.resolved
+        reference = ctx.message.reference.resolved  # type: ignore[union-attr]
+        return reference if isinstance(reference, Message) else None
     except AttributeError:
         raise commands.BadArgument()
 

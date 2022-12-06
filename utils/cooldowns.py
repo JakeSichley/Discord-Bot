@@ -98,7 +98,7 @@ class CooldownMapping:
             (Optional[commands.Cooldown]).
         """
 
-        if self.__count < self.__impose_cooldowns_threshold:
+        if self.__count < self.__impose_cooldowns_threshold or self.__start_time is None:
             return None
 
         remaining_time = (self.__start_time + timedelta(seconds=self.base_duration)) - datetime.now()
@@ -153,10 +153,17 @@ async def cooldown_predicate(ctx: Context) -> bool:
         (bool).
     """
 
-    default_mapping = CooldownMapping()
-    cooldown_mapping = ctx.bot.dynamic_cooldowns.get(ctx.command.qualified_name, {}).get(ctx.author.id, default_mapping)
+    if ctx.command is None:
+        return True
 
-    if cooldown := cooldown_mapping.remaining_cooldown:
+    command_cooldown_mapping = ctx.bot.dynamic_cooldowns.get(ctx.command.qualified_name)
+
+    if command_cooldown_mapping is None:
+        return True
+
+    author_mapping = command_cooldown_mapping.get(ctx.author.id, CooldownMapping())
+
+    if cooldown := author_mapping.remaining_cooldown:
         raise commands.CommandOnCooldown(cooldown, cooldown.per, commands.BucketType.user)
 
     return True

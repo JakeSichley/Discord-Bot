@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 from re import findall, sub
-from typing import Union
+from typing import Union, Optional
 
 import discord
 from aiosqlite import Error as aiosqliteError
@@ -57,11 +57,25 @@ class Moderation(commands.Cog):
 
         self.bot = bot
 
+    async def cog_check(self, ctx: Context) -> bool:  # type: ignore[override]
+        """
+        A method that registers a cog-wide check.
+        Requires these commands be used in a guild only.
+
+        Parameters:
+            ctx (Context): The invocation context.
+
+        Returns:
+            (bool): Whether the command was invoked in a guild.
+        """
+
+        return ctx.guild is not None
+
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True, read_message_history=True)
     @commands.command(name='purge', help='Purges n+1 messages from the current channel. If a user is supplied, the bot '
                                          'will purge any message from that user in the last n messages.')
-    async def purge(self, ctx: Context, limit: int = 0, user: discord.Member = None):
+    async def purge(self, ctx: Context, limit: int = 0, user: Optional[discord.Member] = None) -> None:
         """
         A method to purge messages from a channel.
         Should a user ID be supplied, any messages from that user in the last (limit) messages will be deleted.
@@ -82,6 +96,9 @@ class Moderation(commands.Cog):
         Returns:
             None.
         """
+
+        if not isinstance(ctx.channel, (discord.TextChannel, discord.Thread, discord.VoiceChannel)):
+            return
 
         if limit > 10:
             if not await ctx.confirmation_prompt(f'Are you sure you want to delete {limit} messages?'):
@@ -161,6 +178,9 @@ class Moderation(commands.Cog):
             None.
         """
 
+        assert isinstance(ctx.me, discord.Member)  # guild only
+        assert isinstance(ctx.author, discord.Member)  # guild only
+
         bot_role = ctx.me.top_role
         invoker_role = ctx.author.top_role
 
@@ -218,16 +238,18 @@ class Moderation(commands.Cog):
             None.
         """
 
+        assert ctx.guild is not None  # guild only
+
         if role := (await typed_retrieve_query(
                 self.bot.connection,
                 int,
                 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                 (ctx.guild.id,))
         ):
-            # noinspection PyTypeChecker
-            # PyCharm Error: List[Type[T]] instead of List[T]
-            role = ctx.guild.get_role(role[0])
-            await ctx.send(f'The default role for the server is **{role.name}**')
+            if fetched_role := ctx.guild.get_role(role[0]):
+                await ctx.send(f'The default role for the server is **{fetched_role.name}**')
+            else:
+                await ctx.send(f'The default role for the server has id `{role}`, but I was unable to fetch it.')
         else:
             await ctx.send(f'There is no default role set for the server.')
 
@@ -238,7 +260,7 @@ class Moderation(commands.Cog):
                       help='Sets the role users are auto-granted on joining.'
                            '\nTo remove the default role, simply call this command without passing a role.'
                            '\nNote: The role selected must be lower than the bot\'s role and lower than your role.')
-    async def set_default_role(self, ctx: Context, role: discord.Role = None) -> None:
+    async def set_default_role(self, ctx: Context, role: Optional[discord.Role] = None) -> None:
         """
         A method for checking which role (if any) will be auto-granted to new users joining the guild.
 
@@ -258,6 +280,10 @@ class Moderation(commands.Cog):
         Returns:
             None.
         """
+
+        assert isinstance(ctx.me, discord.Member)  # guild only
+        assert isinstance(ctx.author, discord.Member)  # guild only
+        assert ctx.guild is not None  # guild only
 
         bot_role = ctx.me.top_role
         invoker_role = ctx.author.top_role
@@ -312,22 +338,23 @@ class Moderation(commands.Cog):
                 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                 (member.guild.id,))
         ):
-            # noinspection PyTypeChecker
-            # PyCharm Error: List[Type[T]] instead of List[T]
-            role = member.guild.get_role(role[0])
+            if fetched_role := member.guild.get_role(role[0]):
+                try:
+                    await member.add_roles(fetched_role, reason='Default Role Assignment')
+                except discord.HTTPException as e:
+                    bot_logger.error(f'Role Addition Failure. {e.status}. {e.text}')
+            else:
+                bot_logger.error(f'Failed to Fetch Default Role for Guild: {member.guild.id} with Role: {role}')
 
-            try:
-                await member.add_roles(role, reason='Default Role Assignment')
-            except discord.HTTPException as e:
-                bot_logger.error(f'Role Addition Failure. {e.status}. {e.text}')
-                await execute_query(
-                    self.bot.connection,
-                    'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
-                    (member.guild.id,)
-                )
+                # todo: implement `guild_unavailable` checks
+                # await execute_query(
+                #     self.bot.connection,
+                #     'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+                #     (member.guild.id,)
+                # )
 
     @commands.Cog.listener()
-    async def on_member_update(self, before: discord.Member, after: discord.Member):
+    async def on_member_update(self, before: discord.Member, after: discord.Member) -> None:
         """
         A commands.Cog listener event that is called whenever a member is updated.
 
@@ -349,18 +376,27 @@ class Moderation(commands.Cog):
                     'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                     (after.guild.id,))
             ):
-                # noinspection PyTypeChecker
-                # PyCharm Error: List[Type[T]] instead of List[T]
-                role = after.guild.get_role(role[0])
-
-                try:
-                    await after.add_roles(role, reason='Default Role [Membership Screening] Assignment')
-                except discord.HTTPException as e:
-                    bot_logger.error(f'Role Addition Failure. {e.status}. {e.text}')
+                if fetched_role := after.guild.get_role(role[0]):
                     try:
-                        await after.guild.system_channel.send(f'Failed to add the default role to `{str(after)}`.')
-                    except discord.HTTPException:
-                        bot_logger.error(f'Role Addition Alert Failure. {e.status}. {e.text}')
+                        await after.add_roles(fetched_role, reason='Default Role [Membership Screening] Assignment')
+                        return
+                    except discord.HTTPException as e:
+                        bot_logger.error(f'Role Addition Failure. {e.status}. {e.text}')
+
+                        if sys_channel := after.guild.system_channel:
+                            try:
+                                await sys_channel.send(f'Failed to add the default role to `{str(after)}`.')
+                            except discord.HTTPException as e:
+                                bot_logger.error(f'Role Addition Alert Failure. {e.status}. {e.text}')
+                else:
+                    bot_logger.error(f'Failed to Fetch Default Role for Guild: {after.guild.id} with Role: {role}')
+
+                    # todo: implement `guild_unavailable` checks
+                    # await execute_query(
+                    #     self.bot.connection,
+                    #     'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+                    #     (after.guild.id,)
+                    # )
 
 
 async def setup(bot: DreamBot) -> None:

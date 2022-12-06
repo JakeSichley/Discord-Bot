@@ -27,7 +27,7 @@ from typing import List, Optional, NamedTuple
 
 import discord
 from aiosqlite import Error as aiosqliteError
-from cache import ExpiringCache
+from cache import ExpiringCache  # type: ignore
 from discord.ext import commands
 
 from dreambot import DreamBot
@@ -36,6 +36,8 @@ from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.logging_formatter import bot_logger
 from utils.prompts import prompt_user_for_voice_channel, prompt_user_for_role
 from utils.utils import cleanup
+
+PartialVoiceRole = NamedTuple('PartialVoiceRole', [('channel_id', int), ('role_id', int)])
 
 
 class VoiceRoles(commands.Cog):
@@ -63,6 +65,7 @@ class VoiceRoles(commands.Cog):
         self.bot = bot
         self.cache = ExpiringCache(self.CACHE_TTL)
 
+    @commands.guild_only()
     @commands.group(name='voicerole', aliases=['vr', 'voiceroles'])
     async def voice_role(self, ctx: Context) -> None:
         """
@@ -78,7 +81,7 @@ class VoiceRoles(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send_help('voicerole')
 
-    @commands.bot_has_permissions(manage_roles=True)
+    @commands.bot_has_permissions(manage_roles=True)  # type: ignore[arg-type]
     @commands.has_permissions(manage_roles=True)
     @voice_role.command(name='add', help='Begins the process of setting up a Voice Role.\nYou can invoke this command '
                                          'without any arguments to go through the entire setup process.\nAlternatively,'
@@ -88,7 +91,7 @@ class VoiceRoles(commands.Cog):
                                          ' use this method to change the role of an existing voice role channel.'
                                          ' Specify the same channel and simply supply a new role!')
     async def add_voice_role(
-            self, ctx: Context, channel: discord.VoiceChannel = None, role: discord.Role = None
+            self, ctx: Context, channel: Optional[discord.VoiceChannel] = None, role: Optional[discord.Role] = None
     ) -> None:
         """
         Adds a voice role to a specified channel.
@@ -102,7 +105,11 @@ class VoiceRoles(commands.Cog):
             None.
         """
 
-        cleanup_messages = []
+        assert isinstance(ctx.me, discord.Member)  # guild only
+        assert isinstance(ctx.author, discord.Member)  # guild only
+        assert ctx.guild is not None
+
+        cleanup_messages: List[discord.Message] = []
 
         # check these properties early to try to avoid wasting the user's time
         bot_role = ctx.me.top_role
@@ -163,13 +170,13 @@ class VoiceRoles(commands.Cog):
         finally:
             await cleanup(cleanup_messages, ctx.channel)
 
-    @commands.bot_has_permissions(manage_roles=True)
+    @commands.bot_has_permissions(manage_roles=True)  # type: ignore[arg-type]
     @commands.has_permissions(manage_roles=True)
     @voice_role.command(name='remove', help='Begins the process of removing an existing Voice Role.\nIf you invoke this'
                                             ' command without a supplying a channel, you will be prompted for one.\nIf'
                                             ' you wish to change the role associated with a specific channel, consider'
                                             ' using "add" instead!')
-    async def remove_voice_role(self, ctx: Context, channel: discord.VoiceChannel = None) -> None:
+    async def remove_voice_role(self, ctx: Context, channel: Optional[discord.VoiceChannel] = None) -> None:
         """
         Removes a voice role from a specified channel.
 
@@ -180,6 +187,8 @@ class VoiceRoles(commands.Cog):
         Returns:
             None.
         """
+
+        assert ctx.guild is not None
 
         if not channel:
             initial_message = 'Please specify the channel you want to remove a Voice Role for!\nYou can right click ' \
@@ -201,14 +210,12 @@ class VoiceRoles(commands.Cog):
                 'SELECT ROLE_ID FROM VOICE_ROLES WHERE CHANNEL_ID=?',
                 (channel.id,)
         ):
-            # noinspection PyTypeChecker
-            # PyCharm Error: List[Type[T]] instead of List[T]
-            role = ctx.guild.get_role(role[0])
+            fetched_role = ctx.guild.get_role(role[0])
 
-            if not role:
+            if not fetched_role:
                 await ctx.send('Channel or Role data could not be fetched. Deleting invalid voice role.')
             else:
-                await ctx.send(f'Deleted the voice role **{role.name}** from channel **{channel.name}**.')
+                await ctx.send(f'Deleted the voice role **{fetched_role.name}** from channel **{channel.name}**.')
 
             try:
                 await execute_query(
@@ -222,9 +229,9 @@ class VoiceRoles(commands.Cog):
         else:
             await ctx.send('Could not find any voice roles associated with the specified channel.')
 
-    @commands.has_permissions(manage_roles=True)
+    @commands.has_permissions(manage_roles=True)  # type: ignore[arg-type]
     @voice_role.command(name='check', help='Checks a channel for an existing voice role.')
-    async def check_voice_role(self, ctx: Context, channel: discord.VoiceChannel = None) -> None:
+    async def check_voice_role(self, ctx: Context, channel: Optional[discord.VoiceChannel] = None) -> None:
         """
         Checks for a voice role for a specified channel.
 
@@ -235,6 +242,8 @@ class VoiceRoles(commands.Cog):
         Returns:
             None.
         """
+
+        assert ctx.guild is not None
 
         if not channel:
             initial_message = 'Please specify the channel you want to check a Voice Role for!\nYou can right click ' \
@@ -256,14 +265,12 @@ class VoiceRoles(commands.Cog):
                 'SELECT ROLE_ID FROM VOICE_ROLES WHERE CHANNEL_ID=?',
                 (channel.id,)
         ):
-            # noinspection PyTypeChecker
-            # PyCharm Error: List[Type[T]] instead of List[T]
-            role = ctx.guild.get_role(role[0])
+            fetched_role = ctx.guild.get_role(role[0])
 
-            if not role:
+            if not fetched_role:
                 await ctx.send(f'There is currently an invalid role associated with the channel **{channel.name}**.')
             else:
-                await ctx.send(f'**{role.name}** will be assigned to members who join **{channel.name}**.')
+                await ctx.send(f'**{fetched_role.name}** will be assigned to members who join **{channel.name}**.')
 
         else:
             await ctx.send('Could not find any voice roles associated with the specified channel.')
@@ -315,7 +322,7 @@ class VoiceRoles(commands.Cog):
 
         if data := await typed_retrieve_query(
                 self.bot.connection,
-                NamedTuple('PartialVoiceRole', [('channel_id', int), ('role_id', int)]),
+                PartialVoiceRole,
                 'SELECT CHANNEL_ID, ROLE_ID FROM VOICE_ROLES WHERE GUILD_ID=?',
                 (member.guild.id,)
         ):
@@ -326,7 +333,8 @@ class VoiceRoles(commands.Cog):
                 add_role = None
                 for partial_voice_role in data:
                     if partial_voice_role.channel_id != after.channel.id:
-                        remove_roles.append(member.guild.get_role(partial_voice_role.role_id))
+                        if fetched_role := member.guild.get_role(partial_voice_role.role_id):
+                            remove_roles.append(fetched_role)
                     else:
                         add_role = member.guild.get_role(partial_voice_role.role_id)
 
@@ -351,7 +359,8 @@ class VoiceRoles(commands.Cog):
             else:
                 remove_roles = []
                 for channel_id, role_id in data:
-                    remove_roles.append(member.guild.get_role(role_id))
+                    if fetched_role := member.guild.get_role(role_id):
+                        remove_roles.append(fetched_role)
 
                 if removal_set := unique_roles(member.roles, remove_roles):
                     try:

@@ -23,9 +23,10 @@ SOFTWARE.
 """
 
 import dataclasses
-from typing import List, Tuple, Any, Optional, TypeVar
+from typing import List, Tuple, Any, Optional, Iterable, Type, TypeVar
 
 import aiosqlite
+from typing_extensions import TypeGuard
 
 from utils.logging_formatter import bot_logger
 
@@ -37,7 +38,7 @@ class DatabaseDataclass:
     """
     A `dataclass` used to enforce type-safety for type-specified database retrievals.
 
-    This class no attributes of its own, and is meant to subclassed.
+    This class no attributes of its own, and is meant to be subclassed.
     """
 
     def __post_init__(self) -> None:
@@ -62,7 +63,9 @@ class DatabaseDataclass:
                 raise ValueError(f'Expected {field.name} to be {field.type}, got {type(value)}')
 
 
-async def execute_query(connection: aiosqlite.Connection, query: str, values: Tuple[Any, ...] = None) -> Optional[int]:
+async def execute_query(
+        connection: aiosqlite.Connection, query: str, values: Optional[Tuple[Any, ...]] = None
+) -> Optional[int]:
     """
     A method that executes a sqlite3 statement.
     Note: Use retrieve_query() for 'SELECT' statements.
@@ -79,7 +82,7 @@ async def execute_query(connection: aiosqlite.Connection, query: str, values: Tu
         (Optional[int]): The number of affect rows.
     """
 
-    values = values if values else tuple()
+    values = values or tuple()
 
     try:
         affected = await connection.execute(query, values)
@@ -92,8 +95,8 @@ async def execute_query(connection: aiosqlite.Connection, query: str, values: Tu
 
 
 async def retrieve_query(
-        connection: aiosqlite.Connection, query: str, values: Tuple[Any, ...] = None
-) -> List[Tuple[Any, ...]]:
+        connection: aiosqlite.Connection, query: str, values: Optional[Tuple[Any, ...]] = None
+) -> Iterable[Tuple[Any, ...]]:
     """
     A method that returns the result of a sqlite3 'SELECT' statement.
     Note: Use execute_query() for non-'SELECT' statements.
@@ -110,11 +113,14 @@ async def retrieve_query(
         (List[Tuple[Any, ...]]): A list of sqlite3 row objects. Can be empty.
     """
 
-    values = values if values else tuple()
+    values = values or tuple()
 
     try:
         async with connection.execute(query, values) as cursor:
-            return await cursor.fetchall()
+            rows = await cursor.fetchall()
+            assert (Sqlite3Typing.fetchall(rows))
+
+            return rows
 
     except aiosqlite.Error as error:
         bot_logger.error(f'Retrieve Query ("{query}"). {error}.')
@@ -122,13 +128,10 @@ async def retrieve_query(
 
 
 async def typed_retrieve_query(
-        connection: aiosqlite.Connection, data_type: T, query: str, values: Tuple[Any, ...] = None,
+        connection: aiosqlite.Connection, data_type: Type[T], query: str, values: Optional[Tuple[Any, ...]] = None,
 ) -> List[T]:
     """
-    An advanced SQLite 'SELECT' query. Attempts to coerced retrieved rows to the specified data type.
-
-    Warnings:
-        PyCharm incorrectly warns for primitive types. List[Type[int]] instead of List[int].
+    A typed SQLite 'SELECT' query. Attempts to coerced retrieved rows to the specified data type.
 
     Examples:
         There's three primary ways to use `typed_retrieve_query`:
@@ -218,3 +221,37 @@ async def typed_retrieve_query(
             pass
 
     return transformed_entries
+
+
+class Sqlite3Typing:
+    """
+    Static methods to assist with mypy typing for Sqlite3 cursor methods that return rows.
+    """
+
+    @staticmethod
+    def fetchall(val: Iterable[object]) -> TypeGuard[Iterable[Tuple[Any, ...]]]:
+        """
+        A TypeGuard for mypy to assert that `fetchall() -> Iterable[sqlite3.Row]` == Iterable[Tuple[Any, ...]].
+
+        Parameters:
+            val (Iterable[object]): The sqlite3.Rows to typeguard.
+
+        Returns:
+            (TypeGuard[Iterable[Tuple[Any, ...]]]): The narrowed type.
+        """
+
+        return all(isinstance(x, tuple) for x in val)
+
+    @staticmethod
+    def fetchone(val: object) -> TypeGuard[Optional[Tuple[Any, ...]]]:
+        """
+        A TypeGuard for mypy to assert that `fetchone() -> Optional[sqlite3.Row]` == Optional[Tuple[Any, ...]].
+
+        Parameters:
+            val (object): The sqlite3.Row to typeguard.
+
+        Returns:
+            (TypeGuard[Optional[Tuple[Any, ...]]]): The narrowed type.
+        """
+
+        return isinstance(val, tuple) or val is None
