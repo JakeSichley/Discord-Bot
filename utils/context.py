@@ -55,8 +55,33 @@ class Context(commands.Context):
         super().__init__(**kwargs)
         self.id = uuid4()
 
-    async def react(self, emoji: Union[discord.Emoji, discord.Reaction, discord.PartialEmoji, str],
-                    *, raise_exceptions: bool = False) -> None:
+    def __repr__(self) -> str:
+        """
+        Provides a string representation of this object.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str).
+        """
+
+        name = self.__class__.__name__
+
+        command_name = f'{self.command.__class__.__name__ if self.command else "Context"}'
+        command = f'name={self.command.qualified_name if self.command else "None"}'
+        cog = f'cog={self.command.cog.qualified_name if self.command and self.command.cog else "None"}'
+
+        command_repr = f'<{command_name} {cog} {command}>'
+
+        return f'<{name} command={command_repr} message={self.message!r}>'
+
+    async def react(
+            self,
+            emoji: Union[discord.Emoji, discord.Reaction, discord.PartialEmoji, str],
+            *,
+            raise_exceptions: bool = False
+    ) -> None:
         """
         Attempts to add the specified emoji to the message.
 

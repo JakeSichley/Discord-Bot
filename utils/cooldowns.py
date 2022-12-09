@@ -69,6 +69,7 @@ class CooldownMapping:
         Returns:
             (str).
         """
+
         return f'{self.__count=}, {self.__start_time=}, {self.__max_cooldown=}'
 
     @property
