@@ -74,11 +74,7 @@ class Exceptions(commands.Cog):
             None.
         """
 
-        if ctx.command is None:
-            bot_logger.warning(f'Context::Command was None. Details: {ctx}')
-            return
-
-        if hasattr(ctx.command, 'on_error'):
+        if ctx.command is None or hasattr(ctx.command, 'on_error'):
             return
 
         if isinstance(error, commands.CommandInvokeError):
