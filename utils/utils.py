@@ -32,7 +32,7 @@ import discord
 
 from utils.logging_formatter import bot_logger
 
-VERSION = '2.7.1'
+VERSION = '2.7.2'
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.abc.Messageable) -> None:

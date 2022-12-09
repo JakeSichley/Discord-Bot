@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+# 2.7.2
+### Internal
+* Remove logging from `v2.7.1` -> `command` is `None` when prefix is used without a valid command name
+
 # 2.7.1
 ### Internal
 * Add logging to identify cases where `on_command_error->command` is `None`
