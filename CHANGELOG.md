@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+# 2.7.1
+### Internal
+* Add logging to identify cases where `on_command_error->command` is `None`
+
 # 2.7.0
 ### Internal
 * Add mypy type checking to the project
