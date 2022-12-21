@@ -28,7 +28,7 @@ from json.decoder import JSONDecodeError
 from random import seed, shuffle, randrange
 from re import search, findall
 from time import time
-from typing import List, no_type_check
+from typing import List, no_type_check, Optional, Dict, Any
 
 from aiohttp import ClientError
 from bs4 import BeautifulSoup
@@ -39,6 +39,35 @@ from dreambot import DreamBot
 from utils.context import Context
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
+from dataclasses import dataclass
+
+
+@dataclass
+class RunescapeItem:
+    """
+    A dataclass that represents the raw components of an Old School Runescape Item.
+
+    Attributes:
+        id (int): The item's internal id.
+        name (str): The item's name.
+        examine (str): The item's description.
+        icon (str): The item's icon name on the Old School Wiki.
+        members (bool): Whether the item is members-only.
+        value (int): The item's base value.
+        limit (Optional[int]): The item's Grand Exchange limit, if any.
+        lowalch (Optional[int]): The item's low alchemy value, if any.
+        highalch (Optional[int]): The item's high alchemy value, if any.
+    """
+
+    id: int
+    name: str
+    examine: str
+    icon: str
+    members: bool
+    value: int
+    limit: Optional[int] = None
+    lowalch: Optional[int] = None
+    highalch: Optional[int] = None
 
 
 class Runescape(commands.Cog):
@@ -50,7 +79,7 @@ class Runescape(commands.Cog):
 
     Attributes:
         bot (DreamBot): The Discord bot.
-        api_data (dict): The response data from DDOAudit (used for LFMs).
+        item_data.
         query_ddo_audit (ext.tasks): Stores the task that queries DDOAudit every {QUERY_INTERVAL} seconds.
         backoff (ExponentialBackoff): Exponential Backoff calculator for network requests.
     """
@@ -66,9 +95,14 @@ class Runescape(commands.Cog):
         """
 
         self.bot = bot
-        self.mapping_data = {}
+        self.item_data: Dict[str, RunescapeItem] = {}
         self.backoff = ExponentialBackoff(3600 * 4)
         self.query_mapping_data.start()
+
+    @commands.is_owner()
+    @commands.command('rs')
+    async def rs_item(self, ctx, *, name: str):
+        await ctx.send(self.item_data[name] if name in self.item_data else 'Item Not Found')
 
     @tasks.loop(seconds=MAPPING_QUERY_INTERVAL)
     async def query_mapping_data(self) -> None:
@@ -84,16 +118,19 @@ class Runescape(commands.Cog):
         """
 
         try:
-            self.mapping_data = await network_request(
+            mapping_response = await network_request(
                 self.bot.session,
                 'https://prices.runescape.wiki/api/v1/osrs/mapping',
                 return_type=NetworkReturnType.JSON, ssl=False
             )
 
-            print(self.mapping_data)
+            self.item_data = {item['name']: RunescapeItem(**item) for item in mapping_response if 'name' in item}
 
         except ClientError:
             pass
+
+        except TypeError as e:
+            bot_logger.warning(f'OSRS RunescapeItem Init Error: {e}')
 
         except (JSONDecodeError, UnicodeError) as e:
             bot_logger.warning(f'OSRS Mapping Query Error: {type(e)} - {e}')
@@ -114,8 +151,8 @@ class Runescape(commands.Cog):
             None.
         """
 
-        self.query_ddo_audit.cancel()
-        self.mapping_data = dict()
+        self.query_mapping_data.cancel()
+        self.item_data = dict()
 
         bot_logger.info('Completed Unload for Cog: Runescape')
 
