@@ -48,7 +48,7 @@ from utils.checks import ensure_git_credentials
 from utils.context import Context
 from utils.database.helpers import execute_query, retrieve_query
 from utils.logging_formatter import bot_logger
-from utils.network_utils import network_request, NetworkReturnType
+from utils.network_utils import network_request, NetworkReturnType, Headers
 from utils.utils import pairs, run_in_subprocess, generate_activity
 
 
@@ -615,9 +615,9 @@ class Admin(commands.Cog):
 
         assert self.bot.git is not None  # `@ensure_git_credentials` handles this
 
-        headers = {
+        headers: Headers = {
             'User-Agent': f"{self.bot.git['git_user']}-{self.bot.git['git_repo']}",
-            'authorization': f"token {self.bot.git['git_token']}"
+            'Authorization': f"Bearer {self.bot.git['git_token']}"
         }
 
         branches_url = f"https://api.github.com/repos/{self.bot.git['git_user']}/{self.bot.git['git_repo']}/branches"
