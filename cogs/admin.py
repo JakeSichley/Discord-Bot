@@ -33,7 +33,7 @@ from io import StringIO
 from re import finditer
 from textwrap import indent
 from traceback import format_exc
-from typing import Union, Optional, List, Sequence
+from typing import Union, Optional, List, Sequence, Annotated
 
 import discord
 import pytz
@@ -50,6 +50,12 @@ from utils.database.helpers import execute_query, retrieve_query
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, NetworkReturnType, Headers
 from utils.utils import pairs, run_in_subprocess, generate_activity
+from utils.converters import StringConverter
+
+
+ExtensionName = StringConverter(
+    mutator=lambda x: x.strip().lower()
+)
 
 
 class Admin(commands.Cog):
@@ -122,7 +128,7 @@ class Admin(commands.Cog):
         await ctx.send(help_string)
 
     @commands.command(name='reload', aliases=['load'], hidden=True)
-    async def reload(self, ctx: Context, module: str) -> None:
+    async def reload(self, ctx: Context, module: Annotated[str, ExtensionName]) -> None:
         """
         A command to reload a module.
         If the reload fails, the previous state of module is maintained.
@@ -148,6 +154,38 @@ class Admin(commands.Cog):
         except commands.ExtensionNotLoaded:
             await self.bot.load_extension('cogs.' + module)
             await ctx.send(f'Loaded Module: `{module}`')
+        except commands.ExtensionNotFound:
+            await ctx.send(f'Module `{module} does not exist.')
+
+    @commands.command(name='unload', hidden=True)
+    async def unload(self, ctx: Context, module: Annotated[str, ExtensionName]) -> None:
+        """
+        A command to unload a module.
+
+        Checks:
+            is_owner(): Whether the invoking user is the bot's owner.
+
+        Parameters:
+            ctx (Context): The invocation context.
+            module (str): The module to be unloaded.
+
+        Output:
+            The status of the unload.
+
+        Returns:
+            None.
+        """
+
+        if module == 'admin':
+            ctx.command = self.bot.get_command('reload')
+            await ctx.reinvoke()
+            return
+
+        try:
+            await self.bot.unload_extension('cogs.' + module)
+            await ctx.send(f'Unloaded Module: `{module}`')
+        except commands.ExtensionNotLoaded:
+            await ctx.send(f'Could Not Unload Module: `{module}`')
 
     @commands.command(name='sync')
     async def sync_commands(self, ctx: Context, sync_type: Optional[str] = None) -> None:
@@ -185,36 +223,6 @@ class Admin(commands.Cog):
 
         await ctx.send(f'Synced {len(synced)} commands using sync type: `{sync_type}`.')
         bot_logger.info(f'Synced {len(synced)} commands using sync type: {sync_type}.')
-
-    @commands.command(name='unload', hidden=True)
-    async def unload(self, ctx: Context, module: str) -> None:
-        """
-        A command to unload a module.
-
-        Checks:
-            is_owner(): Whether the invoking user is the bot's owner.
-
-        Parameters:
-            ctx (Context): The invocation context.
-            module (str): The module to be unloaded.
-
-        Output:
-            The status of the unload.
-
-        Returns:
-            None.
-        """
-
-        if module == 'admin':
-            ctx.command = self.bot.get_command('reload')
-            await ctx.reinvoke()
-            return
-
-        try:
-            await self.bot.unload_extension('cogs.' + module)
-            await ctx.send(f'Unloaded Module: `{module}`')
-        except commands.ExtensionNotLoaded:
-            await ctx.send(f'Could Not Unload Module: `{module}`')
 
     @commands.command(name='logout', aliases=['shutdown'], hidden=True)
     async def logout(self, ctx: Context) -> None:
