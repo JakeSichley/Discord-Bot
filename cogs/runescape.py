@@ -42,6 +42,31 @@ from utils.network_utils import network_request, NetworkReturnType, ExponentialB
 from dataclasses import dataclass
 
 
+from discord import app_commands, Interaction
+from discord.ext import commands
+
+from dreambot import DreamBot
+from utils.logging_formatter import bot_logger
+
+
+@dataclass
+class ItemMarketData:
+    """
+    A dataclass that represents the market data associated with an Old School Runescape Item.
+
+    Attributes:
+        high (Optional[int]): The item's most recent "instant-buy" price.
+        highTime (Optional[int]): The time the item's most recent "instant-buy" transaction occurred.
+        low (Optional[int]): The item's most recent "instant-sell" price.
+        lowTime (Optional[int]): The time the item's most recent "instant-sell" transaction occurred.
+    """
+
+    high: Optional[int] = None
+    highTime: Optional[int] = None
+    low: Optional[int] = None
+    lowTime: Optional[int] = None
+
+
 @dataclass
 class RunescapeItem:
     """
@@ -57,6 +82,10 @@ class RunescapeItem:
         limit (Optional[int]): The item's Grand Exchange limit, if any.
         lowalch (Optional[int]): The item's low alchemy value, if any.
         highalch (Optional[int]): The item's high alchemy value, if any.
+        high (Optional[int]): The item's most recent "instant-buy" price.
+        highTime (Optional[int]): The time the item's most recent "instant-buy" transaction occurred.
+        low (Optional[int]): The item's most recent "instant-sell" price.
+        lowTime (Optional[int]): The time the item's most recent "instant-sell" transaction occurred.
     """
 
     id: int
@@ -68,6 +97,47 @@ class RunescapeItem:
     limit: Optional[int] = None
     lowalch: Optional[int] = None
     highalch: Optional[int] = None
+    high: Optional[int] = None
+    highTime: Optional[int] = None
+    low: Optional[int] = None
+    lowTime: Optional[int] = None
+
+    def update_with_mapping_fragment(self, fragment: 'RunescapeItem') -> None:
+        """
+        A method that updates the item's internal data.
+
+        Parameters:
+            fragment (RunescapeItem): The RunescapeItem fragment to update the item with.
+
+        Returns:
+            None.
+        """
+
+        self.id = fragment.id
+        self.name = fragment.name
+        self.examine = fragment.examine
+        self.icon = fragment.icon
+        self.members = fragment.members
+        self.value = fragment.value
+        self.limit = fragment.limit
+        self.lowalch = fragment.lowalch
+        self.highalch = fragment.highalch
+
+    def update_with_market_fragment(self, fragment: ItemMarketData) -> None:
+        """
+        A method that updates the item's market data.
+
+        Parameters:
+            fragment (ItemMarketData): The ItemMarketData fragment to update the item with.
+
+        Returns:
+            None.
+        """
+
+        self.high = fragment.high
+        self.highTime = fragment.highTime
+        self.low = fragment.low
+        self.lowTime = fragment.lowTime
 
 
 class Runescape(commands.Cog):
@@ -85,6 +155,7 @@ class Runescape(commands.Cog):
     """
 
     MAPPING_QUERY_INTERVAL = 60 * 60  # 1 hour
+    MARKET_QUERY_INTERVAL = 60  # 1 minute
 
     def __init__(self, bot: DreamBot) -> None:
         """
@@ -95,14 +166,16 @@ class Runescape(commands.Cog):
         """
 
         self.bot = bot
-        self.item_data: Dict[str, RunescapeItem] = {}
+        self.item_data: Dict[int, RunescapeItem] = {}
         self.backoff = ExponentialBackoff(3600 * 4)
         self.query_mapping_data.start()
+        self.query_market_data.start()
 
     @commands.is_owner()
     @commands.command('rs')
-    async def rs_item(self, ctx, *, name: str):
-        await ctx.send(self.item_data[name] if name in self.item_data else 'Item Not Found')
+    async def rs_item(self, ctx, *, internal_id: int):
+        # https://static.runelite.net/cache/item/icon/<item id>.png
+        await ctx.send(self.item_data[internal_id] if internal_id in self.item_data else 'Item Not Found')
 
     @tasks.loop(seconds=MAPPING_QUERY_INTERVAL)
     async def query_mapping_data(self) -> None:
@@ -121,10 +194,51 @@ class Runescape(commands.Cog):
             mapping_response = await network_request(
                 self.bot.session,
                 'https://prices.runescape.wiki/api/v1/osrs/mapping',
-                return_type=NetworkReturnType.JSON, ssl=False
+                return_type=NetworkReturnType.JSON
             )
 
-            self.item_data = {item['name']: RunescapeItem(**item) for item in mapping_response if 'name' in item}
+            for item in [RunescapeItem(**item) for item in mapping_response if 'id' in item]:
+                if item.id in self.item_data:
+                    self.item_data[item.id].update_with_mapping_fragment(item)
+                else:
+                    self.item_data[item.id] = item
+
+        except ClientError:
+            pass
+
+        except TypeError as e:
+            bot_logger.warning(f'OSRS RunescapeItem Init Error: {e}')
+
+        except (JSONDecodeError, UnicodeError) as e:
+            bot_logger.warning(f'OSRS Mapping Query Error: {type(e)} - {e}')
+
+        except Exception as e:
+            bot_logger.error(f'OSRS Mapping Query Unhandled Exception: {type(e)} - {e}')
+            await self.bot.report_exception(e)
+
+    @tasks.loop(seconds=MARKET_QUERY_INTERVAL)
+    async def query_market_data(self) -> None:
+        """
+        A discord.ext.tasks loop that queries the OSRS Wiki API for item market data.
+        Executes every {MARKET_QUERY_INTERVAL} seconds.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
+        try:
+            market_response = await network_request(
+                self.bot.session,
+                'https://prices.runescape.wiki/api/v1/osrs/latest',
+                return_type=NetworkReturnType.JSON
+            )
+
+            for item_id in [item_id for item_id in market_response['data'] if int(item_id) in self.item_data]:
+                fragment = ItemMarketData(**market_response['data'][item_id])
+                self.item_data[int(item_id)].update_with_market_fragment(fragment)
 
         except ClientError:
             pass
