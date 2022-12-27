@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased
 ### Features
 ### Internal
+* Report exceptions intercepted via `Client::on_error` to Reporting Dashboard
 ### Issues
 
 # 2.7.0
