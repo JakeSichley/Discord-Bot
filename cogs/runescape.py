@@ -29,6 +29,7 @@ from random import seed, shuffle, randrange
 from re import search, findall
 from time import time
 from typing import List, no_type_check, Optional, Dict, Any
+from difflib import SequenceMatcher, get_close_matches
 
 from aiohttp import ClientError
 from bs4 import BeautifulSoup
@@ -102,6 +103,10 @@ class RunescapeItem:
     low: Optional[int] = None
     lowTime: Optional[int] = None
 
+    def autocomplete_similiarity_for_name(self, other: str) -> float:
+        # noinspection PyArgumentEqualDefault
+        return SequenceMatcher(None, self.name.lower(), other.lower()).ratio()
+
     def update_with_mapping_fragment(self, fragment: 'RunescapeItem') -> None:
         """
         A method that updates the item's internal data.
@@ -167,9 +172,31 @@ class Runescape(commands.Cog):
 
         self.bot = bot
         self.item_data: Dict[int, RunescapeItem] = {}
+        self.item_names_to_ids: Dict[str, int] = {}
         self.backoff = ExponentialBackoff(3600 * 4)
         self.query_mapping_data.start()
         self.query_market_data.start()
+
+    @app_commands.command(
+        name='runescape_item', description='Returns basic data and market information for a given item'
+    )
+    @app_commands.describe(item='The item to retrieve data for.')
+    async def runescape_item(self, interaction: Interaction, item: int) -> None:
+        if item not in self.item_data:
+            await interaction.response.send_message("I'm unable to find that item.")
+        else:
+            await interaction.response.send_message(f'{self.item_data[item]}')
+
+    @runescape_item.autocomplete('item')
+    async def runescape_item_item_autocomplete(self, interaction: Interaction, current: str) -> List[app_commands.Choice]:
+        if not current:
+            matches = [x for x in self.item_names_to_ids.keys()]
+        else:
+            matches = [x for x in self.item_names_to_ids.keys() if current.lower() in x.lower()]
+
+        return [
+            app_commands.Choice(name=x, value=self.item_names_to_ids[x]) for x in matches[:25]
+        ]
 
     @commands.is_owner()
     @commands.command('rs')
@@ -198,6 +225,8 @@ class Runescape(commands.Cog):
             )
 
             for item in [RunescapeItem(**item) for item in mapping_response if 'id' in item]:
+                self.item_names_to_ids[item.name] = item.id
+
                 if item.id in self.item_data:
                     self.item_data[item.id].update_with_mapping_fragment(item)
                 else:

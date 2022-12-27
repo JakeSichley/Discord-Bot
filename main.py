@@ -80,8 +80,6 @@ async def main() -> None:
     else:
         headers = None
 
-    print(headers)
-
     # git optionals
     git_options: GitOptionals = {
         'git_user': getenv('GITHUB_USER'),
