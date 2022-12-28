@@ -22,32 +22,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from asyncio import sleep, wait_for, TimeoutError
-from functools import reduce
+from dataclasses import dataclass
 from json.decoder import JSONDecodeError
-from random import seed, shuffle, randrange
-from re import search, findall
-from time import time
-from typing import List, no_type_check, Optional, Dict, Any
-from difflib import SequenceMatcher, get_close_matches
+from typing import List, Optional, Dict
 
+import discord
 from aiohttp import ClientError
-from bs4 import BeautifulSoup
-from discord import Embed
+from discord import app_commands, Interaction
+from discord.app_commands import Choice
 from discord.ext import commands, tasks
 
 from dreambot import DreamBot
-from utils.context import Context
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
-from dataclasses import dataclass
-
-
-from discord import app_commands, Interaction
-from discord.ext import commands
-
-from dreambot import DreamBot
-from utils.logging_formatter import bot_logger
+from utils.utils import format_unix_dt
 
 
 @dataclass
@@ -102,10 +90,6 @@ class RunescapeItem:
     highTime: Optional[int] = None
     low: Optional[int] = None
     lowTime: Optional[int] = None
-
-    def autocomplete_similiarity_for_name(self, other: str) -> float:
-        # noinspection PyArgumentEqualDefault
-        return SequenceMatcher(None, self.name.lower(), other.lower()).ratio()
 
     def update_with_mapping_fragment(self, fragment: 'RunescapeItem') -> None:
         """
@@ -180,29 +164,82 @@ class Runescape(commands.Cog):
     @app_commands.command(
         name='runescape_item', description='Returns basic data and market information for a given item'
     )
-    @app_commands.describe(item='The item to retrieve data for.')
-    async def runescape_item(self, interaction: Interaction, item: int) -> None:
-        if item not in self.item_data:
+    @app_commands.describe(item_id='The item to retrieve data for.')
+    @app_commands.rename(item_id='item')
+    async def runescape_item(self, interaction: Interaction, item_id: int) -> None:
+        """
+        Retrieves market and basic data about an Old School Runescape item.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            item_id (int): The internal id of the item.
+
+        Returns:
+            None.
+        """
+
+        if item_id not in self.item_data:
             await interaction.response.send_message("I'm unable to find that item.")
         else:
-            await interaction.response.send_message(f'{self.item_data[item]}')
+            item = self.item_data[item_id]
+            embed = discord.Embed(
+                title=item.name,
+                color=0x971212,
+                url=f'https://oldschool.runescape.wiki/w/{item.name.replace(" ", "_")}'
+            )
+            embed.description = item.examine
+            embed.set_thumbnail(url=f'https://static.runelite.net/cache/item/icon/{item_id}.png')
 
-    @runescape_item.autocomplete('item')
-    async def runescape_item_item_autocomplete(self, interaction: Interaction, current: str) -> List[app_commands.Choice]:
+            buy_price = f'{item.high:,} coins' if item.high else 'N/A'
+            embed.add_field(name='Buy Price', value=buy_price)
+
+            sell_price = f'{item.low:,} coins' if item.low else 'N/A'
+            embed.add_field(name='Sell Price', value=sell_price)
+
+            limit = f'{item.limit:,}' if item.limit else 'N/A'
+            embed.add_field(name='Buy Limit', value=limit)
+
+            buy_time = format_unix_dt(item.highTime, 'R') if item.highTime else 'N/A'
+            embed.add_field(name='Buy Time', value=buy_time)
+
+            sell_time = format_unix_dt(item.lowTime, 'R') if item.lowTime else 'N/A'
+            embed.add_field(name='Sell Time', value=sell_time)
+
+            embed.add_field(name='​', value='​')
+
+            high_alch = f'{item.highalch:,} coins' if item.highalch else 'N/A'
+            embed.add_field(name='High Alch', value=high_alch)
+
+            low_alch = f'{item.lowalch:,} coins' if item.lowalch else 'N/A'
+            embed.add_field(name='Low Alch', value=low_alch)
+
+            value = f'{item.value:,} coins' if item.value else 'N/A'
+            embed.add_field(name='Value', value=value)
+
+            embed.set_footer(text='Please report any issues to my owner!')
+
+            await interaction.response.send_message(embed=embed)
+
+    # noinspection PyUnusedLocal
+    @runescape_item.autocomplete('item_id')
+    async def runescape_item_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+        """
+        Retrieves market and basic data about an Old School Runescape item.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            current (str): The user's current input.
+
+        Returns:
+            List[.
+        """
+
         if not current:
             matches = [x for x in self.item_names_to_ids.keys()]
         else:
             matches = [x for x in self.item_names_to_ids.keys() if current.lower() in x.lower()]
 
-        return [
-            app_commands.Choice(name=x, value=self.item_names_to_ids[x]) for x in matches[:25]
-        ]
-
-    @commands.is_owner()
-    @commands.command('rs')
-    async def rs_item(self, ctx, *, internal_id: int):
-        # https://static.runelite.net/cache/item/icon/<item id>.png
-        await ctx.send(self.item_data[internal_id] if internal_id in self.item_data else 'Item Not Found')
+        return [Choice(name=x, value=self.item_names_to_ids[x]) for x in matches[:25]]
 
     @tasks.loop(seconds=MAPPING_QUERY_INTERVAL)
     async def query_mapping_data(self) -> None:
@@ -295,7 +332,7 @@ class Runescape(commands.Cog):
         """
 
         self.query_mapping_data.cancel()
-        self.item_data = dict()
+        self.query_market_data.cancel()
 
         bot_logger.info('Completed Unload for Cog: Runescape')
 
