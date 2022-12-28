@@ -27,9 +27,9 @@ from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from os import getcwd, listdir, path
-from sys import stderr
+from sys import stderr, exc_info
 from traceback import print_exception, format_exception
-from typing import Optional, List, Dict, Type, DefaultDict, TypedDict, Union
+from typing import Optional, List, Dict, Type, DefaultDict, TypedDict, Union, Any
 
 import discord
 from aiohttp import ClientSession
@@ -182,6 +182,27 @@ class DreamBot(Bot):
                 except ExtensionError as error:
                     bot_logger.error(f'Failed Setup for Cog: {cog[:-3].capitalize()}. {error}')
                     print_exception(type(error), error, error.__traceback__, file=stderr)
+
+    async def on_error(self, event_method: str, /, *args: Any, **kwargs: Any) -> None:
+        """
+        The default error handler provided by the client.
+        Maintains default logging behavior, but also reports the exception to the bot's dashboard as well.
+
+        Parameters:
+            event_method (str): The exception source method's name.
+            *args (Any): Any arguments associated with the exception.
+            **kwargs (Any): Any keyword-arguments associated with the exception.
+
+        Returns:
+            None.
+        """
+
+        await super().on_error(event_method, *args, **kwargs)
+
+        _, exception, _ = exc_info()
+
+        if exception and isinstance(exception, Exception):
+            await self.report_exception(exception)
 
     def report_command_failure(self, ctx: Context) -> None:
         """

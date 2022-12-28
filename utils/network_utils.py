@@ -24,11 +24,23 @@ SOFTWARE.
 
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any
+from typing import Any, TypedDict, Optional
 
 import aiohttp
 
 from utils.logging_formatter import bot_logger
+
+
+Headers = TypedDict(
+    'Headers',
+    {
+        'Authorization': str,
+        'Content-Type': str,
+        'User-Agent': str,
+        'From': str
+    },
+    total=False
+)
 
 
 class NetworkReturnType(Enum):
@@ -41,20 +53,28 @@ class NetworkReturnType(Enum):
     BYTES = 3  # bytes
 
 
-async def network_request(session: aiohttp.ClientSession, url: str, **options) -> Any:
+async def network_request(
+        session: aiohttp.ClientSession,
+        url: str,
+        /,
+        *,
+        encoding: str = 'utf-8',
+        headers: Optional[Headers] = None,
+        raise_errors: Optional[bool] = True,
+        ssl: Optional[bool] = None,
+        return_type: NetworkReturnType = NetworkReturnType.TEXT
+) -> Any:
     """
     A method that downloads an image from an url.
 
     Parameters:
         session (aiohttp.ClientSession): The bot's current client session.
         url (str): The url of the request.
-        options (**kwargs): Optional, keyword-only arguments.
-            SUPPORTED:
-                'return_type' (NetworkReturnType)
-                'header' (Dict)
-                'encoding' (str)
-                'raise_errors' (bool)
-                'ssl' (bool)
+        encoding (str): The type of encoding to parse the response with, if applicable.
+        headers (Optional[Headers]): Any additional headers to attach to the request.
+        raise_errors (Optional[bool]): Whether responses with statuses >= 400 should raise an exception.
+        ssl (Optional[bool]): Whether ssl should be used for the request.
+        return_type (NetworkReturnType): The type of data to coerce the response to.
 
     Raises:
         aiohttp.ClientResponseError
@@ -63,20 +83,15 @@ async def network_request(session: aiohttp.ClientSession, url: str, **options) -
         (Optional[Union[str, bytes, Dict[Any, Optional[Any]]]]) The request's response.
     """
 
-    return_type = NetworkReturnType(options.pop('return_type', 1))
-    header = options.pop('header', None)
-    encoding = options.pop('encoding', 'utf-8')
-    raise_errors = options.pop('raise_errors', True)
-    ssl = options.pop('ssl', None)
-
     try:
-        async with session.get(url, headers=header, ssl=ssl, raise_for_status=raise_errors) as r:
+        async with session.get(url, headers=headers, ssl=ssl, raise_for_status=raise_errors) as r:
             if return_type == NetworkReturnType.JSON:
                 return await r.json(encoding=encoding)
             elif return_type == NetworkReturnType.BYTES:
                 return await r.read()
             else:
                 return await r.text(encoding=encoding)
+
     except aiohttp.ClientResponseError as e:
         bot_logger.warning(f'Network Request Error. ("{url}"). {e.status}. {e.message}')
         if raise_errors:

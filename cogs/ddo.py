@@ -65,7 +65,7 @@ class DDO(commands.Cog):
 
     def __init__(self, bot: DreamBot) -> None:
         """
-        The constructor for the Moderation class.
+        The constructor for the DDO class.
 
         Parameters:
             bot (DreamBot): The Discord bot.
@@ -493,20 +493,6 @@ class DDO(commands.Cog):
             bot_logger.error(f'DDOAudit Query[{server}] Unhandled Exception: {type(e)} - {e}')
             await self.bot.report_exception(e)
             await backoff(server)
-
-    @query_ddo_audit.before_loop
-    async def before_api_query_loop(self) -> None:
-        """
-        A pre-task method to ensure the bot is ready before executing.
-
-        Parameters:
-            None.
-
-        Returns:
-            None.
-        """
-
-        await self.bot.wait_until_ready()
 
     async def cog_unload(self) -> None:
         """

@@ -25,14 +25,17 @@ SOFTWARE.
 import asyncio
 import functools
 import subprocess
+from datetime import datetime
 from re import search
-from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable
+from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable, Optional, Literal
 
 import discord
+import pytz
+from discord.utils import format_dt
 
 from utils.logging_formatter import bot_logger
 
-VERSION = '2.7.2'
+VERSION = '2.8.0'
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.abc.Messageable) -> None:
@@ -188,3 +191,19 @@ def valid_content(content: str, *, max_length: int = 2000) -> bool:
     """
 
     return content is not None and len(content) <= max_length
+
+
+def format_unix_dt(timestamp: int, style: Optional[Literal['f', 'F', 'd', 'D', 't', 'T', 'R']] = None) -> str:
+    """
+    Helper method to convert a unix timestamp to a datetime object for further formatting.
+
+    Parameters:
+        timestamp (int): The unix timestamp.
+        style (Optional[str]): The style to format the datetime with.
+
+    Returns:
+        (str): The formatted timestamp.
+    """
+
+    dt = datetime.fromtimestamp(timestamp, tz=pytz.UTC)
+    return format_dt(dt, style)

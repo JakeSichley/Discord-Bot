@@ -72,6 +72,14 @@ async def main() -> None:
     except AttributeError:
         disabled_cogs = []
 
+    # session headers
+    if user_agent := getenv('USER_AGENT'):
+        headers = {
+            'User-Agent': user_agent
+        }
+    else:
+        headers = None
+
     # git optionals
     git_options: GitOptionals = {
         'git_user': getenv('GITHUB_USER'),
@@ -91,7 +99,7 @@ async def main() -> None:
     async with (
         DreamBot(prefix, owner, environment, options=options) as bot,
         aiosqlite.connect(database) as connection,
-        aiohttp.ClientSession() as session
+        aiohttp.ClientSession(headers=headers) as session
     ):
         # mypy seems to lose context during multiple async with
         bot.connection = connection  # type: ignore[attr-defined]
