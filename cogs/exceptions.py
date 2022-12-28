@@ -74,9 +74,7 @@ class Exceptions(commands.Cog):
             None.
         """
 
-        assert ctx.command is not None
-
-        if hasattr(ctx.command, 'on_error'):
+        if ctx.command is None or hasattr(ctx.command, 'on_error'):
             return
 
         if isinstance(error, commands.CommandInvokeError):
