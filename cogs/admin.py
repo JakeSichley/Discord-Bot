@@ -46,12 +46,11 @@ from discord.utils import format_dt
 from dreambot import DreamBot
 from utils.checks import ensure_git_credentials
 from utils.context import Context
+from utils.converters import StringConverter
 from utils.database.helpers import execute_query, retrieve_query
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, NetworkReturnType, Headers
 from utils.utils import pairs, run_in_subprocess, generate_activity
-from utils.converters import StringConverter
-
 
 ExtensionName = StringConverter(
     mutator=lambda x: x.strip().lower()
