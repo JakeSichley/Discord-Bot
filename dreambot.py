@@ -88,7 +88,7 @@ class DreamBot(Bot):
     Attributes:
         prefixes (dict): A quick reference for accessing a guild's specified prefix.
         uptime (datetime.datetime): The time the bot was initialized.
-        connection (aiosqlite.Connection): The bot's current database connection.
+        database (str): The name of the bot's database.
         session (aiohttp.ClientSession): The bot's current client session.
         default_prefix (str): The default prefix to use if a guild has not specified one.
         environment (str): Environment string. Disable features (such as firebase logging) when not 'PROD'.
@@ -101,7 +101,7 @@ class DreamBot(Bot):
         _reporting_client (Optional[ReportErrorsServiceAsyncClient]): The Firebase reporting client.
     """
 
-    def __init__(self, prefix: str, owner: int, environment: str, options: Optionals) -> None:
+    def __init__(self, prefix: str, owner: int, environment: str, database: str, options: Optionals) -> None:
         """
         The constructor for the DreamBot class.
 
@@ -127,7 +127,7 @@ class DreamBot(Bot):
         )
 
         # connection, session will always be set as part of async initialization with context managers
-        self.connection: Connection = None  # type: ignore[assignment]
+        self.database = database
         self.session: ClientSession = None  # type: ignore[assignment]
         self.wavelink = None
         self.prefixes: Dict[int, List[str]] = {}
@@ -297,7 +297,7 @@ class DreamBot(Bot):
 
         try:
             self.prefixes.clear()
-            prefix_rows = await typed_retrieve_query(self.connection, Prefix, 'SELECT * FROM PREFIXES')
+            prefix_rows = await typed_retrieve_query(self.database, Prefix, 'SELECT * FROM PREFIXES')
 
             for row in prefix_rows:
                 if row.guild_id in self.prefixes:

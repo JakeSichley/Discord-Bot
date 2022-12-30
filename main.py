@@ -97,12 +97,10 @@ async def main() -> None:
     }
 
     async with (
-        DreamBot(prefix, owner, environment, options=options) as bot,
-        aiosqlite.connect(database) as connection,
+        DreamBot(prefix, owner, environment, database, options=options) as bot,
         aiohttp.ClientSession(headers=headers) as session
     ):
         # mypy seems to lose context during multiple async with
-        bot.connection = connection  # type: ignore[attr-defined]
         bot.session = session  # type: ignore[attr-defined]
         await bot.start(token)  # type: ignore[attr-defined]
 

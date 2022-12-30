@@ -155,7 +155,7 @@ class VoiceRoles(commands.Cog):
         # we should have all pieces for a reaction role now
         try:
             await execute_query(
-                self.bot.connection,
+                self.bot.database,
                 'INSERT INTO VOICE_ROLES (GUILD_ID, CHANNEL_ID, ROLE_ID) VALUES (?, ?, ?) '
                 'ON CONFLICT(CHANNEL_ID) DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID',
                 (channel.guild.id, channel.id, role.id)
@@ -205,7 +205,7 @@ class VoiceRoles(commands.Cog):
 
         # once we have a channel id, proceed with deletion confirmation
         if role := await typed_retrieve_query(
-                self.bot.connection,
+                self.bot.database,
                 int,
                 'SELECT ROLE_ID FROM VOICE_ROLES WHERE CHANNEL_ID=?',
                 (channel.id,)
@@ -219,7 +219,7 @@ class VoiceRoles(commands.Cog):
 
             try:
                 await execute_query(
-                    self.bot.connection,
+                    self.bot.database,
                     'DELETE FROM VOICE_ROLES WHERE CHANNEL_ID=?',
                     (channel.id,)
                 )
@@ -260,7 +260,7 @@ class VoiceRoles(commands.Cog):
 
         # once we have a channel id, check to see if a role exists
         if role := await typed_retrieve_query(
-                self.bot.connection,
+                self.bot.database,
                 int,
                 'SELECT ROLE_ID FROM VOICE_ROLES WHERE CHANNEL_ID=?',
                 (channel.id,)
@@ -321,7 +321,7 @@ class VoiceRoles(commands.Cog):
             return
 
         if data := await typed_retrieve_query(
-                self.bot.connection,
+                self.bot.database,
                 PartialVoiceRole,
                 'SELECT CHANNEL_ID, ROLE_ID FROM VOICE_ROLES WHERE GUILD_ID=?',
                 (member.guild.id,)

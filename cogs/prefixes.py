@@ -106,7 +106,7 @@ class Prefixes(commands.Cog):
 
         try:
             await execute_query(
-                self.bot.connection,
+                self.bot.database,
                 'INSERT INTO PREFIXES (GUILD_ID, PREFIX) VALUES (?, ?)',
                 (ctx.guild.id, prefix)
             )
@@ -156,7 +156,7 @@ class Prefixes(commands.Cog):
 
         try:
             await execute_query(
-                self.bot.connection,
+                self.bot.database,
                 'DELETE FROM PREFIXES WHERE GUILD_ID=? AND PREFIX=?',
                 (ctx.guild.id, prefix)
             )
@@ -211,7 +211,7 @@ class Prefixes(commands.Cog):
 
         try:
             await execute_query(
-                self.bot.connection,
+                self.bot.database,
                 'UPDATE PREFIXES SET PREFIX=? WHERE GUILD_ID=? AND PREFIX=?',
                 (new_prefix, ctx.guild.id, old_prefix)
             )
@@ -259,7 +259,7 @@ class Prefixes(commands.Cog):
 
         try:
             await execute_query(
-                self.bot.connection,
+                self.bot.database,
                 'DELETE FROM PREFIXES WHERE GUILD_ID=?',
                 (ctx.guild.id,)
             )

@@ -241,7 +241,7 @@ class Moderation(commands.Cog):
         assert ctx.guild is not None  # guild only
 
         if role := (await typed_retrieve_query(
-                self.bot.connection,
+                self.bot.database,
                 int,
                 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                 (ctx.guild.id,))
@@ -290,7 +290,7 @@ class Moderation(commands.Cog):
 
         if not role:
             try:
-                await execute_query(self.bot.connection, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?', (ctx.guild.id,))
+                await execute_query(self.bot.database, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?', (ctx.guild.id,))
                 await ctx.send('Cleared the default role for the guild.')
             except aiosqliteError:
                 await ctx.send('Failed to clear the default role for the guild.')
@@ -305,7 +305,7 @@ class Moderation(commands.Cog):
             else:
                 try:
                     await execute_query(
-                        self.bot.connection,
+                        self.bot.database,
                         'INSERT INTO DEFAULT_ROLES (GUILD_ID, ROLE_ID) VALUES (?, ?) ON CONFLICT(GUILD_ID) '
                         'DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID',
                         (ctx.guild.id, role.id)
@@ -333,7 +333,7 @@ class Moderation(commands.Cog):
             return
 
         if role := (await typed_retrieve_query(
-                self.bot.connection,
+                self.bot.database,
                 int,
                 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                 (member.guild.id,))
@@ -348,7 +348,7 @@ class Moderation(commands.Cog):
 
                 # todo: implement `guild_unavailable` checks
                 # await execute_query(
-                #     self.bot.connection,
+                #     self.bot.database,
                 #     'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                 #     (member.guild.id,)
                 # )
@@ -371,7 +371,7 @@ class Moderation(commands.Cog):
 
         if 'MEMBER_VERIFICATION_GATE_ENABLED' in after.guild.features and before.pending and not after.pending:
             if role := (await typed_retrieve_query(
-                    self.bot.connection,
+                    self.bot.database,
                     int,
                     'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                     (after.guild.id,))
@@ -393,7 +393,7 @@ class Moderation(commands.Cog):
 
                     # todo: implement `guild_unavailable` checks
                     # await execute_query(
-                    #     self.bot.connection,
+                    #     self.bot.database,
                     #     'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                     #     (after.guild.id,)
                     # )
