@@ -13,5 +13,7 @@ expiring-cache==1.0.0
 discord.py[speed,voice]==2.1.0
 aiofiles==22.1.0
 grpcio==1.40.0 # export LD_PRELOAD=/usr/lib/arm-linux-gnueabihf/libatomic.so.1.2.0
+fuzzywuzzy==0.18.0
+python-Levenshtein==0.20.9
 git+https://github.com/Rapptz/discord-ext-menus@master # menus
 # pip install -r requirements.txt --use-deprecated=legacy-resolver

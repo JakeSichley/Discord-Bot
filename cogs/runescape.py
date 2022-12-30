@@ -35,7 +35,7 @@ from discord.ext import commands, tasks
 from dreambot import DreamBot
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
-from utils.utils import format_unix_dt
+from utils.utils import format_unix_dt, AutocompleteModel
 
 
 @dataclass
@@ -231,15 +231,17 @@ class Runescape(commands.Cog):
             current (str): The user's current input.
 
         Returns:
-            List[.
+            (List[Choice]): A list of relevant Choices for the current input.
         """
 
         if not current:
-            matches = [x for x in self.item_names_to_ids.keys()]
-        else:
-            matches = [x for x in self.item_names_to_ids.keys() if current.lower() in x.lower()]
+            return [Choice(name=self.item_data[x].name, value=x) for x in self.item_data][:25]
 
-        return [Choice(name=x, value=self.item_names_to_ids[x]) for x in matches[:25]]
+        ratios = sorted([
+            AutocompleteModel(self.item_data[x].name, x, current) for x in self.item_data
+        ], reverse=True)
+
+        return [x.to_choice() for x in ratios[:25]]
 
     @tasks.loop(seconds=MAPPING_QUERY_INTERVAL)
     async def query_mapping_data(self) -> None:

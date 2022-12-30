@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 # 2.8.1
 ### Internal
+* Add Fuzzy Autocomplete Searching
+
+# 2.8.1
+### Internal
 * Revert Global Database Connection
 
 # 2.8.0
