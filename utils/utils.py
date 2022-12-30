@@ -35,7 +35,7 @@ from discord.utils import format_dt
 
 from utils.logging_formatter import bot_logger
 
-VERSION = '2.8.0'
+VERSION = '2.8.1'
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.abc.Messageable) -> None:

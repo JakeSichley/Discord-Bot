@@ -14,11 +14,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+# 2.8.1
+### Internal
+* Revert Global Database Connection
+
 # 2.8.0
 ### Internal
 * Report exceptions intercepted via `Client::on_error` to Reporting Dashboard
 * Add `Runescape` Cog
-
 
 # 2.7.0
 ### Internal
