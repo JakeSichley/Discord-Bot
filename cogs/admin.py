@@ -298,10 +298,10 @@ class Admin(commands.Cog):
 
         try:
             if (query.upper()).startswith('SELECT'):
-                result = await retrieve_query(self.bot.connection, query)
+                result = await retrieve_query(self.bot.database, query)
                 await ctx.safe_send(str(result))
             else:
-                affected = await execute_query(self.bot.connection, query)
+                affected = await execute_query(self.bot.database, query)
                 await ctx.send(f'Executed. {affected} rows affected.')
         except aiosqliteError as e:
             await ctx.send(f'Error: {e}')

@@ -237,7 +237,7 @@ class ReactionRoles(commands.Cog):
             return await cleanup(cleanup_messages, ctx.channel)
 
         # we should have all pieces for a reaction role now
-        await execute_query(self.bot.connection,
+        await execute_query(self.bot.database,
                             'INSERT INTO REACTION_ROLES (GUILD_ID, CHANNEL_ID, MESSAGE_ID, REACTION, ROLE_ID) '
                             'VALUES (?, ?, ?, ?, ?) '
                             'ON CONFLICT(MESSAGE_ID, REACTION) DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID',
@@ -288,7 +288,7 @@ class ReactionRoles(commands.Cog):
 
         # once we have a message id, proceed with deletion confirmation
         if reaction_roles := await typed_retrieve_query(
-                self.bot.connection,
+                self.bot.database,
                 PartialReactionRole,
                 'SELECT * FROM REACTION_ROLES WHERE MESSAGE_ID=?',
                 (message.id,)
@@ -366,7 +366,7 @@ class ReactionRoles(commands.Cog):
                 payload = await self.bot.wait_for('raw_reaction_add', timeout=30.0, check=reaction_check)
 
                 if str(payload.emoji) == '\u2705':
-                    await execute_query(self.bot.connection,
+                    await execute_query(self.bot.database,
                                         'DELETE FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
                                         (message.id, str(to_remove[0])))
                     # try to remove the deleted reaction
@@ -426,7 +426,7 @@ class ReactionRoles(commands.Cog):
 
         # once we have a message id, proceed with deletion confirmation
         if reaction_roles := await typed_retrieve_query(
-                self.bot.connection,
+                self.bot.database,
                 PartialReactionRole,
                 'SELECT * FROM REACTION_ROLES WHERE MESSAGE_ID=?',
                 (message.id,)
@@ -453,7 +453,7 @@ class ReactionRoles(commands.Cog):
 
                 if str(payload.emoji) == '✅':
                     await execute_query(
-                        self.bot.connection,
+                        self.bot.database,
                         'DELETE FROM REACTION_ROLES WHERE MESSAGE_ID=?',
                         (message.id,)
                     )
@@ -514,7 +514,7 @@ class ReactionRoles(commands.Cog):
             assert ctx.guild is not None  # guild only
 
             if reaction_roles := await typed_retrieve_query(
-                    self.bot.connection,
+                    self.bot.database,
                     PartialReactionRole,
                     'SELECT * FROM REACTION_ROLES WHERE MESSAGE_ID=?',
                     (message_id,)
@@ -543,7 +543,7 @@ class ReactionRoles(commands.Cog):
             """
 
             if messages := await typed_retrieve_query(
-                    self.bot.connection,
+                    self.bot.database,
                     int,
                     'SELECT DISTINCT MESSAGE_ID FROM REACTION_ROLES WHERE CHANNEL_ID=?',
                     (channel_id,)
@@ -572,7 +572,7 @@ class ReactionRoles(commands.Cog):
             assert ctx.guild is not None  # guild only
 
             if channels := await typed_retrieve_query(
-                    self.bot.connection,
+                    self.bot.database,
                     int,
                     'SELECT DISTINCT CHANNEL_ID FROM REACTION_ROLES WHERE GUILD_ID=?',
                     (guild_id,)
@@ -636,7 +636,7 @@ class ReactionRoles(commands.Cog):
             return
 
         if roles := await typed_retrieve_query(
-                self.bot.connection,
+                self.bot.database,
                 int,
                 'SELECT ROLE_ID FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
                 (payload.message_id, str(payload.emoji))
@@ -674,7 +674,7 @@ class ReactionRoles(commands.Cog):
             return
 
         if roles := await typed_retrieve_query(
-                self.bot.connection,
+                self.bot.database,
                 int,
                 'SELECT ROLE_ID FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
                 (payload.message_id, str(payload.emoji))

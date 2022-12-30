@@ -27,7 +27,6 @@ from datetime import datetime, timezone
 from typing import Optional, List, Union, Tuple, Annotated
 
 import discord
-from aiosqlite import Connection
 from aiosqlite import Error as aiosqliteError
 from discord.ext import commands
 
@@ -132,7 +131,7 @@ class Tags(commands.Cog):
 
         assert ctx.guild is not None  # guild only
 
-        tag = await fetch_tag(self.bot.connection, ctx.guild.id, tag_name)
+        tag = await fetch_tag(self.bot.database, ctx.guild.id, tag_name)
 
         if tag:
             await ctx.send(f'Tag `{tag_name}` already exists.')
@@ -152,7 +151,7 @@ class Tags(commands.Cog):
         if valid_content(content):
             try:
                 await execute_query(
-                    self.bot.connection,
+                    self.bot.database,
                     'INSERT INTO TAGS (NAME, CONTENT, GUILD_ID, OWNER_ID, USES, CREATED) VALUES (?, ?, ?, ?, ?, ?)',
                     (
                         tag_name, content, ctx.guild.id, ctx.author.id, 0,
@@ -183,7 +182,7 @@ class Tags(commands.Cog):
         assert ctx.guild is not None  # guild only
         assert isinstance(ctx.author, discord.Member)  # guild only
 
-        tag = await fetch_tag(self.bot.connection, ctx.guild.id, tag_name)
+        tag = await fetch_tag(self.bot.database, ctx.guild.id, tag_name)
 
         if not tag:
             await ctx.send(f'Tag `{tag_name}` does not exists.')
@@ -207,7 +206,7 @@ class Tags(commands.Cog):
         if valid_content(content):
             try:
                 await execute_query(
-                    self.bot.connection,
+                    self.bot.database,
                     'UPDATE TAGS SET CONTENT=? WHERE NAME=? AND GUILD_ID=?',
                     (content, tag.name, tag.guild_id)
                 )
@@ -233,14 +232,14 @@ class Tags(commands.Cog):
 
         assert ctx.guild is not None  # guild only
 
-        tag = await fetch_tag(self.bot.connection, ctx.guild.id, tag_name)
+        tag = await fetch_tag(self.bot.database, ctx.guild.id, tag_name)
 
         if tag:
             await ctx.send(tag.content)
-            await increment_tag_count(self.bot.connection, tag_name, ctx.guild.id)
+            await increment_tag_count(self.bot.database, tag_name, ctx.guild.id)
             return
 
-        potential_tags = await search_tags(self.bot.connection, ctx.guild.id, tag_name)
+        potential_tags = await search_tags(self.bot.database, ctx.guild.id, tag_name)
 
         if potential_tags:
             formatted_results = '\n'.join(x.name for x in potential_tags)
@@ -263,7 +262,7 @@ class Tags(commands.Cog):
 
         assert ctx.guild is not None  # guild only
 
-        potential_tags = await search_tags(self.bot.connection, ctx.guild.id, tag_name)
+        potential_tags = await search_tags(self.bot.database, ctx.guild.id, tag_name)
 
         if potential_tags:
             formatted_results = '\n'.join(x.name for x in potential_tags)
@@ -286,7 +285,7 @@ class Tags(commands.Cog):
 
         assert ctx.guild is not None  # guild only
 
-        tag = await fetch_tag(self.bot.connection, ctx.guild.id, tag_name)
+        tag = await fetch_tag(self.bot.database, ctx.guild.id, tag_name)
 
         if tag:
             author = await commands.MemberConverter().convert(ctx, str(tag.owner_id))
@@ -317,7 +316,7 @@ class Tags(commands.Cog):
 
         assert ctx.guild is not None  # guild only
 
-        tag = await fetch_tag(self.bot.connection, ctx.guild.id)
+        tag = await fetch_tag(self.bot.database, ctx.guild.id)
 
         if tag:
             await ctx.safe_send(f'**Tag `{tag.name}`**\n{tag.content}')
@@ -341,7 +340,7 @@ class Tags(commands.Cog):
         assert ctx.guild is not None  # guild only
         assert isinstance(ctx.author, discord.Member)  # guild only
 
-        tag = await fetch_tag(self.bot.connection, ctx.guild.id, tag_name)
+        tag = await fetch_tag(self.bot.database, ctx.guild.id, tag_name)
 
         if not tag:
             await ctx.send(f'Tag `{tag_name}` does not exist.')
@@ -350,7 +349,7 @@ class Tags(commands.Cog):
         if tag.owner_id == ctx.author.id or ctx.author.guild_permissions.manage_messages:
             try:
                 await execute_query(
-                    self.bot.connection,
+                    self.bot.database,
                     'DELETE FROM TAGS WHERE NAME=? AND GUILD_ID=?',
                     (tag_name, ctx.guild.id)
                 )
@@ -362,13 +361,13 @@ class Tags(commands.Cog):
             await ctx.send('You either do not own this tag or cannot manage messages.')
 
 
-async def fetch_tag(connection: Connection, guild_id: int, tag_name: Optional[str] = None) -> Optional[Tag]:
+async def fetch_tag(database: str, guild_id: int, tag_name: Optional[str] = None) -> Optional[Tag]:
     """
     Attempts to fetch a tag from the database. If successful, attempts to convert raw tag data to a Tag.
         Note: Can fetch a random tag if tag_name is None.
 
     Parameters:
-        connection (aiosqlite.Connection): The bot's current database connection.
+        database (str): The name of the bot's database.
         guild_id (int): The guild id.
         tag_name (str): The name of the tag.
 
@@ -383,7 +382,7 @@ async def fetch_tag(connection: Connection, guild_id: int, tag_name: Optional[st
         query = 'SELECT * FROM TAGS WHERE GUILD_ID=? ORDER BY RANDOM() LIMIT 1'
         params = (guild_id,)
 
-    result = await typed_retrieve_query(connection, Tag, query, params)
+    result = await typed_retrieve_query(database, Tag, query, params)
 
     if not result:
         return None
@@ -391,12 +390,12 @@ async def fetch_tag(connection: Connection, guild_id: int, tag_name: Optional[st
     return result[0]
 
 
-async def search_tags(connection: Connection, guild_id: int, tag_name: str) -> Optional[List[Tag]]:
+async def search_tags(database: str, guild_id: int, tag_name: str) -> Optional[List[Tag]]:
     """
     Attempts to search for tags with the specified name.
 
     Parameters:
-        connection (aiosqlite.Connection): The bot's current database connection.
+        database (str): The name of the bot's database.
         guild_id (int): The guild id.
         tag_name (str): The name of the tag.
 
@@ -406,7 +405,7 @@ async def search_tags(connection: Connection, guild_id: int, tag_name: str) -> O
 
     try:
         result = await typed_retrieve_query(
-            connection,
+            database,
             Tag,
             'SELECT * FROM TAGS WHERE NAME LIKE ? AND GUILD_ID=? LIMIT 5',
             (f'%{tag_name}%', guild_id)
@@ -417,12 +416,12 @@ async def search_tags(connection: Connection, guild_id: int, tag_name: str) -> O
         return result
 
 
-async def increment_tag_count(connection: Connection, tag_name: str, guild_id: int) -> None:
+async def increment_tag_count(database: str, tag_name: str, guild_id: int) -> None:
     """
     Attempts to increment the usage count of a tag.
 
     Parameters:
-        connection (aiosqlite.Connection): The bot's current database connection.
+        database (str): The name of the bot's database.
         tag_name (str): The name of the tag.
         guild_id (int): The guild id.
 
@@ -432,7 +431,7 @@ async def increment_tag_count(connection: Connection, tag_name: str, guild_id: i
 
     try:
         await execute_query(
-            connection,
+            database,
             'UPDATE TAGS SET USES=USES+1 WHERE NAME=? AND GUILD_ID=?',
             (tag_name, guild_id)
         )

@@ -1,4 +1,4 @@
-# Discord-Bot (WillumpBot)
+# Discord-Bot (Willump Bot)
 A Python-based bot for Discord utilizing [Rapptz's Discord Wrapper](https://github.com/Rapptz/discord.py).
 
 #### Versions
@@ -7,19 +7,11 @@ A Python-based bot for Discord utilizing [Rapptz's Discord Wrapper](https://gith
 **discord.py**: 2.1.0
 
 # Overview
-I created this bot as a way to learn how to use Python. Since then, WillumpBot (formerly DreamBot) has evolved from a 
+I created this bot as a way to learn how to use Python. Since then, Willump Bot (formerly DreamBot) has evolved from a 
 learning project into a powerful bot that supports various unique features.
 
-WillumpBot currently serves the CSU Fullerton League of Legends club, Twitch community Discords, and Lost Ark 
+Willump Bot currently serves the CSU Fullerton League of Legends club, Twitch community Discords, and Lost Ark 
 community Discords.
-
-# Note
-The addition of [mypy](http://mypy-lang.org/) for static type checking has introduced numerous `assert` statements into 
-the codebase. Functionally, these asserts are used to narrow or influence types that are narrowed elsewhere, generally 
-in areas that are more difficult to connect. A prime example is the `@guild_only()` decorator - ensuring that 
-`ctx.guild` is never `None`, even if mypy can't detect that. While `assert` does have certain performance implications, 
-since we're only asserting statements that should _always_ be true, these can be optimized away in production with the 
-`-O` compiler flag.
 
 # Cogs
 Each cog contains specialized methods the bot can perform.
@@ -84,3 +76,11 @@ implementation.
 #### Deprecated: Twitch will require a rewrite utilizing TwitchIO >= 2.0.
 The `Twitch` cog builds a Twitch chatbot into the main Discord bot and allows for executing Twitch commands from 
 Discord.
+
+# Note
+The addition of [mypy](http://mypy-lang.org/) for static type checking has introduced numerous `assert` statements into 
+the codebase. Functionally, these asserts are used to narrow or influence types that are narrowed elsewhere, generally 
+in areas that are more difficult to connect. A prime example is the `@guild_only()` decorator - ensuring that 
+`ctx.guild` is never `None`, even if mypy can't detect that. While `assert` does have certain performance implications, 
+since we're only asserting statements that should _always_ be true, these can be optimized away in production with the 
+`-O` compiler flag.

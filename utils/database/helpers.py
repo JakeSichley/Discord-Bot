@@ -64,14 +64,14 @@ class DatabaseDataclass:
 
 
 async def execute_query(
-        connection: aiosqlite.Connection, query: str, values: Optional[Tuple[Any, ...]] = None
+        database: str, query: str, values: Optional[Tuple[Any, ...]] = None
 ) -> Optional[int]:
     """
     A method that executes a sqlite3 statement.
     Note: Use retrieve_query() for 'SELECT' statements.
 
     Parameters:
-        connection (aiosqlite.Connection): The bot's current database connection.
+        database (str): The name of the bot's database.
         query (str): The statement to execute.
         values (Tuple[Any, ...]): The values to insert into the query.
 
@@ -85,9 +85,10 @@ async def execute_query(
     values = values or tuple()
 
     try:
-        affected = await connection.execute(query, values)
-        await connection.commit()
-        return affected.rowcount
+        async with aiosqlite.connect(database) as connection:
+            affected = await connection.execute(query, values)
+            await connection.commit()
+            return affected.rowcount
 
     except aiosqlite.Error as error:
         bot_logger.error(f'Execute Query ("{query}"). {error}.')
@@ -95,14 +96,14 @@ async def execute_query(
 
 
 async def retrieve_query(
-        connection: aiosqlite.Connection, query: str, values: Optional[Tuple[Any, ...]] = None
+        database: str, query: str, values: Optional[Tuple[Any, ...]] = None
 ) -> Iterable[Tuple[Any, ...]]:
     """
     A method that returns the result of a sqlite3 'SELECT' statement.
     Note: Use execute_query() for non-'SELECT' statements.
 
     Parameters:
-        connection (aiosqlite.Connection): The bot's current database connection.
+        database (str): The name of the bot's database.
         query (str): The statement to execute.
         values (Tuple[Any, ...]): The values to insert into the query.
 
@@ -116,11 +117,12 @@ async def retrieve_query(
     values = values or tuple()
 
     try:
-        async with connection.execute(query, values) as cursor:
-            rows = await cursor.fetchall()
-            assert (Sqlite3Typing.fetchall(rows))
+        async with aiosqlite.connect(database) as connection:
+            async with connection.execute(query, values) as cursor:
+                rows = await cursor.fetchall()
+                assert (Sqlite3Typing.fetchall(rows))
 
-            return rows
+                return rows
 
     except aiosqlite.Error as error:
         bot_logger.error(f'Retrieve Query ("{query}"). {error}.')
@@ -128,7 +130,7 @@ async def retrieve_query(
 
 
 async def typed_retrieve_query(
-        connection: aiosqlite.Connection, data_type: Type[T], query: str, values: Optional[Tuple[Any, ...]] = None,
+        database: str, data_type: Type[T], query: str, values: Optional[Tuple[Any, ...]] = None,
 ) -> List[T]:
     """
     A typed SQLite 'SELECT' query. Attempts to coerced retrieved rows to the specified data type.
@@ -185,7 +187,7 @@ async def typed_retrieve_query(
             )
 
     Parameters:
-        connection (aiosqlite.Connection): The bot's current database connection.
+        database (str): The name of the bot's database.
         data_type (T): The data type to coerce returned rows to.
         query (str): The statement to execute.
         values (Tuple[Any, ...]): The values to insert into the query.
@@ -200,8 +202,9 @@ async def typed_retrieve_query(
     values = values if values else tuple()
 
     try:
-        async with connection.execute(query, values) as cursor:
-            data = await cursor.fetchall()
+        async with aiosqlite.connect(database) as connection:
+            async with connection.execute(query, values) as cursor:
+                data = await cursor.fetchall()
     except aiosqlite.Error as error:
         bot_logger.error(f'Retrieve Query ("{query}"). {error}.')
         raise error

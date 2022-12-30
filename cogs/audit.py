@@ -100,7 +100,7 @@ class Audit(commands.Cog):
 
         # retrieve logging information
         if logging_info := (await typed_retrieve_query(
-                self.bot.connection,
+                self.bot.database,
                 PartialLoggingAction,
                 'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
                 (member.guild.id,))
@@ -130,7 +130,7 @@ class Audit(commands.Cog):
 
         # retrieve logging information
         if logging_info := (await typed_retrieve_query(
-                self.bot.connection,
+                self.bot.database,
                 PartialLoggingAction,
                 'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
                 (member.guild.id,))
@@ -161,7 +161,7 @@ class Audit(commands.Cog):
 
         # retrieve logging information
         if logging_info := (await typed_retrieve_query(
-                self.bot.connection,
+                self.bot.database,
                 PartialLoggingAction,
                 'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
                 (guild.id,))
@@ -192,7 +192,7 @@ class Audit(commands.Cog):
 
         # retrieve logging information
         if logging_info := (await typed_retrieve_query(
-                self.bot.connection,
+                self.bot.database,
                 PartialLoggingAction,
                 'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
                 (guild.id,))
@@ -238,7 +238,7 @@ class Audit(commands.Cog):
         assert ctx.guild is not None  # handle by `cog_check`
 
         if logging_info := (await typed_retrieve_query(
-                self.bot.connection,
+                self.bot.database,
                 int,
                 'SELECT BITS FROM LOGGING WHERE GUILD_ID=?',
                 (ctx.guild.id,))
@@ -272,7 +272,7 @@ class Audit(commands.Cog):
         assert ctx.guild is not None  # handle by `cog_check`
 
         if logging_info := (await typed_retrieve_query(
-                self.bot.connection,
+                self.bot.database,
                 PartialLoggingAction,
                 'SELECT CHANNEL_ID, BITS FROM LOGGING WHERE GUILD_ID=?',
                 (ctx.guild.id,))
@@ -315,7 +315,7 @@ class Audit(commands.Cog):
 
         try:
             await execute_query(
-                self.bot.connection,
+                self.bot.database,
                 'INSERT INTO LOGGING (GUILD_ID, CHANNEL_ID, BITS) VALUES (?, ?, ?) '
                 'ON CONFLICT(GUILD_ID) DO UPDATE SET CHANNEL_ID=EXCLUDED.CHANNEL_ID',
                 (ctx.guild.id, channel.id, 0)
@@ -577,8 +577,11 @@ class ActionBitMenu(menus.Menu):
             None.
         """
 
-        await execute_query(self.bot.connection, 'UPDATE LOGGING SET BITS=? WHERE GUILD_ID=?',
-                            (self.bits, self.ctx.guild.id))
+        await execute_query(
+            self.bot.database,
+            'UPDATE LOGGING SET BITS=? WHERE GUILD_ID=?',
+            (self.bits, self.ctx.guild.id)
+        )
         await self.stop('Updated Audit Actions.')
 
     @menus.button(emoji='\u274C')
