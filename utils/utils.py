@@ -25,17 +25,22 @@ SOFTWARE.
 import asyncio
 import functools
 import subprocess
+from dataclasses import dataclass, field
 from datetime import datetime
 from re import search
-from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable, Optional, Literal
+from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable, Optional, Literal, TypeVar, Union, Generic
 
 import discord
 import pytz
+from discord.app_commands import Choice
 from discord.utils import format_dt
+from fuzzywuzzy import fuzz  # type: ignore
 
 from utils.logging_formatter import bot_logger
 
 VERSION = '2.8.1'
+
+ChoiceT = TypeVar('ChoiceT', str, int, float, Union[str, int, float])
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.abc.Messageable) -> None:
@@ -207,3 +212,79 @@ def format_unix_dt(timestamp: int, style: Optional[Literal['f', 'F', 'd', 'D', '
 
     dt = datetime.fromtimestamp(timestamp, tz=pytz.UTC)
     return format_dt(dt, style)
+
+
+@dataclass
+class AutocompleteModel(Generic[ChoiceT]):
+    """
+    A Dataclass that encapsulates `app_commands.Choice` and a fuzzy search ratio.
+
+    Attributes:
+        name (str): The name of the choice.
+        value (ChoiceT): The value of the choice.
+        current (str): The current input.
+        ratio (int): The similarity ratio between this model's name and the current input.
+    """
+
+    name: str
+    value: ChoiceT
+    current: str
+    ratio: int = field(init=False)
+
+    def __post_init__(self) -> None:
+        """
+        Calculates the similarity ratio after initialization.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
+        name = self.name.lower()
+        current = self.current.lower()
+
+        partial_ratio = fuzz.partial_ratio(name, current)
+        set_ratio = fuzz.token_set_ratio(name, current)
+
+        self.ratio = partial_ratio + set_ratio
+
+    def to_choice(self) -> Choice:
+        """
+        Returns this model as an `app_commands.Choice` model.
+
+        Parameters:
+            None.
+
+        Returns:
+            (Choice): The `app_commands.Choice` model.
+        """
+
+        return Choice(name=self.name, value=self.value)
+
+    def __lt__(self, other: 'AutocompleteModel') -> bool:
+        """
+        Returns whether this model is less-than (<) another model.
+
+        Parameters:
+            other (AutocompleteModel): The other model.
+
+        Returns:
+            (bool): self < other.
+        """
+
+        return self.ratio < other.ratio
+
+    def __le__(self, other: 'AutocompleteModel') -> bool:
+        """
+        Returns whether this model is less-than-or-equal-to (<=) another model.
+
+        Parameters:
+            other (AutocompleteModel): The other model.
+
+        Returns:
+            (bool): self <= other.
+        """
+
+        return self.ratio <= other.ratio
