@@ -27,7 +27,6 @@ from datetime import datetime, timezone
 from typing import Optional, List, Union, Tuple, Annotated
 
 import discord
-from aiosqlite import Connection
 from aiosqlite import Error as aiosqliteError
 from discord.ext import commands
 

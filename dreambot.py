@@ -33,7 +33,7 @@ from typing import Optional, List, Dict, Type, DefaultDict, TypedDict, Union, An
 
 import discord
 from aiohttp import ClientSession
-from aiosqlite import Error as aiosqliteError, Connection
+from aiosqlite import Error as aiosqliteError
 from discord.ext import tasks
 from discord.ext.commands import ExtensionError, Bot, when_mentioned
 from google.cloud import errorreporting_v1beta1 as error_reporting

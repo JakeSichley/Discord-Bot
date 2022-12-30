@@ -27,7 +27,6 @@ from os import getenv
 from sys import version
 
 import aiohttp
-import aiosqlite
 import discord
 from dotenv import load_dotenv
 
