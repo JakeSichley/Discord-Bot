@@ -322,7 +322,7 @@ class Admin(commands.Cog):
             None.
         """
 
-        await self.bot.cache.refresh()
+        await self.bot.cache.sync_cache()
         await ctx.send('Refreshed Table Caches.')
 
     @commands.command(name='resetcooldown', aliases=['rc'], hidden=True)

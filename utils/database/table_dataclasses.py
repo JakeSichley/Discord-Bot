@@ -71,6 +71,22 @@ class PartialLoggingAction(DatabaseDataclass):
 
 
 @dataclasses.dataclass
+class VoiceRole(DatabaseDataclass):
+    """
+    A DatabaseDataclass that stores the guild_id, channel_id, and role_id of a VoiceRole.
+
+    Attributes:
+        guild_id (int): The guild id associated with the voice role.
+        channel_id (int): The channel id associated with the voice role.
+        role_id (int): The role id associated with the voice role.
+    """
+
+    guild_id: int
+    channel_id: int
+    role_id: int
+
+
+@dataclasses.dataclass
 class Prefix(DatabaseDataclass):
     """
     A DatabaseDataclass that stores a guild's prefix information.

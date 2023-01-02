@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
-# 2.8.1
+# 2.8.2
 ### Internal
 * Add Fuzzy Autocomplete Searching
 

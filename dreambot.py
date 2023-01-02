@@ -154,7 +154,7 @@ class DreamBot(Bot):
             None.
         """
 
-        await self.cache.refresh()
+        await self.cache.sync_cache()
 
         # load our cogs
         for cog in listdir(path.join(getcwd(), 'cogs')):

@@ -242,6 +242,7 @@ class AutocompleteModel(Generic[ChoiceT]):
             None.
         """
 
+        # TODO: Find a way to increase speed without sacrificing the improved accuracy from both ratios
         name = self.name.lower()
         current = self.current.lower()
 

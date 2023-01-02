@@ -22,12 +22,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, DefaultDict
 from utils.database.helpers import typed_retrieve_query
 from utils.database import table_dataclasses as TableDC
 from copy import deepcopy
 from utils.logging_formatter import bot_logger
 from aiosqlite import Error as aiosqliteError
+from collections import defaultdict
 
 
 class TableCache:
@@ -41,10 +42,22 @@ class TableCache:
         self.database = database
         self.prefixes: Dict[int, List[str]] = {}
         self.reaction_roles: Dict[Tuple[int, str], int] = {}
+        self.voice_roles: DefaultDict[int, List[TableDC.VoiceRole]] = defaultdict(list)
 
-    async def refresh(self):
+    async def sync_cache(self) -> None:
+        """
+        Syncs relevant tables to the bot's cache.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
         await self.retrieve_prefixes()
         await self.retrieve_reaction_roles()
+        await self.retrieve_voice_roles()
 
     async def retrieve_prefixes(self) -> None:
         """
@@ -70,10 +83,10 @@ class TableCache:
                     self.prefixes[row.guild_id] = [row.prefix]
 
         except aiosqliteError as e:
-            bot_logger.error(f'Failed prefix retrieval. {e}')
+            bot_logger.error(f'Failed Prefix retrieval. {e}')
             self.prefixes = current_prefixes
         else:
-            bot_logger.info('Completed prefix retrieval')
+            bot_logger.info('Completed Prefix retrieval')
 
     async def retrieve_reaction_roles(self) -> None:
         """
@@ -97,7 +110,35 @@ class TableCache:
             self.reaction_roles = {row.primary_key: row.role_id for row in reaction_rows}
 
         except aiosqliteError as e:
-            bot_logger.error(f'Failed reaction role retrieval. {e}')
+            bot_logger.error(f'Failed Reaction Role retrieval. {e}')
             self.reaction_roles = current_reaction_roles
         else:
-            bot_logger.info('Completed reaction role retrieval')
+            bot_logger.info('Completed Reaction Role retrieval')
+
+    async def retrieve_voice_roles(self) -> None:
+        """
+        A method that creates a quick-reference dict for voice roles.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
+        current_voice_roles = deepcopy(self.voice_roles)
+
+        try:
+            self.voice_roles.clear()
+            voice_roles = await typed_retrieve_query(
+                self.database, TableDC.VoiceRole, 'SELECT * FROM VOICE_ROLES'
+            )
+
+            for row in voice_roles:
+                self.voice_roles[row.guild_id].append(row)
+
+        except aiosqliteError as e:
+            bot_logger.error(f'Failed Voice Role retrieval. {e}')
+            self.voice_roles = current_voice_roles
+        else:
+            bot_logger.info('Completed Voice Role retrieval')
