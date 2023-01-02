@@ -23,6 +23,7 @@ SOFTWARE.
 """
 
 import dataclasses
+from typing import Tuple
 
 
 @dataclasses.dataclass
@@ -82,3 +83,51 @@ class Prefix(DatabaseDataclass):
 
     guild_id: int
     prefix: str
+
+
+@dataclasses.dataclass
+class ReactionRole(DatabaseDataclass):
+    """
+    A DatabaseDataclass that stores the reaction, role_id, and channel_id of a ReactionRole.
+
+    Attributes:
+        guild_id (int): The guild id associated with the reaction role.
+        channel_id (int): The channel id associated with the reaction role.
+        message_id (int): The message id associated with the reaction role.
+        reaction (str): The reaction associated with the reaction role.
+        role_id (int): The role id associated with the reaction role.
+    """
+
+    guild_id: int
+    channel_id: int
+    message_id: int
+    reaction: str
+    role_id: int
+
+    @property
+    def jump_url(self) -> str:
+        """
+        Generates a Discord 'jump url' for this reaction role's message.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str).
+        """
+
+        return f'https://discordapp.com/channels/{self.guild_id}/{self.channel_id}/{self.message_id}'
+
+    @property
+    def primary_key(self) -> Tuple[int, str]:
+        """
+        Returns the primary key representation of this Reaction Role.
+
+        Parameters:
+            None.
+
+        Returns:
+            (Tuple[int, str]).
+        """
+
+        return self.message_id, self.reaction

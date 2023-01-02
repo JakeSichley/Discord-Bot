@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from utils.database.helpers import typed_retrieve_query
 from utils.database import table_dataclasses as TableDC
 from copy import deepcopy
@@ -40,10 +40,11 @@ class TableCache:
     def __init__(self, database: str) -> None:
         self.database = database
         self.prefixes: Dict[int, List[str]] = {}
-
+        self.reaction_roles: Dict[Tuple[int, str], int] = {}
 
     async def refresh(self):
         await self.retrieve_prefixes()
+        await self.retrieve_reaction_roles()
 
     async def retrieve_prefixes(self) -> None:
         """
@@ -73,3 +74,30 @@ class TableCache:
             self.prefixes = current_prefixes
         else:
             bot_logger.info('Completed prefix retrieval')
+
+    async def retrieve_reaction_roles(self) -> None:
+        """
+        A method that creates a quick-reference dict for reaction roles.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
+        current_reaction_roles = deepcopy(self.reaction_roles)
+
+        try:
+            self.reaction_roles.clear()
+            reaction_rows = await typed_retrieve_query(
+                self.database, TableDC.ReactionRole, 'SELECT * FROM REACTION_ROLES'
+            )
+
+            self.reaction_roles = {row.primary_key: row.role_id for row in reaction_rows}
+
+        except aiosqliteError as e:
+            bot_logger.error(f'Failed reaction role retrieval. {e}')
+            self.reaction_roles = current_reaction_roles
+        else:
+            bot_logger.info('Completed reaction role retrieval')

@@ -23,7 +23,6 @@ SOFTWARE.
 """
 
 from asyncio import TimeoutError
-from dataclasses import dataclass
 from math import ceil
 from typing import Union, Optional, List, Tuple
 
@@ -32,44 +31,11 @@ from discord.ext import commands
 
 from dreambot import DreamBot
 from utils.context import Context
-from utils.database.helpers import execute_query, typed_retrieve_query, DatabaseDataclass
+from utils.database.helpers import execute_query, typed_retrieve_query
+from utils.database.table_dataclasses import ReactionRole
 from utils.logging_formatter import bot_logger
 from utils.prompts import prompt_user_for_role, prompt_user_for_discord_message
 from utils.utils import cleanup
-
-
-@dataclass
-class PartialReactionRole(DatabaseDataclass):
-    """
-    A DatabaseDataclass that stores the reaction, role_id, and channel_id of a ReactionRole.
-
-    Attributes:
-        guild_id (int): The guild id associated with the reaction role.
-        channel_id (int): The channel id associated with the reaction role.
-        message_id (int): The message id associated with the reaction role.
-        reaction (str): The reaction associated with the reaction role.
-        role_id (int): The role id associated with the reaction role.
-    """
-
-    guild_id: int
-    channel_id: int
-    message_id: int
-    reaction: str
-    role_id: int
-
-    @property
-    def jump_url(self) -> str:
-        """
-        Generates a Discord 'jump url' for this reaction role's message.
-
-        Parameters:
-            None.
-
-        Returns:
-            (str).
-        """
-
-        return f'https://discordapp.com/channels/{self.guild_id}/{self.channel_id}/{self.message_id}'
 
 
 class ReactionRoles(commands.Cog):
@@ -242,6 +208,8 @@ class ReactionRoles(commands.Cog):
                             'VALUES (?, ?, ?, ?, ?) '
                             'ON CONFLICT(MESSAGE_ID, REACTION) DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID',
                             (message.guild.id, message.channel.id, message.id, str(payload.emoji), role.id))
+        self.bot.cache.reaction_roles[message.id, str(payload.emoji)] = role.id
+
         await ctx.send(f"Awesome! Whenever a user reacts to the message {message.jump_url} with the reaction "
                        f"{payload.emoji}, I'll assign them the **{role.name}** role!")
         await cleanup(cleanup_messages, ctx.channel)
@@ -289,7 +257,7 @@ class ReactionRoles(commands.Cog):
         # once we have a message id, proceed with deletion confirmation
         if reaction_roles := await typed_retrieve_query(
                 self.bot.database,
-                PartialReactionRole,
+                ReactionRole,
                 'SELECT * FROM REACTION_ROLES WHERE MESSAGE_ID=?',
                 (message.id,)
         ):
@@ -366,10 +334,16 @@ class ReactionRoles(commands.Cog):
                 payload = await self.bot.wait_for('raw_reaction_add', timeout=30.0, check=reaction_check)
 
                 if str(payload.emoji) == '\u2705':
+                    # try to remove the deleted reaction
                     await execute_query(self.bot.database,
                                         'DELETE FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
                                         (message.id, str(to_remove[0])))
-                    # try to remove the deleted reaction
+
+                    try:
+                        self.bot.cache.reaction_roles[message.id, str(to_remove[0])]
+                    except KeyError:
+                        pass
+
                     try:
                         await message.clear_reaction(to_remove[0])
                     except discord.HTTPException as e:
@@ -427,7 +401,7 @@ class ReactionRoles(commands.Cog):
         # once we have a message id, proceed with deletion confirmation
         if reaction_roles := await typed_retrieve_query(
                 self.bot.database,
-                PartialReactionRole,
+                ReactionRole,
                 'SELECT * FROM REACTION_ROLES WHERE MESSAGE_ID=?',
                 (message.id,)
         ):
@@ -457,6 +431,11 @@ class ReactionRoles(commands.Cog):
                         'DELETE FROM REACTION_ROLES WHERE MESSAGE_ID=?',
                         (message.id,)
                     )
+                    for reaction_role in reaction_roles:
+                        try:
+                            del self.bot.cache.reaction_roles[reaction_role.message_id, reaction_role.reaction]
+                        except KeyError:
+                            pass
                     # try to remove the respective reactions
                     for reaction in message.reactions:
                         if reaction.me:
@@ -515,7 +494,7 @@ class ReactionRoles(commands.Cog):
 
             if reaction_roles := await typed_retrieve_query(
                     self.bot.database,
-                    PartialReactionRole,
+                    ReactionRole,
                     'SELECT * FROM REACTION_ROLES WHERE MESSAGE_ID=?',
                     (message_id,)
             ):
@@ -673,25 +652,24 @@ class ReactionRoles(commands.Cog):
         if payload.user_id == self.bot.user.id or payload.guild_id is None:
             return
 
-        if roles := await typed_retrieve_query(
-                self.bot.database,
-                int,
-                'SELECT ROLE_ID FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
-                (payload.message_id, str(payload.emoji))
-        ):
-            # if there's a role for the given message + reaction, attempt to fetch the guild
-            if guild := self.bot.get_guild(payload.guild_id):
-                # if we fetched the guild, try to fetch the member and the role
-                role = guild.get_role(roles[0])
-                member = guild.get_member(payload.user_id)
-                # if we fetched all our prerequisites, attempt to remove the role from the member
-                if role and member:
-                    try:
-                        await member.remove_roles(
-                            role, reason=f'Reaction Roles - Remove [Message ID: {payload.message_id}]'
-                        )
-                    except discord.HTTPException as e:
-                        bot_logger.error(f'Reaction Role - Role Removal Error. {e.status}. {e.text}')
+        role = self.bot.cache.reaction_roles.get((payload.message_id, str(payload.emoji)))
+        guild = self.bot.get_guild(payload.guild_id)
+
+        if not (role and guild):
+            return
+
+        member = guild.get_member(payload.user_id)
+        resolved_role = guild.get_role(role)
+
+        if not (member and resolved_role):
+            return
+
+        try:
+            await member.remove_roles(
+                resolved_role, reason=f'Reaction Roles - Remove [Message ID: {payload.message_id}]'
+            )
+        except discord.HTTPException as e:
+            bot_logger.error(f'Reaction Role - Role Removal Error. {e.status}. {e.text}')
 
 
 class ReactionRolePagination:

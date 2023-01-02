@@ -23,8 +23,6 @@ SOFTWARE.
 """
 
 from collections import defaultdict
-from copy import deepcopy
-from dataclasses import dataclass
 from datetime import datetime
 from os import getcwd, listdir, path
 from sys import stderr, exc_info
@@ -33,15 +31,12 @@ from typing import Optional, List, Dict, Type, DefaultDict, TypedDict, Union, An
 
 import discord
 from aiohttp import ClientSession
-from aiosqlite import Error as aiosqliteError
 from discord.ext import tasks
 from discord.ext.commands import ExtensionError, Bot, when_mentioned
 from google.cloud import errorreporting_v1beta1 as error_reporting
 
 from utils.context import Context
 from utils.cooldowns import CooldownMapping
-from utils.database.helpers import typed_retrieve_query
-from utils.database.table_dataclasses import DatabaseDataclass
 from utils.database.cache import TableCache
 from utils.logging_formatter import bot_logger
 from utils.utils import generate_activity
@@ -68,27 +63,12 @@ Optionals = TypedDict(
 )
 
 
-@dataclass
-class Prefix(DatabaseDataclass):
-    """
-    A DatabaseDataclass that stores a guild's prefix information.
-
-    Attributes:
-        guild_id (int): The id of the guild.
-        prefix (str): A prefix of the guild.
-
-    """
-
-    guild_id: int
-    prefix: str
-
-
 class DreamBot(Bot):
     """
     A commands.Bot subclass that contains the main bot implementation.
 
     Attributes:
-        prefixes (dict): A quick reference for accessing a guild's specified prefix.
+        cache (TableCache): A cache for quick access to frequently accessed table information.
         uptime (datetime.datetime): The time the bot was initialized.
         database (str): The name of the bot's database.
         session (aiohttp.ClientSession): The bot's current client session.
