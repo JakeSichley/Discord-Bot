@@ -40,7 +40,9 @@ from google.cloud import errorreporting_v1beta1 as error_reporting
 
 from utils.context import Context
 from utils.cooldowns import CooldownMapping
-from utils.database.helpers import DatabaseDataclass, typed_retrieve_query
+from utils.database.helpers import typed_retrieve_query
+from utils.database.table_dataclasses import DatabaseDataclass
+from utils.database.cache import TableCache
 from utils.logging_formatter import bot_logger
 from utils.utils import generate_activity
 
@@ -130,7 +132,8 @@ class DreamBot(Bot):
         self.database = database
         self.session: ClientSession = None  # type: ignore[assignment]
         self.wavelink = None
-        self.prefixes: Dict[int, List[str]] = {}
+        self.cache = TableCache(database)
+        # self.prefixes: Dict[int, List[str]] = {}
         self.uptime = datetime.now()
         self.default_prefix = prefix
         self.environment = environment
@@ -171,7 +174,7 @@ class DreamBot(Bot):
             None.
         """
 
-        await self.retrieve_prefixes()
+        await self.cache.refresh()
 
         # load our cogs
         for cog in listdir(path.join(getcwd(), 'cogs')):
@@ -282,35 +285,6 @@ class DreamBot(Bot):
 
         await self.wait_until_ready()
 
-    async def retrieve_prefixes(self) -> None:
-        """
-        A method that creates a quick-reference dict for guilds and their respective prefixes.
-
-        Parameters:
-            None.
-
-        Returns:
-            None.
-        """
-
-        current_prefixes = deepcopy(self.prefixes)
-
-        try:
-            self.prefixes.clear()
-            prefix_rows = await typed_retrieve_query(self.database, Prefix, 'SELECT * FROM PREFIXES')
-
-            for row in prefix_rows:
-                if row.guild_id in self.prefixes:
-                    self.prefixes[row.guild_id].append(row.prefix)
-                else:
-                    self.prefixes[row.guild_id] = [row.prefix]
-
-        except aiosqliteError as e:
-            bot_logger.error(f'Failed prefix retrieval. {e}')
-            self.prefixes = current_prefixes
-        else:
-            bot_logger.info('Completed prefix retrieval')
-
     async def get_context(  # type: ignore[override]
             self, origin: Union[discord.Message, discord.Interaction], /, *, cls: Type[Context] = Context
     ) -> Context:
@@ -358,7 +332,7 @@ async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:
 
     guild_id = message.guild.id if message.guild else -1
     mentions = when_mentioned(bot, message)
-    additional_prefixes = list(bot.prefixes.get(guild_id, bot.default_prefix))
+    additional_prefixes = list(bot.cache.prefixes.get(guild_id, bot.default_prefix))
 
     return mentions + additional_prefixes
 

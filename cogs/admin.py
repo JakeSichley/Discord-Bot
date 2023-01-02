@@ -306,11 +306,10 @@ class Admin(commands.Cog):
         except aiosqliteError as e:
             await ctx.send(f'Error: {e}')
 
-    @commands.command(name='reloadprefixes', aliases=['rp'], hidden=True)
+    @commands.command(name='refresh', hidden=True)
     async def reload_prefixes(self, ctx: Context) -> None:
         """
-        A command to reload the bot's store prefixes.
-        Prefixes are normally reloaded when explicitly changed.
+        A command to refresh the bot's table caches.
 
         Checks:
             is_owner(): Whether the invoking user is the bot's owner.
@@ -318,16 +317,13 @@ class Admin(commands.Cog):
         Parameters:
             ctx (Context): The invocation context.
 
-        Output:
-            Success: 'Reloaded Prefixes'.
-            Failure: The error that arose during execution.
 
         Returns:
             None.
         """
 
-        await self.bot.retrieve_prefixes()
-        await ctx.send('Reloaded Prefixes.')
+        await self.bot.cache.refresh()
+        await ctx.send('Refreshed Table Caches.')
 
     @commands.command(name='resetcooldown', aliases=['rc'], hidden=True)
     async def reset_cooldown(self, ctx: Context, command_name: str) -> None:
