@@ -297,6 +297,8 @@ class VoiceRoles(commands.Cog):
             None.
         """
 
+        # todo: guild / role unavailability checks
+
         # insert the guild, member key into our expiring cache
         # after our cache ttl, if the key is still valid, the user is still moving channels
         # otherwise, we can proceed
@@ -305,7 +307,6 @@ class VoiceRoles(commands.Cog):
         await sleep(self.CACHE_TTL + 0.1)
 
         if (member.guild.id, member.id) in self.cache:
-            print(f'Early Return {member}')
             return
 
         # compile a list of valid VoiceRole::Role ID's for the current guild
@@ -314,7 +315,6 @@ class VoiceRoles(commands.Cog):
         # keep every role that isn't a VoiceRole
         updated_roles = [x for x in member.roles if x.id not in local_roles]
         if not after.channel:
-            print('Clear All')
             # if the user does not have a voice state, updated_roles is already finished
             reason = f'Voice Roles - Disconnect'
         else:
@@ -324,7 +324,6 @@ class VoiceRoles(commands.Cog):
                 for x in self.bot.cache.voice_roles[member.guild.id]
                 if x.channel_id == after.channel.id
             ]
-            print(add_role)
 
             # both add_role and this list comprehensive should have len == 1 which don't require lists, but using lists
             # prevents a double-nested if
@@ -332,7 +331,6 @@ class VoiceRoles(commands.Cog):
             reason = f'Voice Roles - Join [Channel ID: {after.channel.id} ("{after.channel.name}")]'
 
         try:
-            print(f'Editing {member}')
             await member.edit(roles=updated_roles, reason=reason)
         except discord.HTTPException as e:
             bot_logger.error(f'Voice Role - Role Edit Error. {e.status}. {e.text}')

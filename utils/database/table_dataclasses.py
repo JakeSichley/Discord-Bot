@@ -94,11 +94,24 @@ class Prefix(DatabaseDataclass):
     Attributes:
         guild_id (int): The id of the guild.
         prefix (str): A prefix of the guild.
-
     """
 
     guild_id: int
     prefix: str
+
+
+@dataclasses.dataclass
+class DefaultRole(DatabaseDataclass):
+    """
+    A DatabaseDataclass that stores a guild's prefix information.
+
+    Attributes:
+        guild_id (int): The id of the guild.
+        role_id (int): A id of the guild's default role..
+    """
+
+    guild_id: int
+    role_id: int
 
 
 @dataclasses.dataclass

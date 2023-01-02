@@ -22,20 +22,27 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Dict, List, Tuple, DefaultDict
-from utils.database.helpers import typed_retrieve_query
-from utils.database import table_dataclasses as TableDC
-from copy import deepcopy
-from utils.logging_formatter import bot_logger
-from aiosqlite import Error as aiosqliteError
 from collections import defaultdict
+from copy import deepcopy
+from typing import Dict, List, Tuple, DefaultDict
+
+from aiosqlite import Error as aiosqliteError
+
+from utils.database import table_dataclasses as TableDC
+from utils.database.helpers import typed_retrieve_query
+from utils.logging_formatter import bot_logger
 
 
 class TableCache:
     """
-    -
+    Caches frequently accessed tables in the bot's memory.
 
     Attributes:
+        database (str): The name of the bot's database.
+        prefixes (Dict[int, List[str]]): A Guild.id: Prefix mapping.
+        reaction_roles (Dict[Tuple[int, str], int]): A (Message.id, Reaction): Role.id mapping.
+        voice_roles (DefaultDict[int, List[TableDC.VoiceRole]]): A Guild.id: VoiceRole mapping.
+        default_roles (Dict[int, int]): A Guild.id: Role.id mapping.
     """
 
     def __init__(self, database: str) -> None:
@@ -43,6 +50,7 @@ class TableCache:
         self.prefixes: Dict[int, List[str]] = {}
         self.reaction_roles: Dict[Tuple[int, str], int] = {}
         self.voice_roles: DefaultDict[int, List[TableDC.VoiceRole]] = defaultdict(list)
+        self.default_roles: Dict[int, int] = {}
 
     async def sync_cache(self) -> None:
         """
@@ -58,6 +66,7 @@ class TableCache:
         await self.retrieve_prefixes()
         await self.retrieve_reaction_roles()
         await self.retrieve_voice_roles()
+        await self.retrieve_default_roles()
 
     async def retrieve_prefixes(self) -> None:
         """
@@ -142,3 +151,30 @@ class TableCache:
             self.voice_roles = current_voice_roles
         else:
             bot_logger.info('Completed Voice Role retrieval')
+
+    async def retrieve_default_roles(self) -> None:
+        """
+        A method that creates a quick-reference dict for default roles.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
+        current_default_roles = deepcopy(self.default_roles)
+
+        try:
+            self.default_roles.clear()
+            default_roles = await typed_retrieve_query(
+                self.database, TableDC.DefaultRole, 'SELECT * FROM DEFAULT_ROLES'
+            )
+
+            self.default_roles = {row.guild_id: row.role_id for row in default_roles}
+
+        except aiosqliteError as e:
+            bot_logger.error(f'Failed Default Role retrieval. {e}')
+            self.default_roles = current_default_roles
+        else:
+            bot_logger.info('Completed Default Role retrieval')
