@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+# 2.9.0
+### Internal
+* Cache Frequently Accessed Database Tables in Memory
+* Reduce `VoiceRoles::on_voice_state_update` role update API calls to 1 with `Member.edit`
+
 # 2.8.2
 ### Internal
 * Add Fuzzy Autocomplete Searching
