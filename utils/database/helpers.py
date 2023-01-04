@@ -22,7 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import dataclasses
 from typing import List, Tuple, Any, Optional, Iterable, Type, TypeVar
 
 import aiosqlite
@@ -31,36 +30,6 @@ from typing_extensions import TypeGuard
 from utils.logging_formatter import bot_logger
 
 T = TypeVar('T')
-
-
-@dataclasses.dataclass
-class DatabaseDataclass:
-    """
-    A `dataclass` used to enforce type-safety for type-specified database retrievals.
-
-    This class no attributes of its own, and is meant to be subclassed.
-    """
-
-    def __post_init__(self) -> None:
-        """
-        A method called after the initialization of a `dataclass`.
-        Using the built-in fields attribute, we can check the actual fields vs the intended fields, and raise
-        an exception if they don't match.
-
-        Parameters:
-            None.
-
-        Raises:
-            ValueError.
-
-        Returns:
-            None.
-        """
-
-        for field in dataclasses.fields(self):
-            value = getattr(self, field.name)
-            if not isinstance(value, field.type):
-                raise ValueError(f'Expected {field.name} to be {field.type}, got {type(value)}')
 
 
 async def execute_query(

@@ -289,8 +289,18 @@ class Moderation(commands.Cog):
         invoker_role = ctx.author.top_role
 
         if not role:
+            confirmation = await ctx.confirmation_prompt('Are you sure you want to remove the default role?')
+            if not confirmation:
+                return
+
             try:
                 await execute_query(self.bot.database, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?', (ctx.guild.id,))
+
+                try:
+                    del self.bot.cache.default_roles[ctx.guild.id]
+                except KeyError:
+                    pass
+
                 await ctx.send('Cleared the default role for the guild.')
             except aiosqliteError:
                 await ctx.send('Failed to clear the default role for the guild.')
@@ -310,6 +320,8 @@ class Moderation(commands.Cog):
                         'DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID',
                         (ctx.guild.id, role.id)
                     )
+                    self.bot.cache.default_roles[ctx.guild.id] = role.id
+
                     await ctx.send(f'Updated the default role to **{role.name}**')
                 except aiosqliteError:
                     await ctx.send('Failed to set the default role for the guild.')
@@ -332,26 +344,7 @@ class Moderation(commands.Cog):
         if 'MEMBER_VERIFICATION_GATE_ENABLED' in member.guild.features:
             return
 
-        if role := (await typed_retrieve_query(
-                self.bot.database,
-                int,
-                'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
-                (member.guild.id,))
-        ):
-            if fetched_role := member.guild.get_role(role[0]):
-                try:
-                    await member.add_roles(fetched_role, reason='Default Role Assignment')
-                except discord.HTTPException as e:
-                    bot_logger.error(f'Role Addition Failure. {e.status}. {e.text}')
-            else:
-                bot_logger.error(f'Failed to Fetch Default Role for Guild: {member.guild.id} with Role: {role}')
-
-                # todo: implement `guild_unavailable` checks
-                # await execute_query(
-                #     self.bot.database,
-                #     'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
-                #     (member.guild.id,)
-                # )
+        await add_default_role(self.bot, member)
 
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member) -> None:
@@ -370,33 +363,45 @@ class Moderation(commands.Cog):
         """
 
         if 'MEMBER_VERIFICATION_GATE_ENABLED' in after.guild.features and before.pending and not after.pending:
-            if role := (await typed_retrieve_query(
-                    self.bot.database,
-                    int,
-                    'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
-                    (after.guild.id,))
-            ):
-                if fetched_role := after.guild.get_role(role[0]):
-                    try:
-                        await after.add_roles(fetched_role, reason='Default Role [Membership Screening] Assignment')
-                        return
-                    except discord.HTTPException as e:
-                        bot_logger.error(f'Role Addition Failure. {e.status}. {e.text}')
+            await add_default_role(self.bot, after, True)
 
-                        if sys_channel := after.guild.system_channel:
-                            try:
-                                await sys_channel.send(f'Failed to add the default role to `{str(after)}`.')
-                            except discord.HTTPException as e:
-                                bot_logger.error(f'Role Addition Alert Failure. {e.status}. {e.text}')
-                else:
-                    bot_logger.error(f'Failed to Fetch Default Role for Guild: {after.guild.id} with Role: {role}')
 
-                    # todo: implement `guild_unavailable` checks
-                    # await execute_query(
-                    #     self.bot.database,
-                    #     'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
-                    #     (after.guild.id,)
-                    # )
+async def add_default_role(bot: DreamBot, member: discord.Member, gate: bool = False) -> None:
+    """
+    Adds the default role (if applicable) to a member.
+
+    Parameters:
+        bot (DreamBot): The Discord bot.
+        member (discord.Member): The member to add the default role to.
+        gate (bool): Whether the invocation guild has the `MEMBER_VERIFICATION_GATE_ENABLED` flag.
+
+    Returns:
+        None.
+    """
+
+    if member.guild.id not in bot.cache.default_roles:
+        return
+
+    resolved_role = member.guild.get_role(bot.cache.default_roles[member.guild.id])
+
+    if not resolved_role:
+        return
+
+    try:
+        await member.add_roles(
+            resolved_role,
+            reason=f'Default Role{" [Membership Screening] " if gate else " "}Assignment'
+        )
+    except discord.HTTPException as e:
+        bot_logger.error(f'Role Addition Failure. {e.status}. {e.text}')
+
+        if sys_channel := member.guild.system_channel:
+            try:
+                await sys_channel.send(f'Failed to add the default role to `{str(member)}`.')
+            except discord.HTTPException as e:
+                bot_logger.error(f'Role Addition Alert Failure. {e.status}. {e.text}')
+
+    # todo: implement `guild_unavailable` checks
 
 
 async def setup(bot: DreamBot) -> None:

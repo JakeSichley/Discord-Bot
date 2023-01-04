@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 from asyncio import sleep
-from typing import List, Optional, NamedTuple
+from typing import List, Optional
 
 import discord
 from aiosqlite import Error as aiosqliteError
@@ -33,11 +33,10 @@ from discord.ext import commands
 from dreambot import DreamBot
 from utils.context import Context
 from utils.database.helpers import execute_query, typed_retrieve_query
+from utils.database.table_dataclasses import VoiceRole
 from utils.logging_formatter import bot_logger
 from utils.prompts import prompt_user_for_voice_channel, prompt_user_for_role
 from utils.utils import cleanup
-
-PartialVoiceRole = NamedTuple('PartialVoiceRole', [('channel_id', int), ('role_id', int)])
 
 
 class VoiceRoles(commands.Cog):
@@ -160,6 +159,8 @@ class VoiceRoles(commands.Cog):
                 'ON CONFLICT(CHANNEL_ID) DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID',
                 (channel.guild.id, channel.id, role.id)
             )
+            self.bot.cache.voice_roles[channel.guild.id].append(VoiceRole(channel.guild.id, channel.id, role.id))
+
             await ctx.send(
                 f"Awesome! Whenever a user joins **{channel.name}**, I'll assign them the **{role.name}** role!"
             )
@@ -223,6 +224,10 @@ class VoiceRoles(commands.Cog):
                     'DELETE FROM VOICE_ROLES WHERE CHANNEL_ID=?',
                     (channel.id,)
                 )
+
+                existing_roles = self.bot.cache.voice_roles[ctx.guild.id]
+                self.bot.cache.voice_roles[ctx.guild.id] = [x for x in existing_roles if x.channel_id != channel.id]
+
             except aiosqliteError:
                 pass
 
@@ -292,81 +297,43 @@ class VoiceRoles(commands.Cog):
             None.
         """
 
-        def unique_roles(
-                existing_roles: List[discord.Role], pending_roles: List[discord.Role]
-        ) -> Optional[List[discord.Role]]:
-            """
-            Computes 'held' roles for a member from a list of roles.
+        # todo: guild / role unavailability checks
 
-            Parameters:
-                existing_roles (List[discord.Role]): The existing roles a member has.
-                pending_roles (List[discord.Role]): A list of roles to check against the existing roles.
+        # insert the guild, member key into our expiring cache
+        # after our cache ttl, if the key is still valid, the user is still moving channels
+        # otherwise, we can proceed
+        self.cache[member.guild.id, member.id] = None  # value is irrelevant for our purposes
 
-            Returns:
-                 (Optional[List[discord.Role]]): The intersection of the existing and pending roles.
-            """
+        await sleep(self.CACHE_TTL + 0.1)
 
-            existing_set = set(existing_roles)
-            pending_set = set(pending_roles)
-
-            intersection = existing_set.intersection(pending_set)
-
-            return None if len(intersection) == 0 else list(intersection)
-
-        self.cache[member.id] = None  # value is irrelevant for our purposes
-
-        await sleep(self.CACHE_TTL)
-
-        if member.id in self.cache:
+        if (member.guild.id, member.id) in self.cache:
             return
 
-        if data := await typed_retrieve_query(
-                self.bot.database,
-                PartialVoiceRole,
-                'SELECT CHANNEL_ID, ROLE_ID FROM VOICE_ROLES WHERE GUILD_ID=?',
-                (member.guild.id,)
-        ):
-            # if there's a roles for the given guild, update according
-            if after.channel:
-                # if we fetched the guild, begin updating roles
-                remove_roles = []
-                add_role = None
-                for partial_voice_role in data:
-                    if partial_voice_role.channel_id != after.channel.id:
-                        if fetched_role := member.guild.get_role(partial_voice_role.role_id):
-                            remove_roles.append(fetched_role)
-                    else:
-                        add_role = member.guild.get_role(partial_voice_role.role_id)
+        # compile a list of valid VoiceRole::Role ID's for the current guild
+        local_roles = [x.role_id for x in self.bot.cache.voice_roles[member.guild.id]]
 
-                if add_role:
-                    try:
-                        await member.add_roles(
-                            add_role,
-                            reason=f'Voice Roles - Join [Channel ID: {after.channel.id} ("{after.channel.name}")]'
-                        )
-                    except discord.HTTPException as e:
-                        bot_logger.error(f'Voice Role - Role Addition Error. {e.status}. {e.text}')
+        # keep every role that isn't a VoiceRole
+        updated_roles = [x for x in member.roles if x.id not in local_roles]
+        if not after.channel:
+            # if the user does not have a voice state, updated_roles is already finished
+            reason = f'Voice Roles - Disconnect'
+        else:
+            # otherwise, resolve the relevant VoiceRole
+            add_role = [
+                member.guild.get_role(x.role_id)
+                for x in self.bot.cache.voice_roles[member.guild.id]
+                if x.channel_id == after.channel.id
+            ]
 
-                if removal_set := unique_roles(member.roles, remove_roles):
-                    try:
-                        await member.remove_roles(
-                            *removal_set,
-                            reason=f'Voice Roles - Leave [Channel ID: {after.channel.id} ("{after.channel.name}")]'
-                        )
-                    except discord.HTTPException as e:
-                        bot_logger.error(f'Voice Role - Role Removal Error. {e.status}. {e.text}')
+            # both add_role and this list comprehensive should have len == 1 which don't require lists, but using lists
+            # prevents a double-nested if
+            updated_roles.extend([x for x in add_role if x])
+            reason = f'Voice Roles - Join [Channel ID: {after.channel.id} ("{after.channel.name}")]'
 
-            else:
-                remove_roles = []
-                for channel_id, role_id in data:
-                    if fetched_role := member.guild.get_role(role_id):
-                        remove_roles.append(fetched_role)
-
-                if removal_set := unique_roles(member.roles, remove_roles):
-                    try:
-                        await member.remove_roles(*removal_set, reason=f'Voice Roles - Disconnect')
-                    except discord.HTTPException as e:
-                        bot_logger.error(f'Voice Role - Role Removal Error. {e.status}. {e.text}')
+        try:
+            await member.edit(roles=updated_roles, reason=reason)
+        except discord.HTTPException as e:
+            bot_logger.error(f'Voice Role - Role Edit Error. {e.status}. {e.text}')
 
 
 async def setup(bot: DreamBot) -> None:

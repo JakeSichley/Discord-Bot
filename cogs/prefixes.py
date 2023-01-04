@@ -88,7 +88,7 @@ class Prefixes(commands.Cog):
 
         assert ctx.guild is not None  # guild only
 
-        prefixes = self.bot.prefixes.get(ctx.guild.id, [])
+        prefixes = self.bot.cache.prefixes.get(ctx.guild.id, [])
 
         if len(prefixes) >= 3:
             await ctx.send('This guild has reached the maximum number of prefixes.')
@@ -113,10 +113,10 @@ class Prefixes(commands.Cog):
         except aiosqliteError:
             await ctx.send(f'Failed to add `{prefix}`.')
         else:
-            if ctx.guild.id in self.bot.prefixes:
-                self.bot.prefixes[ctx.guild.id].append(prefix)
+            if ctx.guild.id in self.bot.cache.prefixes:
+                self.bot.cache.prefixes[ctx.guild.id].append(prefix)
             else:
-                self.bot.prefixes[ctx.guild.id] = [prefix]
+                self.bot.cache.prefixes[ctx.guild.id] = [prefix]
 
             await ctx.send(f'Added `{prefix}` as a prefix for this guild.')
 
@@ -143,7 +143,7 @@ class Prefixes(commands.Cog):
 
         assert ctx.guild is not None  # guild only
 
-        prefixes = self.bot.prefixes.get(ctx.guild.id, None)
+        prefixes = self.bot.cache.prefixes.get(ctx.guild.id, None)
         prefix = prefix.strip()
 
         if prefixes is None:
@@ -163,10 +163,10 @@ class Prefixes(commands.Cog):
         except aiosqliteError:
             await ctx.send(f'Failed to remove `{prefix}`.')
         else:
-            self.bot.prefixes[ctx.guild.id].remove(prefix)
+            self.bot.cache.prefixes[ctx.guild.id].remove(prefix)
 
-            if not self.bot.prefixes[ctx.guild.id]:
-                del self.bot.prefixes[ctx.guild.id]
+            if not self.bot.cache.prefixes[ctx.guild.id]:
+                del self.bot.cache.prefixes[ctx.guild.id]
 
             await ctx.send(f'Removed `{prefix}` as a prefix for this guild.')
 
@@ -194,7 +194,7 @@ class Prefixes(commands.Cog):
 
         assert ctx.guild is not None  # guild only
 
-        prefixes = self.bot.prefixes.get(ctx.guild.id, None)
+        prefixes = self.bot.cache.prefixes.get(ctx.guild.id, None)
         old_prefix, new_prefix = old_prefix.strip(), new_prefix.strip()
 
         if prefixes is None:
@@ -218,8 +218,8 @@ class Prefixes(commands.Cog):
         except aiosqliteError:
             await ctx.send(f'Failed to replace `{old_prefix}` with `{new_prefix}`.')
         else:
-            self.bot.prefixes[ctx.guild.id].remove(old_prefix)
-            self.bot.prefixes[ctx.guild.id].append(new_prefix)
+            self.bot.cache.prefixes[ctx.guild.id].remove(old_prefix)
+            self.bot.cache.prefixes[ctx.guild.id].append(new_prefix)
 
             await ctx.send(f'Replaced `{old_prefix}` with `{new_prefix}` as a prefix for this guild.')
 
@@ -245,7 +245,7 @@ class Prefixes(commands.Cog):
 
         assert ctx.guild is not None  # guild only
 
-        prefixes = self.bot.prefixes.get(ctx.guild.id, None)
+        prefixes = self.bot.cache.prefixes.get(ctx.guild.id, None)
 
         if prefixes is None:
             await ctx.send(f'This guild has no custom prefixes. Cannot clear prefixes.')
@@ -266,7 +266,7 @@ class Prefixes(commands.Cog):
         except aiosqliteError:
             await ctx.send(f'Failed to clear prefixes.')
         else:
-            del self.bot.prefixes[ctx.guild.id]
+            del self.bot.cache.prefixes[ctx.guild.id]
 
             await ctx.send(f'Cleared all prefixes for the guild.')
 
@@ -296,12 +296,12 @@ class Prefixes(commands.Cog):
             await ctx.send(f'Prefix: `{self.bot.default_prefix}`')
             return
 
-        if ctx.guild.id not in self.bot.prefixes:
+        if ctx.guild.id not in self.bot.cache.prefixes:
             await ctx.send(
                 f'You can use {self.bot.user.mention} or `{self.bot.default_prefix}` to invoke commands in this guild.'
             )
         else:
-            prefixes = [f'`{x}`' for x in self.bot.prefixes[ctx.guild.id]]
+            prefixes = [f'`{x}`' for x in self.bot.cache.prefixes[ctx.guild.id]]
             await ctx.send(
                 f'You can use {self.bot.user.mention} or {" or ".join(prefixes)} to invoke commands in this guild.'
             )

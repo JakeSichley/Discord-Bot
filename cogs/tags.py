@@ -33,7 +33,8 @@ from discord.ext import commands
 from dreambot import DreamBot
 from utils.context import Context
 from utils.converters import StringConverter
-from utils.database.helpers import execute_query, typed_retrieve_query, DatabaseDataclass
+from utils.database.helpers import execute_query, typed_retrieve_query
+from utils.database.table_dataclasses import DatabaseDataclass
 from utils.logging_formatter import bot_logger
 from utils.prompts import prompt_user_for_content
 from utils.utils import cleanup, valid_content
