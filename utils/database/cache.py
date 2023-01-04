@@ -52,7 +52,7 @@ class TableCache:
         self.voice_roles: DefaultDict[int, List[TableDC.VoiceRole]] = defaultdict(list)
         self.default_roles: Dict[int, int] = {}
 
-    async def sync_cache(self) -> None:
+    async def sync(self) -> None:
         """
         Syncs relevant tables to the bot's cache.
 

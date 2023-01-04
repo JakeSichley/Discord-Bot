@@ -113,7 +113,6 @@ class DreamBot(Bot):
         self.session: ClientSession = None  # type: ignore[assignment]
         self.wavelink = None
         self.cache = TableCache(database)
-        # self.prefixes: Dict[int, List[str]] = {}
         self.uptime = datetime.now()
         self.default_prefix = prefix
         self.environment = environment
@@ -154,7 +153,7 @@ class DreamBot(Bot):
             None.
         """
 
-        await self.cache.sync_cache()
+        await self.cache.sync()
 
         # load our cogs
         for cog in listdir(path.join(getcwd(), 'cogs')):
