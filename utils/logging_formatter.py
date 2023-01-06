@@ -25,6 +25,7 @@ SOFTWARE.
 import datetime
 import logging
 import os
+from contextlib import suppress
 from typing import Tuple
 
 import discord
@@ -53,10 +54,8 @@ def format_loggers() -> None:
     file_path = os.path.join(os.getcwd(), 'logs')
     file_time_name = f"{str(datetime.datetime.today()).replace(':', '-').replace(' ', '-')}.txt"
 
-    try:
+    with suppress(FileExistsError):
         os.mkdir(file_path)
-    except FileExistsError:
-        pass
 
     # set up bot handlers
     logger = logging.getLogger('DreamBot')

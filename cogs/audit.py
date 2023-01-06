@@ -23,6 +23,7 @@ SOFTWARE.
 """
 
 from asyncio import Condition
+from contextlib import suppress
 from dataclasses import dataclass
 from enum import Enum
 from typing import List
@@ -703,10 +704,8 @@ async def log_to_channel(bot: commands.Bot, action: LoggingActions, bits: int, c
             if not isinstance(channel, discord.abc.Messageable):
                 return
 
-            try:
+            with suppress(discord.HTTPException):
                 await channel.send(message)
-            except discord.HTTPException:
-                pass
 
 
 async def setup(bot: DreamBot) -> None:

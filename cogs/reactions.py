@@ -23,6 +23,7 @@ SOFTWARE.
 """
 
 from asyncio import TimeoutError
+from contextlib import suppress
 from math import ceil
 from typing import Union, Optional, List, Tuple
 
@@ -339,10 +340,8 @@ class ReactionRoles(commands.Cog):
                                         'DELETE FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
                                         (message.id, str(to_remove[0])))
 
-                    try:
+                    with suppress(KeyError):
                         self.bot.cache.reaction_roles[message.id, str(to_remove[0])]
-                    except KeyError:
-                        pass
 
                     try:
                         await message.clear_reaction(to_remove[0])
@@ -432,10 +431,9 @@ class ReactionRoles(commands.Cog):
                         (message.id,)
                     )
                     for reaction_role in reaction_roles:
-                        try:
+                        with suppress(KeyError):
                             del self.bot.cache.reaction_roles[reaction_role.message_id, reaction_role.reaction]
-                        except KeyError:
-                            pass
+
                     # try to remove the respective reactions
                     for reaction in message.reactions:
                         if reaction.me:

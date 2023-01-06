@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from contextlib import suppress
 from re import findall, sub
 from typing import Union, Optional
 
@@ -296,10 +297,8 @@ class Moderation(commands.Cog):
             try:
                 await execute_query(self.bot.database, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?', (ctx.guild.id,))
 
-                try:
+                with suppress(KeyError):
                     del self.bot.cache.default_roles[ctx.guild.id]
-                except KeyError:
-                    pass
 
                 await ctx.send('Cleared the default role for the guild.')
             except aiosqliteError:

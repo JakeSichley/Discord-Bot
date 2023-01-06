@@ -190,7 +190,6 @@ async def typed_retrieve_query(
                 f'Query: {query}\n'
                 f'Params: {values}'
             )
-            pass
 
     return transformed_entries
 
@@ -203,7 +202,7 @@ class Sqlite3Typing:
     @staticmethod
     def fetchall(val: Iterable[object]) -> TypeGuard[Iterable[Tuple[Any, ...]]]:
         """
-        A TypeGuard for mypy to assert that `fetchall() -> Iterable[sqlite3.Row]` == Iterable[Tuple[Any, ...]].
+        A TypeGuard for mypy to assert that `fetchall() -> Iterable[sqlite3.Row] == Iterable[Tuple[Any, ...]]`.
 
         Parameters:
             val (Iterable[object]): The sqlite3.Rows to typeguard.
@@ -217,7 +216,7 @@ class Sqlite3Typing:
     @staticmethod
     def fetchone(val: object) -> TypeGuard[Optional[Tuple[Any, ...]]]:
         """
-        A TypeGuard for mypy to assert that `fetchone() -> Optional[sqlite3.Row]` == Optional[Tuple[Any, ...]].
+        A TypeGuard for mypy to assert that `fetchone() -> Optional[sqlite3.Row] == Optional[Tuple[Any, ...]]`.
 
         Parameters:
             val (object): The sqlite3.Row to typeguard.
