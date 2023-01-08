@@ -26,6 +26,7 @@ import re
 from typing import Optional, Union, Any, Callable
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from dreambot import DreamBot
@@ -280,3 +281,58 @@ class StringConverter(commands.Converter):
 
         except AttributeError:
             raise commands.BadArgument(f'Could not coerce {argument} to string.')
+
+
+# noinspection PyAbstractClass
+class RunescapeNumberTransformer(app_commands.Transformer):
+    """
+    Allows users to enter numbers in Runescape shorthand, if desired.
+
+    Examples:
+        100 -> 100
+        100k -> 100_000
+        100m -> 100_000_000
+    """
+
+    async def transform(self, interaction: discord.Interaction, value: str, /) -> int:
+        """
+        Attempts to transform the input to the desired type.
+
+        Parameters:
+            interaction (discord.Interaction): The invocation interaction.
+            value (str): The input value.
+
+        Returns:
+            (int): The transformed number.
+        """
+
+        try:
+            # input is a regular number
+            parsed = int(value)
+        except ValueError:
+            # input is a number with 'k' or 'm' as the suffix
+            if re.search(r'^\d+[km]?$', value.lower()):
+                multiplier = 1_000 if value.lower()[-1] == 'k' else 1_000_000
+
+                try:
+                    parsed = int(value[:-1]) * multiplier
+                except ValueError:
+                    raise app_commands.TransformerError(value, self.type, self)
+            else:
+                raise app_commands.TransformerError(value, self.type, self)
+
+        return max(1, min(2_147_483_647, parsed))  # clamp
+
+    @property
+    def _error_display_name(self) -> str:
+        """
+        The name to display during errors.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str): The error display name.
+        """
+
+        return 'Integer from Runescape Number (10, 10k, 10m, etc.)'

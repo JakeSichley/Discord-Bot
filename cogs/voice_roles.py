@@ -333,7 +333,8 @@ class VoiceRoles(commands.Cog):
         try:
             await member.edit(roles=updated_roles, reason=reason)
         except discord.HTTPException as e:
-            bot_logger.error(f'Voice Role - Role Edit Error. {e.status}. {e.text}')
+            if not isinstance(e, discord.Forbidden):
+                bot_logger.error(f'Voice Role - Role Edit Error. {e.status}. {e.text}')
 
 
 async def setup(bot: DreamBot) -> None:

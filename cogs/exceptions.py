@@ -28,7 +28,7 @@ from traceback import print_exception, format_exception
 
 from aiohttp import ClientResponseError
 from discord import HTTPException, Interaction
-from discord.app_commands import AppCommandError
+from discord import app_commands
 from discord.ext import commands
 from discord.utils import format_dt
 
@@ -173,7 +173,7 @@ class Exceptions(commands.Cog):
             )
             await ctx.send(f'```py\n{formatted_error}```')
 
-    async def on_app_command_error(self, interaction: Interaction, error: AppCommandError) -> None:
+    async def on_app_command_error(self, interaction: Interaction, error: app_commands.AppCommandError) -> None:
         """
         A listener method that is called whenever an app command encounters an error.
 
@@ -186,6 +186,10 @@ class Exceptions(commands.Cog):
         """
 
         assert interaction.command is not None
+
+        if isinstance(error, app_commands.TransformerError):
+            await interaction.response.send_message(f'{error}', ephemeral=True)
+            return
 
         bot_logger.warning(
             f'Encountered AppCommandError in command {interaction.command.name}. '
