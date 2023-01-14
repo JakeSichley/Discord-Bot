@@ -23,11 +23,15 @@ SOFTWARE.
 """
 
 import re
+from datetime import datetime
+from math import ceil
 from typing import Optional, Union, Any, Callable
 
 import discord
+import parsedatetime  # type: ignore[import]
 from discord import app_commands
 from discord.ext import commands
+from pytz import utc
 
 from dreambot import DreamBot
 from utils.context import Context
@@ -336,3 +340,84 @@ class RunescapeNumberTransformer(app_commands.Transformer):
         """
 
         return 'Integer from Runescape Number (10, 10k, 10m, etc.)'
+
+
+# noinspection PyAbstractClass
+class HumanDatetimeDuration(app_commands.Transformer):
+    """
+    Allows users to a human-readable datetime duration. Converts the duration to total seconds.
+
+    Examples:
+        5m, 5 min, 5 minutes -> 300 seconds
+        1d, 1 day -> 86,400 seconds
+        1 hour 1 day 5 minutes 3 seconds -> 90,303 seconds
+    """
+
+    def __init__(self, minimum_seconds: Optional[int] = None, maximum_seconds: Optional[int] = None) -> None:
+        """
+        The constructor for the HumanDatetimeDuration class.
+
+        Parameters:
+            minimum_seconds (Optional[int]): The minimum duration in seconds, if any.
+            maximum_seconds (Optional[int]): The maximum duration in seconds, if any.
+        """
+
+        self.minimum_seconds = minimum_seconds
+        self.maximum_seconds = maximum_seconds
+
+    async def transform(self, interaction: discord.Interaction, value: str, /) -> int:
+        """
+        Attempts to transform the input to the desired type.
+
+        Parameters:
+            interaction (discord.Interaction): The invocation interaction.
+            value (str): The input value.
+
+        Returns:
+            (int): The transformed duration.
+        """
+
+        cal = parsedatetime.Calendar()
+        now = datetime.now(tz=utc)
+        time_struct, parse_status = cal.parse(value, sourceTime=now)
+
+        if parse_status == 0:
+            raise app_commands.TransformerError(value, self.type, self)
+
+        duration = datetime(*time_struct[:6], tzinfo=utc) - now  # type: ignore[misc]
+        total_seconds = ceil(duration.total_seconds())
+
+        return self.__clamp(total_seconds)
+
+    def __clamp(self, value: int) -> int:
+        """
+        Clamps the transformed value to the specified range.
+
+        Parameters:
+            value (int) The un-clamped transformed value.
+
+        Returns:
+            (int): The clamped value.
+        """
+
+        if self.minimum_seconds is not None:
+            value = max(self.minimum_seconds, value)
+
+        if self.maximum_seconds is not None:
+            value = min(self.maximum_seconds, value)
+
+        return value
+
+    @property
+    def _error_display_name(self) -> str:
+        """
+        The name to display during errors.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str): The error display name.
+        """
+
+        return 'Time Duration (30s, 1h, 5 hours, 1d, 1 day 5 seconds, etc.)'

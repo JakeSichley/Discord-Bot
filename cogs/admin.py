@@ -215,7 +215,7 @@ class Admin(commands.Cog):
         elif sync_type == 'clear':
             ctx.bot.tree.clear_commands(guild=ctx.guild)
             await ctx.bot.tree.sync(guild=ctx.guild)
-            synced = []
+            synced = ctx.bot.tree.get_commands()
         else:
             ctx.bot.tree.copy_global_to(guild=ctx.guild)
             synced = await ctx.bot.tree.sync(guild=ctx.guild)

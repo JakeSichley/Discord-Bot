@@ -27,7 +27,7 @@ from typing import List, Optional
 
 import discord
 from aiosqlite import Error as aiosqliteError
-from cache import ExpiringCache  # type: ignore
+from cache import ExpiringCache  # type: ignore[import]
 from discord.ext import commands
 
 from dreambot import DreamBot
