@@ -29,13 +29,23 @@ from typing import List, Optional, Dict
 import discord
 from aiohttp import ClientError
 from discord import app_commands, Interaction
-from discord.app_commands import Choice
+from discord.app_commands import Choice, Transform, Range
 from discord.ext import commands, tasks
 
 from dreambot import DreamBot
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
 from utils.utils import format_unix_dt, AutocompleteModel
+
+from utils.converters import RunescapeNumberTransformer, HumanDatetimeDuration
+from utils.database.helpers import execute_query
+from aiosqlite import Error as aiosqliteError, IntegrityError
+
+from discord.utils import utcnow
+
+FIVE_MINUTES = 300
+ONE_DAY = 86_400
+ONE_YEAR = 31_556_926
 
 
 @dataclass
@@ -129,7 +139,7 @@ class RunescapeItem:
         self.lowTime = fragment.lowTime
 
 
-class Runescape(commands.Cog):
+class Runescape(commands.GroupCog, group_name='runescape', group_description='Commands for Old School Runescape'):
     """
     A Cogs class that contains Old School Runescape commands.
 
@@ -146,6 +156,8 @@ class Runescape(commands.Cog):
     MAPPING_QUERY_INTERVAL = 60 * 60  # 1 hour
     MARKET_QUERY_INTERVAL = 60  # 1 minute
 
+    alert_subgroup = app_commands.Group(name='alert', description='Commands for managing item alerts')
+
     def __init__(self, bot: DreamBot) -> None:
         """
         The constructor for the Runescape class.
@@ -161,10 +173,87 @@ class Runescape(commands.Cog):
         self.query_mapping_data.start()
         self.query_market_data.start()
 
-    @app_commands.command(
-        name='runescape_item', description='Returns basic data and market information for a given item'
+    @alert_subgroup.command(name='add', description='Registers an item for market alerts')
+    @app_commands.describe(
+        item_id='The item to receive alerts for',
+        low_price='Optional: Trigger an alert if the instant buy price goes below this',
+        high_price='Optional: Trigger an alert if the instant sell price goes above this',
+        alert_frequency='Optional: How frequently you should be notified that the price has exceeded a target.',
+        maximum_alerts='Optional: Remove the alert after receiving this many notifications'
     )
-    @app_commands.describe(item_id='The item to retrieve data for.')
+    @app_commands.rename(item_id='item')
+    async def add_alert(
+            self,
+            interaction: Interaction,
+            item_id: int,
+            low_price: Optional[Transform[int, RunescapeNumberTransformer]] = None,
+            high_price: Optional[Transform[int, RunescapeNumberTransformer]] = None,
+            alert_frequency: Optional[Transform[int, HumanDatetimeDuration(FIVE_MINUTES, ONE_YEAR)]] = None,
+            maximum_alerts: Optional[Range[int, 1, 9000]] = None  # just over a month of max frequency alerts
+    ):
+        """
+        Retrieves market and basic data about an Old School Runescape item.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            item_id (int): The internal id of the item.
+            low_price
+            high_price
+            alert_frequency
+            maximum_alerts
+
+        Returns:
+            None.
+        """
+        """
+            "OWNER_ID"          INTEGER NOT NULL,
+            "CREATED"           INTEGER NOT NULL,
+            "ITEM_ID"           INTEGER NOT NULL,
+            "INITIAL_LOW"       INTEGER,
+            "INITIAL_HIGH"      INTEGER,
+            "TARGET_LOW"        INTEGER,
+            "TARGET_HIGH"       INTEGER,
+            "FREQUENCY"         INTEGER,
+            "MAXIMUM_ALERTS"    INTEGER,
+            "LAST_ALERT"        INTEGER,
+        """
+
+        # todo: expiring cache for existing alerts for autocomplete and error checking
+
+        if item_id not in self.item_data:
+            await interaction.response.send_message("I'm unable to find that item.", ephemeral=True)
+            return
+
+        QUERY = """
+        INSERT INTO RUNESCAPE_ALERTS (OWNER_ID, CREATED, ITEM_ID,INITIAL_LOW, INITIAL_HIGH, TARGET_LOW, TARGET_HIGH, FREQUENCY, MAXIMUM_ALERTS, LAST_ALERT) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+
+        try:
+            await execute_query(
+                self.bot.database,
+                'INSERT INTO RUNESCAPE_ALERTS '
+                '('
+                'OWNER_ID, CREATED, ITEM_ID,'
+                'INITIAL_LOW, INITIAL_HIGH, TARGET_LOW, TARGET_HIGH, '
+                'FREQUENCY, MAXIMUM_ALERTS, LAST_ALERT'
+                ') '
+                'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                (
+                    interaction.user.id, int(utcnow().timestamp()), item_id,
+                    self.item_data[item_id].low, self.item_data[item_id].high, low_price, high_price,
+                    alert_frequency, maximum_alerts, None
+                )
+            )
+        except aiosqliteError as e:
+            if isinstance(e, IntegrityError):
+                await interaction.response.send_message('You already have an alert for this item.', ephemeral=True)
+            else:
+                await interaction.response.send_message('Failed to create an alert for this item.', ephemeral=True)
+        else:
+            await interaction.response.send_message('Successfully created alert.', ephemeral=True)
+
+    @app_commands.command(name='item', description='Returns basic data and market information for a given item')
+    @app_commands.describe(item_id='The item to retrieve data for')
     @app_commands.rename(item_id='item')
     async def runescape_item(self, interaction: Interaction, item_id: int) -> None:
         """
@@ -179,50 +268,52 @@ class Runescape(commands.Cog):
         """
 
         if item_id not in self.item_data:
-            await interaction.response.send_message("I'm unable to find that item.")
-        else:
-            item = self.item_data[item_id]
-            embed = discord.Embed(
-                title=item.name,
-                color=0x971212,
-                url=f'https://oldschool.runescape.wiki/w/{item.name.replace(" ", "_")}'
-            )
-            embed.description = item.examine
-            embed.set_thumbnail(url=f'https://static.runelite.net/cache/item/icon/{item_id}.png')
+            await interaction.response.send_message("I'm unable to find that item.", ephemeral=True)
+            return
 
-            buy_price = f'{item.high:,} coins' if item.high else 'N/A'
-            embed.add_field(name='Buy Price', value=buy_price)
+        item = self.item_data[item_id]
+        embed = discord.Embed(
+            title=item.name,
+            color=0x971212,
+            url=f'https://oldschool.runescape.wiki/w/{item.name.replace(" ", "_")}'
+        )
+        embed.description = item.examine
+        embed.set_thumbnail(url=f'https://static.runelite.net/cache/item/icon/{item_id}.png')
 
-            sell_price = f'{item.low:,} coins' if item.low else 'N/A'
-            embed.add_field(name='Sell Price', value=sell_price)
+        buy_price = f'{item.high:,} coins' if item.high else 'N/A'
+        embed.add_field(name='Buy Price', value=buy_price)
 
-            limit = f'{item.limit:,}' if item.limit else 'N/A'
-            embed.add_field(name='Buy Limit', value=limit)
+        sell_price = f'{item.low:,} coins' if item.low else 'N/A'
+        embed.add_field(name='Sell Price', value=sell_price)
 
-            buy_time = format_unix_dt(item.highTime, 'R') if item.highTime else 'N/A'
-            embed.add_field(name='Buy Time', value=buy_time)
+        limit = f'{item.limit:,}' if item.limit else 'N/A'
+        embed.add_field(name='Buy Limit', value=limit)
 
-            sell_time = format_unix_dt(item.lowTime, 'R') if item.lowTime else 'N/A'
-            embed.add_field(name='Sell Time', value=sell_time)
+        buy_time = format_unix_dt(item.highTime, 'R') if item.highTime else 'N/A'
+        embed.add_field(name='Buy Time', value=buy_time)
 
-            embed.add_field(name='​', value='​')
+        sell_time = format_unix_dt(item.lowTime, 'R') if item.lowTime else 'N/A'
+        embed.add_field(name='Sell Time', value=sell_time)
 
-            high_alch = f'{item.highalch:,} coins' if item.highalch else 'N/A'
-            embed.add_field(name='High Alch', value=high_alch)
+        embed.add_field(name='​', value='​')
 
-            low_alch = f'{item.lowalch:,} coins' if item.lowalch else 'N/A'
-            embed.add_field(name='Low Alch', value=low_alch)
+        high_alch = f'{item.highalch:,} coins' if item.highalch else 'N/A'
+        embed.add_field(name='High Alch', value=high_alch)
 
-            value = f'{item.value:,} coins' if item.value else 'N/A'
-            embed.add_field(name='Value', value=value)
+        low_alch = f'{item.lowalch:,} coins' if item.lowalch else 'N/A'
+        embed.add_field(name='Low Alch', value=low_alch)
 
-            embed.set_footer(text='Please report any issues to my owner!')
+        value = f'{item.value:,} coins' if item.value else 'N/A'
+        embed.add_field(name='Value', value=value)
 
-            await interaction.response.send_message(embed=embed)
+        embed.set_footer(text='Please report any issues to my owner!')
+
+        await interaction.response.send_message(embed=embed)
 
     # noinspection PyUnusedLocal
     @runescape_item.autocomplete('item_id')
-    async def runescape_item_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    @add_alert.autocomplete('item_id')
+    async def runescape_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
         Retrieves market and basic data about an Old School Runescape item.
 
