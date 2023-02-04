@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+# 2.9.1
+### Issues
+* Check for `manage_roles` permission in `VoiceRoles::on_voice_state_update`
+
 # 2.9.0
 ### Internal
 * Cache Frequently Accessed Database Tables in Memory
