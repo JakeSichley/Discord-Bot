@@ -297,6 +297,9 @@ class VoiceRoles(commands.Cog):
             None.
         """
 
+        if not member.guild.me.guild_permissions.manage_roles:
+            return
+
         # todo: guild / role unavailability checks
 
         # insert the guild, member key into our expiring cache
