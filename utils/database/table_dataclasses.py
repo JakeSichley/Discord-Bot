@@ -23,7 +23,24 @@ SOFTWARE.
 """
 
 import dataclasses
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union, Type, get_args, get_origin
+
+
+def expand_optional_types(field_type: Type) -> Union[Type, Tuple[Type, ...]]:
+    """
+    Expands Optional types to their Union form for `isinstance` checks. Ex: Optional[int] -> Union[int, None].
+
+    Parameters:
+        field_type (Type): The dataclass field's type.
+
+    Returns:
+        (Union[Type, Tuple[Type, ...]]): The resulting deconstructed types, if any.
+    """
+
+    if get_origin(field_type) is Union and type(None) in get_args(field_type):
+        return get_args(field_type)
+    else:
+        return field_type
 
 
 @dataclasses.dataclass
@@ -52,7 +69,7 @@ class DatabaseDataclass:
 
         for field in dataclasses.fields(self):
             value = getattr(self, field.name)
-            if not isinstance(value, field.type):
+            if not isinstance(value, expand_optional_types(field.type)):
                 raise ValueError(f'Expected {field.name} to be {field.type}, got {type(value)}')
 
 
