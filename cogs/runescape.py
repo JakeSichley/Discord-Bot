@@ -264,7 +264,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                     maximum_alerts,
                     None
                 ),
-                (aiosqlite.IntegrityError,)
+                errors_to_suppress=aiosqlite.IntegrityError
             )
         except aiosqliteError as e:
             if isinstance(e, IntegrityError):

@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import List, Tuple, Any, Optional, Iterable, Type, TypeVar
+from typing import List, Tuple, Any, Optional, Iterable, Type, TypeVar, Union
 
 import aiosqlite
 from typing_extensions import TypeGuard
@@ -36,7 +36,8 @@ async def execute_query(
         database: str,
         query: str,
         values: Optional[Tuple[Any, ...]] = None,
-        ignore_errors: Optional[Tuple[Type[aiosqlite.Error], ...]] = None
+        *,
+        errors_to_suppress: Optional[Union[Type[aiosqlite.Error], Tuple[Type[aiosqlite.Error], ...]]] = None
 ) -> Optional[int]:
     """
     A method that executes a sqlite3 statement.
@@ -46,7 +47,8 @@ async def execute_query(
         database (str): The name of the bot's database.
         query (str): The statement to execute.
         values (Tuple[Any, ...]): The values to insert into the query.
-        ignore_errors (Optional[Tuple[aiosqlite.Error, ...]]): Errors that should be suppressed during execution.
+        errors_to_suppress (Optional[Union[Type[aiosqlite.Error], Tuple[Type[aiosqlite.Error], ...]]]): Errors that
+            should be suppressed during execution.
 
     Raises:
         aiosqlite.Error.
@@ -56,7 +58,11 @@ async def execute_query(
     """
 
     values = values or tuple()
-    ignore_errors = ignore_errors or tuple()
+
+    if errors_to_suppress is None:
+        errors_to_suppress = tuple()
+    elif isinstance(errors_to_suppress, aiosqlite.Error):
+        errors_to_suppress = (errors_to_suppress,)
 
     try:
         async with aiosqlite.connect(database) as connection:
@@ -65,7 +71,7 @@ async def execute_query(
             return affected.rowcount
 
     except aiosqlite.Error as error:
-        if not isinstance(error, ignore_errors):
+        if not isinstance(error, errors_to_suppress):
             bot_logger.error(f'Execute Query ("{query}"). {error}.')
         raise error
 
