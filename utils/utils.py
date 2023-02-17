@@ -28,7 +28,9 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from re import search
-from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable, Optional, Literal, TypeVar, Union, Generic
+from typing import (
+    List, Sequence, Any, Iterator, Tuple, Callable, Awaitable, Optional, Literal, TypeVar, Union, Generic, Iterable
+)
 
 import discord
 import pytz
@@ -226,9 +228,9 @@ class AutocompleteModel(Generic[ChoiceT]):
         ratio (int): The similarity ratio between this model's name and the current input.
     """
 
+    current: str
     name: str
     value: ChoiceT
-    current: str
     ratio: int = field(init=False)
 
     def __post_init__(self) -> None:
@@ -288,3 +290,33 @@ class AutocompleteModel(Generic[ChoiceT]):
         """
 
         return self.ratio <= other.ratio
+
+
+def generate_autocomplete_choices(
+        current: str,
+        items: Iterable[Tuple[str, ChoiceT]],
+        *,
+        limit: int = 25,
+        minimum_threshold: int = 0
+) -> List[Choice]:
+    """
+    Generator that yields pairs of items in a sequence
+
+    Parameters:
+        current (str): The current autocomplete input.
+        items (Iterable[T]): An iterable of objects to convert to AutocompleteModels.
+        limit (int): The maximum number of Choices to return.
+        minimum_threshold (int): The minimum ratio for a Choice to be valid.
+
+    Returns:
+        (List[Choice]): A list of converted and sorted Choices.
+    """
+
+    limit = max(1, min(25, limit))  # clamp to [1, 25]
+    minimum_threshold = max(0, min(200, minimum_threshold))  # clamp to [0, 200]
+
+    autocomplete_models = [AutocompleteModel(current, *x) for x in items]
+    valid_models = [x for x in autocomplete_models if x.ratio >= minimum_threshold]
+    ratios = sorted(valid_models, reverse=True)
+
+    return [x.to_choice() for x in ratios[:limit]]

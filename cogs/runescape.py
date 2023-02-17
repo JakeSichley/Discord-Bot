@@ -21,31 +21,29 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-import aiosqlite
+
+from collections import defaultdict
 from dataclasses import dataclass
 from json.decoder import JSONDecodeError
 from typing import List, Optional, Dict
 
+import aiosqlite
 import discord
 from aiohttp import ClientError
+from aiosqlite import Error as aiosqliteError, IntegrityError
 from discord import app_commands, Interaction
 from discord.app_commands import Choice, Transform, Range
 from discord.ext import commands, tasks
+from discord.utils import utcnow
 
 from dreambot import DreamBot
-from utils.logging_formatter import bot_logger
-from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
-from utils.utils import format_unix_dt, AutocompleteModel
-
 from utils.converters import RunescapeNumberTransformer, HumanDatetimeDuration
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import RunescapeAlert
-from aiosqlite import Error as aiosqliteError, IntegrityError
-
-from discord.utils import utcnow
-
-from cache import ExpiringCache  # type: ignore[import]
-from collections import defaultdict
+from utils.expiring_dict import ExpiringDict
+from utils.logging_formatter import bot_logger
+from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
+from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 FIVE_MINUTES = 300
 ONE_DAY = 86_400
@@ -175,7 +173,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         self.item_data: Dict[int, RunescapeItem] = {}
         self.item_names_to_ids: Dict[str, int] = {}
         self.alerts: Dict[int, List[RunescapeAlert]] = defaultdict(list)
-        self.alert_autocomplete_cache: Dict[int, List[RunescapeAlert]] = ExpiringCache(self.CACHE_TTL)
+        self.alert_autocomplete_cache: ExpiringDict[int, List[RunescapeAlert]] = ExpiringDict(self.CACHE_TTL)
         self.backoff = ExponentialBackoff(3600 * 4)
         self.query_mapping_data.start()
         self.query_market_data.start()
@@ -358,23 +356,18 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         # check cache
         if interaction.user.id in self.alert_autocomplete_cache:
             alerts = self.alert_autocomplete_cache[interaction.user.id]
-        elif interaction.user.id not in self.alerts:
-            alerts = []
-            self.alert_autocomplete_cache[interaction.user.id] = []
         else:
             alerts = [x for y in self.alerts.values() for x in y if x.owner_id == interaction.user.id]
             self.alert_autocomplete_cache[interaction.user.id] = alerts
 
-        # cache existing alerts if already fetched for future autocompletes
-
         if not current:
             return [Choice(name=self.item_data[x.item_id].name, value=x.item_id) for x in alerts]
 
-        ratios = sorted([
-            AutocompleteModel(self.item_data[x.item_id].name, x.item_id, current) for x in alerts
-        ], reverse=True)
-
-        return [x.to_choice() for x in ratios[:25]]
+        return generate_autocomplete_choices(
+            current,
+            [(self.item_data[x.item_id].name, x.item_id) for x in alerts],
+            minimum_threshold=100
+        )
 
     @runescape_item.autocomplete('item_id')
     @add_alert.autocomplete('item_id')
@@ -393,11 +386,10 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         if not current:
             return [Choice(name=self.item_data[x].name, value=x) for x in self.item_data][:25]
 
-        ratios = sorted([
-            AutocompleteModel(self.item_data[x].name, x, current) for x in self.item_data
-        ], reverse=True)
-
-        return [x.to_choice() for x in ratios[:25]]
+        return generate_autocomplete_choices(
+            current,
+            [(self.item_data[key].name, key) for key in self.item_data.keys()]
+        )
 
     @tasks.loop(seconds=MAPPING_QUERY_INTERVAL)
     async def query_mapping_data(self) -> None:
