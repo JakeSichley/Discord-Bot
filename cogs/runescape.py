@@ -40,7 +40,6 @@ from dreambot import DreamBot
 from utils.converters import RunescapeNumberTransformer, HumanDatetimeDuration
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import RunescapeAlert
-from utils.expiring_dict import ExpiringDict
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
 from utils.utils import format_unix_dt, generate_autocomplete_choices
@@ -172,8 +171,12 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         self.bot = bot
         self.item_data: Dict[int, RunescapeItem] = {}
         self.item_names_to_ids: Dict[str, int] = {}
-        self.alerts: Dict[int, List[RunescapeAlert]] = defaultdict(list)
-        self.alert_autocomplete_cache: ExpiringDict[int, List[RunescapeAlert]] = ExpiringDict(self.CACHE_TTL)
+        self.alerts: Dict[int, List[RunescapeAlert]] = defaultdict(list)  # key: user_id
+        """
+        alerts can be |owner_id: [Alert]| - don't need O(1) |item_id: [Alert]| access
+        Allows O(1) access for alert edit, delete access
+        Flatten values (iter.chain.from_iter) allows for O(n) alert checking, which is best case
+        """
         self.backoff = ExponentialBackoff(3600 * 4)
         self.query_mapping_data.start()
         self.query_market_data.start()
@@ -196,7 +199,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         )
 
         for alert in alerts:
-            self.alerts[alert.item_id].append(alert)
+            self.alerts[alert.owner_id].append(alert)
 
     @alert_subgroup.command(name='add', description='Registers an item for market alerts')
     @app_commands.describe(
@@ -217,6 +220,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             maximum_alerts: Optional[Range[int, 1, 9000]] = None  # just over a month of max frequency alerts
     ):
         """
+        TODO: DOCUMENT
         Retrieves market and basic data about an Old School Runescape item.
 
         Parameters:
@@ -273,13 +277,54 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                 await interaction.response.send_message('Failed to create an alert for this item.', ephemeral=True)
         else:
             await interaction.response.send_message('Successfully created alert.', ephemeral=True)
+            self.alerts[interaction.user.id].append(
+                RunescapeAlert(
+                    interaction.user.id,
+                    int(utcnow().timestamp()),
+                    item_id,
+                    self.item_data[item_id].low,
+                    self.item_data[item_id].high,
+                    low_price,
+                    high_price,
+                    alert_frequency,
+                    maximum_alerts,
+                    None
+                )
+            )
 
     @alert_subgroup.command(name='delete', description='Deletes an existing item alert.')
     @app_commands.describe(item_id='The item to delete alerts for')
     @app_commands.rename(item_id='item')
     async def delete_alert(self, interaction: Interaction, item_id: int):
+        """
+        Deletes an existing alert.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            item_id (int): The internal id of the item.
+
+        Returns:
+            None.
+        """
+
         # todo: add confirmation
-        pass
+
+        if item_id not in self.item_data:
+            await interaction.response.send_message("I'm unable to find that item.", ephemeral=True)
+            return
+
+        try:
+            await execute_query(
+                self.bot.database,
+                'DELETE FROM RUNESCAPE_ALERTS WHERE OWNER_ID=? AND ITEM_ID=?',
+                (interaction.user.id, item_id)
+            )
+        except aiosqliteError:
+            await interaction.response.send_message('Failed to delete the alert for this item.', ephemeral=True)
+        else:
+            await interaction.response.send_message('Successfully deleted alert.', ephemeral=True)
+        finally:
+            self.alerts[interaction.user.id] = [x for x in self.alerts[interaction.user.id] if x.item_id != item_id]
 
     @app_commands.command(name='item', description='Returns basic data and market information for a given item')
     @app_commands.describe(item_id='The item to retrieve data for')
@@ -354,11 +399,10 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         """
 
         # check cache
-        if interaction.user.id in self.alert_autocomplete_cache:
-            alerts = self.alert_autocomplete_cache[interaction.user.id]
-        else:
-            alerts = [x for y in self.alerts.values() for x in y if x.owner_id == interaction.user.id]
-            self.alert_autocomplete_cache[interaction.user.id] = alerts
+        if len(self.alerts[interaction.user.id]) == 0:
+            return []
+
+        alerts = self.alerts[interaction.user.id]
 
         if not current:
             return [Choice(name=self.item_data[x.item_id].name, value=x.item_id) for x in alerts]
