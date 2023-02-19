@@ -29,7 +29,7 @@ from typing import Optional, Union, Any, Callable
 
 import discord
 import parsedatetime  # type: ignore[import]
-from discord import app_commands
+from discord import app_commands, Interaction
 from discord.ext import commands
 from pytz import utc
 
@@ -288,7 +288,38 @@ class StringConverter(commands.Converter):
 
 
 # noinspection PyAbstractClass
-class RunescapeNumberTransformer(app_commands.Transformer):
+class SentinelTransformer(app_commands.Transformer):
+    """
+    Allows users to enter a sentinel value in addition to acceptable value range.
+    """
+
+    def __init__(self, *, sentinel_value: Optional[Union[str, int, float]] = None) -> None:
+        """
+        The constructor for the SentinelTransformer class.
+
+        Parameters:
+            sentinel_value (Optional[ChoiceT]): The value of the sentinel.
+        """
+
+        self.sentinel_value = sentinel_value
+
+    async def transform(self, interaction: Interaction, value: Any, /) -> Any:
+        """
+        Transforms the converted option value into another value.
+
+        Parameters:
+            interaction (discord.Interaction): The invocation interaction.
+            value (Any): The input value.
+
+        Returns:
+            (Any): The transformed value.
+        """
+
+        raise NotImplementedError
+
+
+# noinspection PyAbstractClass
+class RunescapeNumberTransformer(SentinelTransformer):
     """
     Allows users to enter numbers in Runescape shorthand, if desired.
 
@@ -324,6 +355,9 @@ class RunescapeNumberTransformer(app_commands.Transformer):
                     raise app_commands.TransformerError(value, self.type, self)
             else:
                 raise app_commands.TransformerError(value, self.type, self)
+
+        if self.sentinel_value is not None and parsed == self.sentinel_value:
+            return parsed
 
         return max(1, min(2_147_483_647, parsed))  # clamp
 

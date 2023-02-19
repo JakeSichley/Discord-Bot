@@ -218,7 +218,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             high_price: Optional[Transform[int, RunescapeNumberTransformer]] = None,
             alert_frequency: Optional[Transform[int, HumanDatetimeDuration(FIVE_MINUTES, ONE_YEAR)]] = None,
             maximum_alerts: Optional[Range[int, 1, 9000]] = None  # just over a month of max frequency alerts
-    ):
+    ) -> None:
         """
         TODO: DOCUMENT
         Retrieves market and basic data about an Old School Runescape item.
@@ -295,7 +295,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     @alert_subgroup.command(name='delete', description='Deletes an existing item alert.')
     @app_commands.describe(item_id='The item to delete alerts for')
     @app_commands.rename(item_id='item')
-    async def delete_alert(self, interaction: Interaction, item_id: int):
+    async def delete_alert(self, interaction: Interaction, item_id: int) -> None:
         """
         Deletes an existing alert.
 
@@ -413,6 +413,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             minimum_threshold=100
         )
 
+    # noinspection PyUnusedLocal
     @runescape_item.autocomplete('item_id')
     @add_alert.autocomplete('item_id')
     async def runescape_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
