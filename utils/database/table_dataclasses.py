@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 import dataclasses
-from typing import Tuple, Optional, Union, Type, get_args, get_origin
+from typing import Tuple, Optional, Union, Type, Any, get_args, get_origin
 
 
 def expand_optional_types(field_type: Type) -> Union[Type, Tuple[Type, ...]]:
@@ -71,6 +71,19 @@ class DatabaseDataclass:
             value = getattr(self, field.name)
             if not isinstance(value, expand_optional_types(field.type)):
                 raise ValueError(f'Expected {field.name} to be {field.type}, got {type(value)}')
+
+    def unpack(self) -> Tuple[Any, ...]:
+        """
+        Unpacks the dataclass as a tuple.
+
+        Parameters:
+            None.
+
+        Returns:
+            (Tuple[Any, ...]): The unpacked dataclass.
+        """
+
+        return dataclasses.astuple(self)
 
 
 @dataclasses.dataclass

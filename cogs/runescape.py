@@ -37,11 +37,11 @@ from discord.ext import commands, tasks
 from discord.utils import utcnow
 
 from dreambot import DreamBot
-from utils.transformers import RunescapeNumberTransformer, HumanDatetimeDuration, SentinelRange
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import RunescapeAlert
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
+from utils.transformers import RunescapeNumberTransformer, HumanDatetimeDuration, SentinelRange
 from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 FIVE_MINUTES = 300
@@ -237,6 +237,19 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             None.
         """
 
+        alert = RunescapeAlert(
+            interaction.user.id,
+            int(utcnow().timestamp()),
+            item_id,
+            self.item_data[item_id].low,
+            self.item_data[item_id].high,
+            low_price,
+            high_price,
+            alert_frequency,
+            maximum_alerts,
+            None
+        )
+
         # todo: expiring cache for existing alerts for autocomplete and error checking
 
         if item_id not in self.item_data:
@@ -258,18 +271,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                 'MAXIMUM_ALERTS,'
                 'LAST_ALERT'
                 ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                (
-                    interaction.user.id,
-                    int(utcnow().timestamp()),
-                    item_id,
-                    self.item_data[item_id].low,
-                    self.item_data[item_id].high,
-                    low_price,
-                    high_price,
-                    alert_frequency,
-                    maximum_alerts,
-                    None
-                ),
+                alert.unpack(),
                 errors_to_suppress=aiosqlite.IntegrityError
             )
         except aiosqliteError as e:
@@ -279,20 +281,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                 await interaction.response.send_message('Failed to create an alert for this item.', ephemeral=True)
         else:
             await interaction.response.send_message('Successfully created alert.', ephemeral=True)
-            self.alerts[interaction.user.id].append(
-                RunescapeAlert(
-                    interaction.user.id,
-                    int(utcnow().timestamp()),
-                    item_id,
-                    self.item_data[item_id].low,
-                    self.item_data[item_id].high,
-                    low_price,
-                    high_price,
-                    alert_frequency,
-                    maximum_alerts,
-                    None
-                )
-            )
+            self.alerts[interaction.user.id].append(alert)
 
     @alert_subgroup.command(name='edit', description='Edit an existing item alert. Use "-1" to remove a value.')
     @app_commands.describe(
