@@ -37,7 +37,7 @@ from discord.ext import commands, tasks
 from discord.utils import utcnow
 
 from dreambot import DreamBot
-from utils.converters import RunescapeNumberTransformer, HumanDatetimeDuration
+from utils.transformers import RunescapeNumberTransformer, HumanDatetimeDuration, SentinelRange
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import RunescapeAlert
 from utils.logging_formatter import bot_logger
@@ -48,6 +48,8 @@ FIVE_MINUTES = 300
 ONE_DAY = 86_400
 ONE_YEAR = 31_556_926
 
+
+# TODO: Add frequently accessed item_id's (global? user?) for /runescape_item
 
 @dataclass
 class ItemMarketData:
@@ -292,6 +294,28 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                 )
             )
 
+    @alert_subgroup.command(name='edit', description='Edit an existing item alert. Use "-1" to remove a value.')
+    @app_commands.describe(
+        item_id='The item to edit alerts for',
+        low_price='Optional: Trigger an alert if the instant buy price goes below this',
+        high_price='Optional: Trigger an alert if the instant sell price goes above this',
+        alert_frequency='Optional: How frequently you should be notified that the price has exceeded a target.',
+        maximum_alerts='Optional: Remove the alert after receiving this many notifications'
+    )
+    @app_commands.rename(item_id='item')
+    async def edit_alert(
+            self,
+            interaction: Interaction,
+            item_id: int,
+            low_price: Optional[Transform[int, RunescapeNumberTransformer(sentinel_value=-1)]] = None,
+            high_price: Optional[Transform[int, RunescapeNumberTransformer(sentinel_value=-1)]] = None,
+            alert_frequency: Optional[
+                Transform[int, HumanDatetimeDuration(FIVE_MINUTES, ONE_YEAR, sentinel_value=-1)]
+            ] = None,
+            maximum_alerts: Optional[Transform[int, SentinelRange(1, 9000, sentinel_value=-1)]] = None
+    ) -> None:
+        pass
+
     @alert_subgroup.command(name='delete', description='Deletes an existing item alert.')
     @app_commands.describe(item_id='The item to delete alerts for')
     @app_commands.rename(item_id='item')
@@ -306,8 +330,6 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         Returns:
             None.
         """
-
-        # todo: add confirmation
 
         if item_id not in self.item_data:
             await interaction.response.send_message("I'm unable to find that item.", ephemeral=True)
@@ -385,6 +407,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         await interaction.response.send_message(embed=embed)
 
     # noinspection PyUnusedLocal
+    @edit_alert.autocomplete('item_id')
     @delete_alert.autocomplete('item_id')
     async def runescape_alert_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """

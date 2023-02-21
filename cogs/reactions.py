@@ -341,7 +341,7 @@ class ReactionRoles(commands.Cog):
                                         (message.id, str(to_remove[0])))
 
                     with suppress(KeyError):
-                        self.bot.cache.reaction_roles[message.id, str(to_remove[0])]
+                        del self.bot.cache.reaction_roles[message.id, str(to_remove[0])]
 
                     try:
                         await message.clear_reaction(to_remove[0])
