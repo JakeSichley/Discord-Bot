@@ -44,6 +44,7 @@ from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
 from utils.transformers import RunescapeNumberTransformer, HumanDatetimeDuration, SentinelRange
 from utils.utils import format_unix_dt, generate_autocomplete_choices
+from itertools import chain
 
 FIVE_MINUTES = 300
 ONE_DAY = 86_400
@@ -404,6 +405,8 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             None.
         """
 
+        await self.check_alerts()
+
         if item_id not in self.item_data:
             await interaction.response.send_message("I'm unable to find that item.", ephemeral=True)
             return
@@ -577,6 +580,20 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         except Exception as e:
             bot_logger.error(f'OSRS Mapping Query Unhandled Exception: {type(e)} - {e}')
             await self.bot.report_exception(e)
+
+    async def check_alerts(self) -> None:
+        """
+        Checks alerts against the latest market data.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
+        for alert in chain.from_iterable(x.values() for x in self.alerts.values()):
+            pass
 
     async def cog_unload(self) -> None:
         """
