@@ -114,7 +114,7 @@ async def typed_retrieve_query(
         database: str, data_type: Type[T], query: str, values: Optional[Tuple[Any, ...]] = None,
 ) -> List[T]:
     """
-    A typed SQLite 'SELECT' query. Attempts to coerced retrieved rows to the specified data type.
+    A typed SQLite 'SELECT' query. Attempts to retrieve and coerce rows to the specified data type.
 
     Examples:
         There's three primary ways to use `typed_retrieve_query`:
@@ -177,7 +177,7 @@ async def typed_retrieve_query(
         aiosqlite.Error.
 
     Returns:
-        (List[Any]): A list of sqlite3 row objects. Can be empty.
+        (List[T]): A list of transformed sqlite3 row objects. Can be empty.
     """
 
     values = values if values else tuple()
@@ -204,6 +204,34 @@ async def typed_retrieve_query(
             )
 
     return transformed_entries
+
+
+async def typed_retrieve_one_query(
+        database: str, data_type: Type[T], query: str, values: Optional[Tuple[Any, ...]] = None,
+) -> T:
+    """
+    A typed SQLite 'SELECT' query. Attempts to retrieve and coerce a single row to the specified data type.
+
+    Parameters:
+        database (str): The name of the bot's database.
+        data_type (T): The data type to coerce returned rows to.
+        query (str): The statement to execute.
+        values (Tuple[Any, ...]): The values to insert into the query.
+
+    Raises:
+        aiosqlite.Error.
+
+    Returns:
+        (T): A single transformed sqlite3 row object.
+    """
+
+    rows = await typed_retrieve_query(database, data_type, query, values)
+
+    try:
+        return rows[0]
+    except KeyError as e:
+        bot_logger.error(f'Retrieve One Query ("{query}"). {e}.')
+        raise aiosqlite.Error(f'Failed to fetch any rows')
 
 
 class Sqlite3Typing:

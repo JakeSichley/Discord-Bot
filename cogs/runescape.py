@@ -25,7 +25,7 @@ SOFTWARE.
 from collections import defaultdict
 from dataclasses import dataclass
 from json.decoder import JSONDecodeError
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, TypeVar
 
 import aiosqlite
 import discord
@@ -37,7 +37,7 @@ from discord.ext import commands, tasks
 from discord.utils import utcnow
 
 from dreambot import DreamBot
-from utils.database.helpers import execute_query, typed_retrieve_query
+from utils.database.helpers import execute_query, typed_retrieve_query, typed_retrieve_one_query
 from utils.database.table_dataclasses import RunescapeAlert
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
@@ -47,6 +47,8 @@ from utils.utils import format_unix_dt, generate_autocomplete_choices
 FIVE_MINUTES = 300
 ONE_DAY = 86_400
 ONE_YEAR = 31_556_926
+
+T = TypeVar('T')
 
 
 # TODO: Add frequently accessed item_id's (global? user?) for /runescape_item
@@ -250,8 +252,6 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             None
         )
 
-        # todo: expiring cache for existing alerts for autocomplete and error checking
-
         if item_id not in self.item_data:
             await interaction.response.send_message("I'm unable to find that item.", ephemeral=True)
             return
@@ -259,18 +259,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         try:
             await execute_query(
                 self.bot.database,
-                'INSERT INTO RUNESCAPE_ALERTS ('
-                'OWNER_ID,'
-                'CREATED,'
-                'ITEM_ID,'
-                'INITIAL_LOW,'
-                'INITIAL_HIGH,'
-                'TARGET_LOW,'
-                'TARGET_HIGH,'
-                'FREQUENCY,'
-                'MAXIMUM_ALERTS,'
-                'LAST_ALERT'
-                ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                'INSERT INTO RUNESCAPE_ALERTS VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 alert.unpack(),
                 errors_to_suppress=aiosqlite.IntegrityError
             )
@@ -289,7 +278,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         low_price='Optional: Trigger an alert if the instant buy price goes below this',
         high_price='Optional: Trigger an alert if the instant sell price goes above this',
         alert_frequency='Optional: How frequently you should be notified that the price has exceeded a target.',
-        maximum_alerts='Optional: Remove the alert after receiving this many notifications'
+        maximum_alerts='Optional: Remove the alert after receiving this many notifications. Resets existing count.'
     )
     @app_commands.rename(item_id='item')
     async def edit_alert(
@@ -303,7 +292,55 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             ] = None,
             maximum_alerts: Optional[Transform[int, SentinelRange(1, 9000, sentinel_value=-1)]] = None
     ) -> None:
-        pass
+
+        def parse_sentinel_option(existing_value: Optional[int], option: Optional[int]) -> Optional[int]:
+            """
+            Parses a sentinel value to update alert values.
+
+            Parameters:
+                existing_value (Optional[int]): The existing alert's value.
+                option (Optional[int]): The new option's value.
+
+            Returns:
+                (Optional[int]): The parsed value.
+            """
+
+            if option == -1:
+                return None
+
+            if option is None:
+                return existing_value
+
+            return option
+
+        try:
+            alert = await typed_retrieve_one_query(
+                self.bot.database,
+                RunescapeAlert,
+                'SELECT * FROM RUNESCAPE_ALERTS WHERE OWNER_ID=? AND ITEM_ID=? LIMIT 1',
+                (interaction.user.id, item_id)
+            )
+        except aiosqliteError:
+            await interaction.response.send_message('Failed to find an alert for this item.', ephemeral=True)
+            return
+
+        alert.target_low = parse_sentinel_option(alert.target_low, low_price)
+        alert.target_high = parse_sentinel_option(alert.target_high, high_price)
+        alert.frequency = parse_sentinel_option(alert.frequency, alert_frequency)
+        alert.maximum_alerts = parse_sentinel_option(alert.maximum_alerts, maximum_alerts)
+
+        try:
+            await execute_query(
+                self.bot.database,
+                'INSERT OR REPLACE INTO RUNESCAPE_ALERTS VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                alert.unpack()
+            )
+        except aiosqliteError:
+            await interaction.response.send_message('Failed to update the alert.', ephemeral=True)
+        else:
+            await interaction.response.send_message('Successfully updated alert.', ephemeral=True)
+            self.alerts[interaction.user.id] = [x for x in self.alerts[interaction.user.id] if x.item_id != item_id]
+            self.alerts[interaction.user.id].append(alert)
 
     @alert_subgroup.command(name='delete', description='Deletes an existing item alert.')
     @app_commands.describe(item_id='The item to delete alerts for')
