@@ -23,9 +23,10 @@ SOFTWARE.
 """
 
 from collections import defaultdict
+from contextlib import suppress
 from dataclasses import dataclass
 from json.decoder import JSONDecodeError
-from typing import List, Optional, Dict, TypeVar
+from typing import List, Optional, Dict
 
 import aiosqlite
 import discord
@@ -48,10 +49,9 @@ FIVE_MINUTES = 300
 ONE_DAY = 86_400
 ONE_YEAR = 31_556_926
 
-T = TypeVar('T')
-
 
 # TODO: Add frequently accessed item_id's (global? user?) for /runescape_item
+
 
 @dataclass
 class ItemMarketData:
@@ -149,18 +149,20 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     A Cogs class that contains Old School Runescape commands.
 
     Constants:
-        MAPPING_QUERY_INTERVAL (int): How frequently API data from DDOAudit should be queried.
+        MAPPING_QUERY_INTERVAL (int): How frequently item data from the OSRS Wiki's API should be queried.
+        MARKET_QUERY_INTERVAL (int): How frequently market data from the OSRS Wiki's API should be queried.
+        alert_subgroup (app_commands.Group): The Runescape Alert command group.
 
     Attributes:
         bot (DreamBot): The Discord bot.
-        item_data.
-        query_ddo_audit (ext.tasks): Stores the task that queries DDOAudit every {QUERY_INTERVAL} seconds.
+        item_data (Dict[int, RunescapeItem]): A mapping of Runescape items.
+        item_names_to_ids (Dict[str, int]): A lookup mapping of Runescape item names.
+        alerts (Dict[int, Dict[int, RunescapeAlert]]): A mapping of user alerts for Runescape items.
         backoff (ExponentialBackoff): Exponential Backoff calculator for network requests.
     """
 
     MAPPING_QUERY_INTERVAL = 60 * 60  # 1 hour
-    MARKET_QUERY_INTERVAL = 60  # 1 minute
-    CACHE_TTL = 120
+    MARKET_QUERY_INTERVAL = 120  # 2 minutes
 
     alert_subgroup = app_commands.Group(name='alert', description='Commands for managing item alerts')
 
@@ -173,9 +175,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         """
 
         self.bot = bot
-        self.item_data: Dict[int, RunescapeItem] = {}
-        self.item_names_to_ids: Dict[str, int] = {}
-        self.alerts: Dict[int, List[RunescapeAlert]] = defaultdict(list)  # key: user_id
+        self.item_data: Dict[int, RunescapeItem] = {}   # [item_id: RunescapeItem]
+        self.item_names_to_ids: Dict[str, int] = {}  # [item_name: item_id]
+        self.alerts: Dict[int, Dict[int, RunescapeAlert]] = defaultdict(dict)  # [user_id: [item_id: RunescapeAlert]]
         """
         alerts can be |owner_id: [Alert]| - don't need O(1) |item_id: [Alert]| access
         Allows O(1) access for alert edit, delete access
@@ -203,7 +205,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         )
 
         for alert in alerts:
-            self.alerts[alert.owner_id].append(alert)
+            self.alerts[alert.owner_id][alert.item_id] = alert
 
     @alert_subgroup.command(name='add', description='Registers an item for market alerts')
     @app_commands.describe(
@@ -224,16 +226,15 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             maximum_alerts: Optional[Range[int, 1, 9000]] = None  # just over a month of max frequency alerts
     ) -> None:
         """
-        TODO: DOCUMENT
-        Retrieves market and basic data about an Old School Runescape item.
+        Creates a market alert for a Runescape item.
 
         Parameters:
             interaction (Interaction): The invocation interaction.
             item_id (int): The internal id of the item.
-            low_price
-            high_price
-            alert_frequency
-            maximum_alerts
+            low_price (Optional[int]): Trigger an alert if the item's instant buy price goes below this.
+            high_price (Optional[int]): Trigger an alert if the item's instant sell price goes above this.
+            alert_frequency (Optional[int]): How frequently an alert should be triggered (in seconds).
+            maximum_alerts (Optional[int]): The maximum number of alerts to trigger before deleting this alert.
 
         Returns:
             None.
@@ -270,7 +271,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                 await interaction.response.send_message('Failed to create an alert for this item.', ephemeral=True)
         else:
             await interaction.response.send_message('Successfully created alert.', ephemeral=True)
-            self.alerts[interaction.user.id].append(alert)
+            self.alerts[interaction.user.id][item_id] = alert
 
     @alert_subgroup.command(name='edit', description='Edit an existing item alert. Use "-1" to remove a value.')
     @app_commands.describe(
@@ -292,6 +293,20 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             ] = None,
             maximum_alerts: Optional[Transform[int, SentinelRange(1, 9000, sentinel_value=-1)]] = None
     ) -> None:
+        """
+        Edits an existing market alert for a Runescape item.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            item_id (int): The internal id of the item.
+            low_price (Optional[int]): Trigger an alert if the item's instant buy price goes below this.
+            high_price (Optional[int]): Trigger an alert if the item's instant sell price goes above this.
+            alert_frequency (Optional[int]): How frequently an alert should be triggered (in seconds).
+            maximum_alerts (Optional[int]): The maximum number of alerts to trigger before deleting this alert.
+
+        Returns:
+            None.
+        """
 
         def parse_sentinel_option(existing_value: Optional[int], option: Optional[int]) -> Optional[int]:
             """
@@ -339,15 +354,14 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             await interaction.response.send_message('Failed to update the alert.', ephemeral=True)
         else:
             await interaction.response.send_message('Successfully updated alert.', ephemeral=True)
-            self.alerts[interaction.user.id] = [x for x in self.alerts[interaction.user.id] if x.item_id != item_id]
-            self.alerts[interaction.user.id].append(alert)
+            self.alerts[interaction.user.id][item_id] = alert
 
     @alert_subgroup.command(name='delete', description='Deletes an existing item alert.')
     @app_commands.describe(item_id='The item to delete alerts for')
     @app_commands.rename(item_id='item')
     async def delete_alert(self, interaction: Interaction, item_id: int) -> None:
         """
-        Deletes an existing alert.
+        Deletes an existing market alert for a Runescape item.
 
         Parameters:
             interaction (Interaction): The invocation interaction.
@@ -370,9 +384,10 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         except aiosqliteError:
             await interaction.response.send_message('Failed to delete the alert for this item.', ephemeral=True)
         else:
+            with suppress(KeyError):
+                del self.alerts[interaction.user.id][item_id]
+
             await interaction.response.send_message('Successfully deleted alert.', ephemeral=True)
-        finally:
-            self.alerts[interaction.user.id] = [x for x in self.alerts[interaction.user.id] if x.item_id != item_id]
 
     @app_commands.command(name='item', description='Returns basic data and market information for a given item')
     @app_commands.describe(item_id='The item to retrieve data for')
@@ -454,11 +469,11 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         alerts = self.alerts[interaction.user.id]
 
         if not current:
-            return [Choice(name=self.item_data[x.item_id].name, value=x.item_id) for x in alerts]
+            return [Choice(name=self.item_data[x.item_id].name, value=x.item_id) for x in alerts.values()]
 
         return generate_autocomplete_choices(
             current,
-            [(self.item_data[x.item_id].name, x.item_id) for x in alerts],
+            [(self.item_data[x.item_id].name, x.item_id) for x in alerts.values()],
             minimum_threshold=100
         )
 
