@@ -75,10 +75,6 @@ class AlertEmbedFragment:
     name: str
     current_price: int
     target_price: int
-    # current_alerts: int
-    # maximum_alerts: Optional[int]
-    # last_alert: Optional[int]
-    # frequency: Optional[int]
 
 
 @dataclass
@@ -206,11 +202,6 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         self.item_data: Dict[int, RunescapeItem] = {}  # [item_id: RunescapeItem]
         self.item_names_to_ids: Dict[str, int] = {}  # [item_name: item_id]
         self.alerts: Dict[int, Dict[int, RunescapeAlert]] = defaultdict(dict)  # [user_id: [item_id: RunescapeAlert]]
-        """
-        alerts can be |owner_id: [Alert]| - don't need O(1) |item_id: [Alert]| access
-        Allows O(1) access for alert edit, delete access
-        Flatten values (iter.chain.from_iter) allows for O(n) alert checking, which is best case
-        """
         self.backoff = ExponentialBackoff(3600 * 4)
         self.query_mapping_data.start()
         self.query_market_data.start()
@@ -626,14 +617,19 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             bot_logger.error(f'OSRS Mapping Query Unhandled Exception: {type(e)} - {e}')
             await self.bot.report_exception(e)
 
-    @commands.command()
-    async def driver(self, ctx: commands.Context):
-        await ctx.send('Checking Alerts')
-        await self.check_alerts()
-
     async def check_alerts(self) -> None:
         """
         Checks alerts against the latest market data.
+
+        Notes:
+            An item's low price (`low`) is the price an item will instantly sell for.
+            An item's high price (`high`) is the price an item will instantly buy for.
+
+            An alert's low price (`low_price`) is the price a user wants to buy items for.
+                Therefore, trigger an alert if item.high (instant buy) <= alert.target_low.
+
+            An alerts high price (`high_price`) is the price a user wants to sell items for.
+                Therefore, trigger an alert if item.low (instant sell) >= alert.target_high.
 
         Parameters:
             None.
@@ -644,62 +640,35 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         now = int(utcnow().timestamp())
 
+        # noinspection PyShadowingNames
+        def validate_alert(alert: RunescapeAlert) -> bool:
+            if alert.frequency is None:
+                return False
+
+            if alert.maximum_alerts is not None and alert.current_alerts >= alert.maximum_alerts:
+                return False
+
+            if alert.last_alert is not None and alert.last_alert + alert.frequency < now:
+                return False
+
+            if alert.item_id not in self.item_data:
+                return False
+
+            return True
+
         valid_alerts = filter(
-            lambda x: 1 == 1,
-            # lambda x: x.last_alert + x.frequency >= now and x.current_alerts < x.maximum_alerts,  # frequency may be none
+            validate_alert,
             chain.from_iterable(x.values() for x in self.alerts.values())
         )
 
-        # create mini struct? user, item_name, 4x prices?
-        # dict[user_id: default_dict['low', 'high': list[alert_struct]]]
-
-        valid_alerts = [
-            RunescapeAlert(91995622093123584, 1676172409, 21034, 0, None, None, None, None, None, 36268127, 40195497),
-            RunescapeAlert(91995622093123584, 1676680759, 10344, 0, None, None, None, None, None, 13800000, 13900000),
-            RunescapeAlert(91995622093123584, 1676680763, 20011, 0, None, None, None, None, None, 477777777, 602280170),
-            RunescapeAlert(91995622093123584, 1676680769, 12437, 0, None, None, None, None, None, 129322000, 251291216),
-            RunescapeAlert(91995622093123584, 1676680780, 10332, 0, None, None, None, None, None, 9770441, 13503239),
-            RunescapeAlert(91995622093123584, 1676680784, 25775, 0, None, None, None, None, None, 2538, 4694),
-            RunescapeAlert(91995622093123584, 1676954108, 36, 0, None, None, None, None, None, 200, 823),
-            RunescapeAlert(91995622093123584, 1676954219, 1777, 0, None, None, None, None, None, 100, 156),
-            RunescapeAlert(91995622093123584, 1677282433, 4436, 0, None, None, None, None, None, 881, 1553)
-        ]
-
-        embed_fragments: dict[int, dict[Literal['low', 'high'], List[AlertEmbedFragment]]] = defaultdict(lambda: defaultdict(list))
+        embed_fragment_type = dict[int, dict[Literal['low', 'high'], List[AlertEmbedFragment]]]
+        embed_fragments: embed_fragment_type = defaultdict(lambda: defaultdict(list))
 
         for alert in valid_alerts:
-            # AlertEmbedFragment(
-            #     owner_id=,
-            #     item_id=,
-            #     name=,
-            #     current_price=,
-            #     target_price=,
-            #     # current_alerts=,
-            #     # maximum_alerts=,
-            #     # last_alert=,
-            #     # frequency=,
-            # )
-
-            if alert.item_id not in self.item_data:
-                continue
-
             item_low = self.item_data[alert.item_id].low
             item_high = self.item_data[alert.item_id].high
 
-            # target high price goes above instant sell price
-
-            # low_price (Optional[int]): Trigger an alert if the item's instant buy price goes below this.
-            # high_price (Optional[int]): Trigger an alert if the item's instant sell price goes above this.
-            # high (Optional[int]): The item's most recent "instant-buy" price.
-            # low (Optional[int]): The item's most recent "instant-sell" price.
-
-            # item_high <= alert.target_low
-            # item_low >= alert.target_high
-
-            print(item_low, alert.target_high, item_low >= alert.target_high)
             if alert.target_high is not None and item_low is not None and item_low >= alert.target_high:
-                # await user.send(f'{self.item_data[alert.item_id].name} went above sell price')
-                print('Added High')
                 embed_fragments[alert.owner_id]['high'].append(
                     AlertEmbedFragment(
                         alert.owner_id,
@@ -710,13 +679,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                     )
                 )
 
-            # item_high <= alert.target_low
-            # item_low >= alert.target_high
-            # target low price goes above instant buy price
-            print(alert.target_low, item_high, item_high <= alert.target_low)
             if alert.target_low is not None and item_high is not None and item_high <= alert.target_low:
-                # await user.send(f'{self.item_data[alert.item_id].name} went below buy price')
-                print('Added Low')
                 embed_fragments[alert.owner_id]['low'].append(
                     AlertEmbedFragment(
                         alert.owner_id,
@@ -731,11 +694,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             await self.send_alert(user_id, embed_fragments[user_id])
 
     async def send_alert(self, user_id: int, alerts: dict[Literal['low', 'high'], List[AlertEmbedFragment]]) -> None:
-        # todo: failure logic (unavailable checks)
-
         user = self.bot.get_user(user_id)
-
-        if user_id is None:
+        # todo: failure logic (unavailable checks)
+        if user is None:
             return
 
         embed = discord.Embed(
@@ -770,11 +731,13 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         embed.set_footer(text="Please report any issues to my owner!")
 
         try:
-            guild = self.bot.get_guild(153005652141146112)
-            await guild.get_channel(634530033754570762).send(embed=embed)
-            # await user.send(embed=embed)
+            await user.send(embed=embed)
         except discord.HTTPException:
             pass
+        else:
+            for alert in alerts['high'] + alerts['low']:
+                await increment_alert_count(self.bot.database, alert.owner_id, alert.item_id)
+                self.alerts[alert.owner_id][alert.item_id].current_alerts += 1
 
     async def cog_unload(self) -> None:
         """
@@ -792,6 +755,29 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         self.query_market_data.cancel()
 
         bot_logger.info('Completed Unload for Cog: Runescape')
+
+
+async def increment_alert_count(database: str, user_id: int, item_id: int) -> None:
+    """
+    Attempts to increment the usage count of an alert.
+
+    Parameters:
+        database (str): The name of the bot's database.
+        user_id (str): The user_id of the alert.
+        item_id (int): The item_id of the alert.
+
+    Returns:
+        (Optional[Tag]).
+    """
+
+    try:
+        await execute_query(
+            database,
+            'UPDATE RUNESCAPE_ALERTS SET CURRENT_ALERTS=CURRENT_ALERTS+1 WHERE USER_ID=? AND ITEM_ID=?',
+            (user_id, item_id)
+        )
+    except aiosqliteError:
+        pass
 
 
 def percentage_change(start: int, final: int) -> str:
