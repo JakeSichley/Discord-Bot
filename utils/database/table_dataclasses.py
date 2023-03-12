@@ -192,7 +192,7 @@ class ReactionRole(DatabaseDataclass):
         return self.message_id, self.reaction
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass()
 class RunescapeAlert(DatabaseDataclass):
     """
     A DatabaseDataclass that stores a Runescape Item Alert.
@@ -201,22 +201,24 @@ class RunescapeAlert(DatabaseDataclass):
         owner_id (int): The alert's owner id.
         created (int): The time the alert was created.
         item_id (int): The item id for this alert.
+        current_alerts (int): The current number of times this alert has fired.
+        maximum_alerts (Optional[int]): The maximum number of alerts.
+        frequency (Optional[int]): The frequency this alert should trigger, in seconds.
+        last_alert (Optional[int]): The time of the last alert.
         initial_low (Optional[int]): The item's instant-sell price at the time this alert was created.
         initial_high (Optional[int]): The item's instant-buy price at the time this alert was created.
         target_low (Optional[int]): The target instant-buy price that would trigger this alert.
         target_high (Optional[int]): The target instant-sell price that would trigger this alert.
-        frequency (Optional[int]): The frequency this alert should trigger, in seconds.
-        maximum_alerts (Optional[int]): The maximum number of alerts.
-        last_alert (Optional[int]): The time of the last alert.
     """
 
     owner_id: int
     created: int
     item_id: int
+    current_alerts: int
+    maximum_alerts: Optional[int]
+    last_alert: Optional[int]
+    frequency: Optional[int]
     initial_low: Optional[int]
     initial_high: Optional[int]
     target_low: Optional[int]
     target_high: Optional[int]
-    frequency: Optional[int]
-    maximum_alerts: Optional[int]
-    last_alert: Optional[int]

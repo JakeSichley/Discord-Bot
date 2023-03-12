@@ -26,7 +26,7 @@ from collections import defaultdict
 from contextlib import suppress
 from dataclasses import dataclass
 from json.decoder import JSONDecodeError
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Literal
 
 import aiosqlite
 import discord
@@ -52,6 +52,33 @@ ONE_YEAR = 31_556_926
 
 
 # TODO: Add frequently accessed item_id's (global? user?) for /runescape_item
+
+@dataclass
+class AlertEmbedFragment:
+    """
+    A dataclass that represents the components necessary for alert notifications.
+
+    Attributes:
+        owner_id (int): The alert's owner id.
+        item_id (int): The item's internal id.
+        name (str): The item's name.
+        current_price (int): The item's current price.      # see below
+        target_price (int): The alert's target item price.  # we can reference whether is higher/lower based on dict key
+        # current_alerts (int): The current number of times this alert has fired.
+        # maximum_alerts (Optional[int]): The maximum number of alerts.
+        # last_alert (Optional[int]): The time of the last alert.
+        # frequency (Optional[int]): The frequency this alert should trigger, in seconds.
+    """
+
+    owner_id: int
+    item_id: int
+    name: str
+    current_price: int
+    target_price: int
+    # current_alerts: int
+    # maximum_alerts: Optional[int]
+    # last_alert: Optional[int]
+    # frequency: Optional[int]
 
 
 @dataclass
@@ -176,7 +203,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         """
 
         self.bot = bot
-        self.item_data: Dict[int, RunescapeItem] = {}   # [item_id: RunescapeItem]
+        self.item_data: Dict[int, RunescapeItem] = {}  # [item_id: RunescapeItem]
         self.item_names_to_ids: Dict[str, int] = {}  # [item_name: item_id]
         self.alerts: Dict[int, Dict[int, RunescapeAlert]] = defaultdict(dict)  # [user_id: [item_id: RunescapeAlert]]
         """
@@ -245,23 +272,30 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             interaction.user.id,
             int(utcnow().timestamp()),
             item_id,
+            0,
+            maximum_alerts,
+            None,
+            alert_frequency,
             self.item_data[item_id].low,
             self.item_data[item_id].high,
             low_price,
-            high_price,
-            alert_frequency,
-            maximum_alerts,
-            None
+            high_price
         )
 
         if item_id not in self.item_data:
             await interaction.response.send_message("I'm unable to find that item.", ephemeral=True)
             return
 
+        if low_price is not None and high_price is not None and low_price >= high_price:
+            await interaction.response.send_message(
+                'You cannot have a low price greater than or equal to the high price.', ephemeral=True
+            )
+            return
+
         try:
             await execute_query(
                 self.bot.database,
-                'INSERT INTO RUNESCAPE_ALERTS VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                'INSERT INTO RUNESCAPE_ALERTS VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 alert.unpack(),
                 errors_to_suppress=aiosqlite.IntegrityError
             )
@@ -290,7 +324,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             low_price: Optional[Transform[int, RunescapeNumberTransformer(sentinel_value=-1)]] = None,
             high_price: Optional[Transform[int, RunescapeNumberTransformer(sentinel_value=-1)]] = None,
             alert_frequency: Optional[
-                Transform[int, HumanDatetimeDuration(FIVE_MINUTES, ONE_YEAR, sentinel_value=-1)]
+                Transform[int, HumanDatetimeDuration(FIVE_MINUTES, ONE_YEAR, sentinel_value='-1')]
             ] = None,
             maximum_alerts: Optional[Transform[int, SentinelRange(1, 9000, sentinel_value=-1)]] = None
     ) -> None:
@@ -329,6 +363,16 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
             return option
 
+        if item_id not in self.item_data:
+            await interaction.response.send_message("I'm unable to find that item.", ephemeral=True)
+            return
+
+        if low_price is not None and high_price is not None and low_price >= high_price:
+            await interaction.response.send_message(
+                'You cannot have a low price greater than or equal to the high price.', ephemeral=True
+            )
+            return
+
         try:
             alert = await typed_retrieve_one_query(
                 self.bot.database,
@@ -348,7 +392,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         try:
             await execute_query(
                 self.bot.database,
-                'INSERT OR REPLACE INTO RUNESCAPE_ALERTS VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                'INSERT OR REPLACE INTO RUNESCAPE_ALERTS VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 alert.unpack()
             )
         except aiosqliteError:
@@ -412,12 +456,13 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             return
 
         item = self.item_data[item_id]
+
         embed = discord.Embed(
             title=item.name,
+            description=item.examine,
             color=0x971212,
             url=f'https://oldschool.runescape.wiki/w/{item.name.replace(" ", "_")}'
         )
-        embed.description = item.examine
         embed.set_thumbnail(url=f'https://static.runelite.net/cache/item/icon/{item_id}.png')
 
         buy_price = f'{item.high:,} coins' if item.high else 'N/A'
@@ -581,6 +626,11 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             bot_logger.error(f'OSRS Mapping Query Unhandled Exception: {type(e)} - {e}')
             await self.bot.report_exception(e)
 
+    @commands.command()
+    async def driver(self, ctx: commands.Context):
+        await ctx.send('Checking Alerts')
+        await self.check_alerts()
+
     async def check_alerts(self) -> None:
         """
         Checks alerts against the latest market data.
@@ -592,7 +642,131 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             None.
         """
 
-        for alert in chain.from_iterable(x.values() for x in self.alerts.values()):
+        now = int(utcnow().timestamp())
+
+        valid_alerts = filter(
+            lambda x: 1 == 1,
+            # lambda x: x.last_alert + x.frequency >= now and x.current_alerts < x.maximum_alerts,  # frequency may be none
+            chain.from_iterable(x.values() for x in self.alerts.values())
+        )
+
+        # create mini struct? user, item_name, 4x prices?
+        # dict[user_id: default_dict['low', 'high': list[alert_struct]]]
+
+        valid_alerts = [
+            RunescapeAlert(91995622093123584, 1676172409, 21034, 0, None, None, None, None, None, 40195497, 36268127),
+            RunescapeAlert(91995622093123584, 1676680759, 10344, 0, None, None, None, None, None, 13950002, 13950001),
+            RunescapeAlert(91995622093123584, 1676680763, 20011, 0, None, None, None, None, None, 477777777, 602280170),
+            RunescapeAlert(91995622093123584, 1676680769, 12437, 0, None, None, None, None, None, 129322000, 251291216),
+            RunescapeAlert(91995622093123584, 1676680780, 10332, 0, None, None, None, None, None, 9770441, 13503239),
+            RunescapeAlert(91995622093123584, 1676680784, 25775, 0, None, None, None, None, None, 2538, 4694),
+            RunescapeAlert(91995622093123584, 1676954108, 36, 0, None, None, None, None, None, 200, 823),
+            RunescapeAlert(91995622093123584, 1676954219, 1777, 0, None, None, None, None, None, 156, 103),
+            RunescapeAlert(91995622093123584, 1677282433, 4436, 0, None, None, None, None, None, 881, 1553)
+        ]
+
+        embed_fragments: dict[int, dict[Literal['low', 'high'], List[AlertEmbedFragment]]] = defaultdict(lambda: defaultdict(list))
+
+        for alert in valid_alerts:
+            # AlertEmbedFragment(
+            #     owner_id=,
+            #     item_id=,
+            #     name=,
+            #     current_price=,
+            #     target_price=,
+            #     # current_alerts=,
+            #     # maximum_alerts=,
+            #     # last_alert=,
+            #     # frequency=,
+            # )
+
+            if alert.item_id not in self.item_data:
+                continue
+
+            item_low = self.item_data[alert.item_id].low
+            item_high = self.item_data[alert.item_id].high
+
+            # target high price goes above instant sell price
+
+            print(item_low, alert.target_high, item_low >= alert.target_high)
+            if alert.target_high is not None and item_low is not None and item_low >= alert.target_high:
+                # await user.send(f'{self.item_data[alert.item_id].name} went above sell price')
+                print('Added High')
+                embed_fragments[alert.owner_id]['high'].append(
+                    AlertEmbedFragment(
+                        alert.owner_id,
+                        alert.item_id,
+                        self.item_data[alert.item_id].name,
+                        item_low,
+                        alert.target_high
+                    )
+                )
+
+            # target low price goes above instant buy price
+            print(alert.target_low, item_high, item_high <= alert.target_low)
+            if alert.target_low is not None and item_high is not None and item_high >= alert.target_low:
+                # await user.send(f'{self.item_data[alert.item_id].name} went below buy price')
+                print('Added Low')
+                embed_fragments[alert.owner_id]['low'].append(
+                    AlertEmbedFragment(
+                        alert.owner_id,
+                        alert.item_id,
+                        self.item_data[alert.item_id].name,
+                        item_high,
+                        alert.target_low
+                    )
+                )
+
+        for user_id in embed_fragments:
+            await self.send_alert(user_id, embed_fragments[user_id])
+
+    async def send_alert(self, user_id: int, alerts: dict[Literal['low', 'high'], List[AlertEmbedFragment]]) -> None:
+        # todo: failure logic (unavailable checks)
+
+        user = self.bot.get_user(user_id)
+
+        if user_id is None:
+            return
+
+        embed = discord.Embed(
+            title="Old School Runescape Market Alerts",
+            description="The following items had their market prices exceed your alert thresholds!",
+            color=0x971212
+        )
+        embed.set_thumbnail(
+            url="https://oldschool.runescape.wiki/images/thumb/Grand_Exchange_logo.png/150px-Grand_Exchange_logo.png"
+        )
+
+        if alerts['high']:
+            print(alerts['high'])
+
+            embed.add_field(name="Price Drops", value='\n'.join(x.name for x in alerts['high']))
+            embed.add_field(name="Market Price", value='\n'.join(str(x.current_price) for x in alerts['high']))
+            embed.add_field(
+                name="Alert Price",
+                value='\n'.join(
+                    f'{x.target_price} ({percentage_change(x.target_price, x.current_price)})' for x in alerts['high']
+                )
+            )
+
+        if alerts['low']:
+            print(alerts['low'])
+            embed.add_field(name="Price Gains", value='\n'.join(x.name for x in alerts['low']))
+            embed.add_field(name="Market Price", value='\n'.join(str(x.current_price) for x in alerts['low']))
+            embed.add_field(
+                name="Alert Price",
+                value='\n'.join(
+                    f'{x.target_price} ({percentage_change(x.target_price, x.current_price)})' for x in alerts['low']
+                )
+            )
+
+        embed.set_footer(text="Please report any issues to my owner!")
+
+        try:
+            guild = self.bot.get_guild(153005652141146112)
+            await guild.get_channel(634530033754570762).send(embed=embed)
+            # await user.send(embed=embed)
+        except discord.HTTPException:
             pass
 
     async def cog_unload(self) -> None:
@@ -611,6 +785,22 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         self.query_market_data.cancel()
 
         bot_logger.info('Completed Unload for Cog: Runescape')
+
+
+def percentage_change(start: int, final: int) -> str:
+    """
+    Calculates the percentage the initial value has changed.
+
+    Parameters:
+        start (int): The initial value.
+        final (int): The current value.
+
+    Returns:
+        (str): The percentage change, formatted to two decimal places.
+    """
+
+    change = (final - start) / start
+    return '{0:.2f}%'.format(change * 100)
 
 
 async def setup(bot: DreamBot) -> None:
