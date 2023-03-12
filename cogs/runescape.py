@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019-2022 Jake Sichley
+Copyright (c) 2019-2023 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,7 @@ SOFTWARE.
 
 from collections import defaultdict
 from contextlib import suppress
-from dataclasses import dataclass
+from itertools import chain
 from json.decoder import JSONDecodeError
 from typing import List, Optional, Dict, Literal
 
@@ -42,9 +42,9 @@ from utils.database.helpers import execute_query, typed_retrieve_query, typed_re
 from utils.database.table_dataclasses import RunescapeAlert
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
+from utils.runescape_data_classes import RunescapeItem, ItemMarketData, AlertEmbedFragment
 from utils.transformers import RunescapeNumberTransformer, HumanDatetimeDuration, SentinelRange
 from utils.utils import format_unix_dt, generate_autocomplete_choices
-from itertools import chain
 
 FIVE_MINUTES = 300
 ONE_DAY = 86_400
@@ -52,120 +52,7 @@ ONE_YEAR = 31_556_926
 
 
 # TODO: Add frequently accessed item_id's (global? user?) for /runescape_item
-
-@dataclass
-class AlertEmbedFragment:
-    """
-    A dataclass that represents the components necessary for alert notifications.
-
-    Attributes:
-        owner_id (int): The alert's owner id.
-        item_id (int): The item's internal id.
-        name (str): The item's name.
-        current_price (int): The item's current price.      # see below
-        target_price (int): The alert's target item price.  # we can reference whether is higher/lower based on dict key
-        # current_alerts (int): The current number of times this alert has fired.
-        # maximum_alerts (Optional[int]): The maximum number of alerts.
-        # last_alert (Optional[int]): The time of the last alert.
-        # frequency (Optional[int]): The frequency this alert should trigger, in seconds.
-    """
-
-    owner_id: int
-    item_id: int
-    name: str
-    current_price: int
-    target_price: int
-
-
-@dataclass
-class ItemMarketData:
-    """
-    A dataclass that represents the market data associated with an Old School Runescape Item.
-
-    Attributes:
-        high (Optional[int]): The item's most recent "instant-buy" price.
-        highTime (Optional[int]): The time the item's most recent "instant-buy" transaction occurred.
-        low (Optional[int]): The item's most recent "instant-sell" price.
-        lowTime (Optional[int]): The time the item's most recent "instant-sell" transaction occurred.
-    """
-
-    high: Optional[int] = None
-    highTime: Optional[int] = None
-    low: Optional[int] = None
-    lowTime: Optional[int] = None
-
-
-@dataclass
-class RunescapeItem:
-    """
-    A dataclass that represents the raw components of an Old School Runescape Item.
-
-    Attributes:
-        id (int): The item's internal id.
-        name (str): The item's name.
-        examine (str): The item's description.
-        icon (str): The item's icon name on the Old School Wiki.
-        members (bool): Whether the item is members-only.
-        value (int): The item's base value.
-        limit (Optional[int]): The item's Grand Exchange limit, if any.
-        lowalch (Optional[int]): The item's low alchemy value, if any.
-        highalch (Optional[int]): The item's high alchemy value, if any.
-        high (Optional[int]): The item's most recent "instant-buy" price.
-        highTime (Optional[int]): The time the item's most recent "instant-buy" transaction occurred.
-        low (Optional[int]): The item's most recent "instant-sell" price.
-        lowTime (Optional[int]): The time the item's most recent "instant-sell" transaction occurred.
-    """
-
-    id: int
-    name: str
-    examine: str
-    icon: str
-    members: bool
-    value: int
-    limit: Optional[int] = None
-    lowalch: Optional[int] = None
-    highalch: Optional[int] = None
-    high: Optional[int] = None
-    highTime: Optional[int] = None
-    low: Optional[int] = None
-    lowTime: Optional[int] = None
-
-    def update_with_mapping_fragment(self, fragment: 'RunescapeItem') -> None:
-        """
-        A method that updates the item's internal data.
-
-        Parameters:
-            fragment (RunescapeItem): The RunescapeItem fragment to update the item with.
-
-        Returns:
-            None.
-        """
-
-        self.id = fragment.id
-        self.name = fragment.name
-        self.examine = fragment.examine
-        self.icon = fragment.icon
-        self.members = fragment.members
-        self.value = fragment.value
-        self.limit = fragment.limit
-        self.lowalch = fragment.lowalch
-        self.highalch = fragment.highalch
-
-    def update_with_market_fragment(self, fragment: ItemMarketData) -> None:
-        """
-        A method that updates the item's market data.
-
-        Parameters:
-            fragment (ItemMarketData): The ItemMarketData fragment to update the item with.
-
-        Returns:
-            None.
-        """
-
-        self.high = fragment.high
-        self.highTime = fragment.highTime
-        self.low = fragment.low
-        self.lowTime = fragment.lowTime
+# TODO: Documentation, Testing
 
 
 class Runescape(commands.GroupCog, group_name='runescape', group_description='Commands for Old School Runescape'):
@@ -662,6 +549,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         )
 
         embed_fragment_type = dict[int, dict[Literal['low', 'high'], List[AlertEmbedFragment]]]
+        # [user_id: ['low', 'high': [AlertEmbedFragment]]]
         embed_fragments: embed_fragment_type = defaultdict(lambda: defaultdict(list))
 
         for alert in valid_alerts:
