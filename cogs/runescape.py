@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from asyncio import sleep
 from collections import defaultdict
 from contextlib import suppress
 from itertools import chain
@@ -52,7 +53,8 @@ ONE_YEAR = 31_556_926
 
 
 # TODO: Add frequently accessed item_id's (global? user?) for /runescape_item
-# TODO: Documentation, Testing
+# TODO: Testing
+# TODO: Need a view command to view existing alert stats
 
 
 class Runescape(commands.GroupCog, group_name='runescape', group_description='Commands for Old School Runescape'):
@@ -73,7 +75,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     """
 
     MAPPING_QUERY_INTERVAL = 60 * 60  # 1 hour
-    MARKET_QUERY_INTERVAL = 120  # 2 minutes
+    MARKET_QUERY_INTERVAL = 60  # 1 minute
 
     alert_subgroup = app_commands.Group(name='alert', description='Commands for managing item alerts')
 
@@ -327,8 +329,6 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             None.
         """
 
-        await self.check_alerts()
-
         if item_id not in self.item_data:
             await interaction.response.send_message("I'm unable to find that item.", ephemeral=True)
             return
@@ -504,6 +504,23 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             bot_logger.error(f'OSRS Mapping Query Unhandled Exception: {type(e)} - {e}')
             await self.bot.report_exception(e)
 
+        else:
+            await self.check_alerts()
+
+    @query_market_data.before_loop
+    async def market_data_delay(self) -> None:
+        """
+        Delays fetching market data for 3 seconds to allow for item data to be fetched first.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
+        await sleep(3)
+
     async def check_alerts(self) -> None:
         """
         Checks alerts against the latest market data.
@@ -529,16 +546,26 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         # noinspection PyShadowingNames
         def validate_alert(alert: RunescapeAlert) -> bool:
+            """
+            Filters out Alerts that don't meet send requirements.
+
+            Parameters:
+                alert (RunescapeAlert): The alert to validate.
+
+            Returns:
+                (bool): Whether the alert is valid can be used to check against market data.
+            """
+
+            if alert.item_id not in self.item_data:
+                return False
+
             if alert.frequency is None:
                 return False
 
             if alert.maximum_alerts is not None and alert.current_alerts >= alert.maximum_alerts:
                 return False
 
-            if alert.last_alert is not None and alert.last_alert + alert.frequency < now:
-                return False
-
-            if alert.item_id not in self.item_data:
+            if alert.last_alert is not None and alert.last_alert + alert.frequency > now:
                 return False
 
             return True
@@ -582,8 +609,19 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             await self.send_alert(user_id, embed_fragments[user_id])
 
     async def send_alert(self, user_id: int, alerts: dict[Literal['low', 'high'], List[AlertEmbedFragment]]) -> None:
+        """
+        Sends filtered and validated alerts to users.
+
+        Parameters:
+            user_id (int): The id of the user.
+            alerts (dict[Literal['low', 'high'], List[AlertEmbedFragment]]): A mapping containing alert fragments.
+
+        Returns:
+            None.
+        """
+
         user = self.bot.get_user(user_id)
-        # todo: failure logic (unavailable checks)
+        # TODO: failure logic (unavailable checks)
         if user is None:
             return
 
@@ -623,9 +661,10 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         except discord.HTTPException:
             pass
         else:
+            now = int(utcnow().timestamp())
             for alert in alerts['high'] + alerts['low']:
-                await increment_alert_count(self.bot.database, alert.owner_id, alert.item_id)
-                self.alerts[alert.owner_id][alert.item_id].current_alerts += 1
+                await record_alert(self.bot.database, alert.owner_id, alert.item_id, now)
+                self.alerts[alert.owner_id][alert.item_id].record_alert(now)
 
     async def cog_unload(self) -> None:
         """
@@ -645,7 +684,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         bot_logger.info('Completed Unload for Cog: Runescape')
 
 
-async def increment_alert_count(database: str, user_id: int, item_id: int) -> None:
+async def record_alert(database: str, user_id: int, item_id: int, last_alert_time: int) -> None:
     """
     Attempts to increment the usage count of an alert.
 
@@ -653,6 +692,7 @@ async def increment_alert_count(database: str, user_id: int, item_id: int) -> No
         database (str): The name of the bot's database.
         user_id (str): The user_id of the alert.
         item_id (int): The item_id of the alert.
+        last_alert_time (int): The time of the last alert.
 
     Returns:
         (Optional[Tag]).
@@ -661,8 +701,8 @@ async def increment_alert_count(database: str, user_id: int, item_id: int) -> No
     try:
         await execute_query(
             database,
-            'UPDATE RUNESCAPE_ALERTS SET CURRENT_ALERTS=CURRENT_ALERTS+1 WHERE USER_ID=? AND ITEM_ID=?',
-            (user_id, item_id)
+            'UPDATE RUNESCAPE_ALERTS SET CURRENT_ALERTS=CURRENT_ALERTS+1, LAST_ALERT=? WHERE OWNER_ID=? AND ITEM_ID=?',
+            (last_alert_time, user_id, item_id)
         )
     except aiosqliteError:
         pass

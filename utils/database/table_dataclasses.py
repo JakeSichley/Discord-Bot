@@ -137,7 +137,7 @@ class DefaultRole(DatabaseDataclass):
 
     Attributes:
         guild_id (int): The id of the guild.
-        role_id (int): A id of the guild's default role..
+        role_id (int): A id of the guild's default role.
     """
 
     guild_id: int
@@ -222,3 +222,17 @@ class RunescapeAlert(DatabaseDataclass):
     initial_high: Optional[int]
     target_low: Optional[int]
     target_high: Optional[int]
+
+    def record_alert(self, last_alert_time: int) -> None:
+        """
+        Updates the last alert time and current alert count.
+
+        Parameters:
+            last_alert_time (int) The time the alert was last sent.
+
+        Returns:
+            None.
+        """
+
+        self.current_alerts += 1
+        self.last_alert = last_alert_time

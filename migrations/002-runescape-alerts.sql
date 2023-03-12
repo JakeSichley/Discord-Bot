@@ -2,9 +2,6 @@
 -- Creation Date: 2023-01-04 06:58:17 UTC
 -- Reason: Add Runescape Alerts
 
--- instant buy goes below target low
--- instant sell goes above target high
-
 CREATE TABLE IF NOT EXISTS "RUNESCAPE_ALERTS" (
     "OWNER_ID"          INTEGER NOT NULL,
     "CREATED"           INTEGER NOT NULL,
