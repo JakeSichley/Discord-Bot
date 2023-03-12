@@ -654,14 +654,14 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         # dict[user_id: default_dict['low', 'high': list[alert_struct]]]
 
         valid_alerts = [
-            RunescapeAlert(91995622093123584, 1676172409, 21034, 0, None, None, None, None, None, 40195497, 36268127),
-            RunescapeAlert(91995622093123584, 1676680759, 10344, 0, None, None, None, None, None, 13950002, 13950001),
+            RunescapeAlert(91995622093123584, 1676172409, 21034, 0, None, None, None, None, None, 36268127, 40195497),
+            RunescapeAlert(91995622093123584, 1676680759, 10344, 0, None, None, None, None, None, 13800000, 13900000),
             RunescapeAlert(91995622093123584, 1676680763, 20011, 0, None, None, None, None, None, 477777777, 602280170),
             RunescapeAlert(91995622093123584, 1676680769, 12437, 0, None, None, None, None, None, 129322000, 251291216),
             RunescapeAlert(91995622093123584, 1676680780, 10332, 0, None, None, None, None, None, 9770441, 13503239),
             RunescapeAlert(91995622093123584, 1676680784, 25775, 0, None, None, None, None, None, 2538, 4694),
             RunescapeAlert(91995622093123584, 1676954108, 36, 0, None, None, None, None, None, 200, 823),
-            RunescapeAlert(91995622093123584, 1676954219, 1777, 0, None, None, None, None, None, 156, 103),
+            RunescapeAlert(91995622093123584, 1676954219, 1777, 0, None, None, None, None, None, 100, 156),
             RunescapeAlert(91995622093123584, 1677282433, 4436, 0, None, None, None, None, None, 881, 1553)
         ]
 
@@ -688,6 +688,14 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
             # target high price goes above instant sell price
 
+            # low_price (Optional[int]): Trigger an alert if the item's instant buy price goes below this.
+            # high_price (Optional[int]): Trigger an alert if the item's instant sell price goes above this.
+            # high (Optional[int]): The item's most recent "instant-buy" price.
+            # low (Optional[int]): The item's most recent "instant-sell" price.
+
+            # item_high <= alert.target_low
+            # item_low >= alert.target_high
+
             print(item_low, alert.target_high, item_low >= alert.target_high)
             if alert.target_high is not None and item_low is not None and item_low >= alert.target_high:
                 # await user.send(f'{self.item_data[alert.item_id].name} went above sell price')
@@ -702,9 +710,11 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                     )
                 )
 
+            # item_high <= alert.target_low
+            # item_low >= alert.target_high
             # target low price goes above instant buy price
             print(alert.target_low, item_high, item_high <= alert.target_low)
-            if alert.target_low is not None and item_high is not None and item_high >= alert.target_low:
+            if alert.target_low is not None and item_high is not None and item_high <= alert.target_low:
                 # await user.send(f'{self.item_data[alert.item_id].name} went below buy price')
                 print('Added Low')
                 embed_fragments[alert.owner_id]['low'].append(
@@ -738,9 +748,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         )
 
         if alerts['high']:
-            print(alerts['high'])
-
-            embed.add_field(name="Price Drops", value='\n'.join(x.name for x in alerts['high']))
+            embed.add_field(name="Price Gains", value='\n'.join(x.name for x in alerts['high']))
             embed.add_field(name="Market Price", value='\n'.join(str(x.current_price) for x in alerts['high']))
             embed.add_field(
                 name="Alert Price",
@@ -750,8 +758,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             )
 
         if alerts['low']:
-            print(alerts['low'])
-            embed.add_field(name="Price Gains", value='\n'.join(x.name for x in alerts['low']))
+            embed.add_field(name="Price Drops", value='\n'.join(x.name for x in alerts['low']))
             embed.add_field(name="Market Price", value='\n'.join(str(x.current_price) for x in alerts['low']))
             embed.add_field(
                 name="Alert Price",
