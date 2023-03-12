@@ -749,21 +749,21 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         if alerts['high']:
             embed.add_field(name="Price Gains", value='\n'.join(x.name for x in alerts['high']))
-            embed.add_field(name="Market Price", value='\n'.join(str(x.current_price) for x in alerts['high']))
+            embed.add_field(name="Alert Price", value='\n'.join(str(x.target_price) for x in alerts['high']))
             embed.add_field(
-                name="Alert Price",
+                name="Market Price",
                 value='\n'.join(
-                    f'{x.target_price} ({percentage_change(x.target_price, x.current_price)})' for x in alerts['high']
+                    f'{x.current_price} ({percentage_change(x.target_price, x.current_price)})' for x in alerts['high']
                 )
             )
 
         if alerts['low']:
             embed.add_field(name="Price Drops", value='\n'.join(x.name for x in alerts['low']))
-            embed.add_field(name="Market Price", value='\n'.join(str(x.current_price) for x in alerts['low']))
+            embed.add_field(name="Alert Price", value='\n'.join(str(x.target_price) for x in alerts['low']))
             embed.add_field(
-                name="Alert Price",
+                name="Market Price",
                 value='\n'.join(
-                    f'{x.target_price} ({percentage_change(x.target_price, x.current_price)})' for x in alerts['low']
+                    f'{x.current_price} ({percentage_change(x.target_price, x.current_price)})' for x in alerts['low']
                 )
             )
 
