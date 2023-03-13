@@ -23,6 +23,7 @@ SOFTWARE.
 """
 
 from collections import defaultdict
+from contextlib import suppress
 from datetime import datetime
 from os import getcwd, listdir, path
 from sys import stderr, exc_info
@@ -201,10 +202,8 @@ class DreamBot(Bot):
             return
 
         # use try -> except rather .get chaining, since .get would require creating unnecessary objects
-        try:
+        with suppress(KeyError):
             self.dynamic_cooldowns[ctx.command.qualified_name][ctx.author.id].increment_failure_count()
-        except KeyError:
-            pass
 
     def reset_dynamic_cooldown(self, ctx: Context) -> None:
         """

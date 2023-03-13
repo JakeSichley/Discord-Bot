@@ -26,6 +26,7 @@ import re
 import sys
 from asyncio import sleep
 from contextlib import redirect_stdout
+from contextlib import suppress
 from copy import copy
 from datetime import datetime, timedelta
 from importlib import reload
@@ -214,7 +215,7 @@ class Admin(commands.Cog):
         elif sync_type == 'clear':
             ctx.bot.tree.clear_commands(guild=ctx.guild)
             await ctx.bot.tree.sync(guild=ctx.guild)
-            synced = []
+            synced = ctx.bot.tree.get_commands()
         else:
             ctx.bot.tree.copy_global_to(guild=ctx.guild)
             synced = await ctx.bot.tree.sync(guild=ctx.guild)
@@ -501,10 +502,8 @@ class Admin(commands.Cog):
         embed = discord.Embed(title='Git Pull Changes', color=0x00bbff)
         embed.url = f"https://github.com/{self.bot.git['git_user']}/{self.bot.git['git_repo']}"
 
-        try:
+        with suppress(AttributeError):
             embed.set_thumbnail(url=self.bot.user.avatar.url)  # type: ignore[union-attr]
-        except AttributeError:
-            pass
 
         for field, value in fields.items():
             if value:
@@ -768,7 +767,7 @@ class Admin(commands.Cog):
 
                         # check for attachments and if any, try to convert them to files for sending
                         if len(message.attachments) > 0:
-                            try:
+                            with suppress(discord.HTTPException):
                                 attachments = [
                                     await attachment.to_file()
                                     for attachment in message.attachments
@@ -782,15 +781,10 @@ class Admin(commands.Cog):
                                         message.content += '\n'
                                     message.content += '\n'.join(bad_attachments)
 
-                            except discord.HTTPException:
-                                pass
-
                         # check for embeds and if any, save the first one (shouldn't have multiple embeds)
                         if len(message.embeds) > 0:
-                            try:
+                            with suppress(discord.HTTPException):
                                 embeds = ([embed for embed in message.embeds])[0]
-                            except discord.HTTPException:
-                                pass
 
                         # case 1: attachments or embeds with a non-empty buffer
                         if (attachments or embeds) and buffer != '':

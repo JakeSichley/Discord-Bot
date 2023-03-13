@@ -23,7 +23,24 @@ SOFTWARE.
 """
 
 import dataclasses
-from typing import Tuple
+from typing import Tuple, Optional, Union, Type, Any, get_args, get_origin
+
+
+def expand_optional_types(field_type: Type) -> Union[Type, Tuple[Type, ...]]:
+    """
+    Expands Optional types to their Union form for `isinstance` checks. Ex: Optional[int] -> Union[int, None].
+
+    Parameters:
+        field_type (Type): The dataclass field's type.
+
+    Returns:
+        (Union[Type, Tuple[Type, ...]]): The resulting deconstructed types, if any.
+    """
+
+    if get_origin(field_type) is Union and type(None) in get_args(field_type):
+        return get_args(field_type)
+    else:
+        return field_type
 
 
 @dataclasses.dataclass
@@ -52,8 +69,21 @@ class DatabaseDataclass:
 
         for field in dataclasses.fields(self):
             value = getattr(self, field.name)
-            if not isinstance(value, field.type):
+            if not isinstance(value, expand_optional_types(field.type)):
                 raise ValueError(f'Expected {field.name} to be {field.type}, got {type(value)}')
+
+    def unpack(self) -> Tuple[Any, ...]:
+        """
+        Unpacks the dataclass as a tuple.
+
+        Parameters:
+            None.
+
+        Returns:
+            (Tuple[Any, ...]): The unpacked dataclass.
+        """
+
+        return dataclasses.astuple(self)
 
 
 @dataclasses.dataclass
@@ -107,7 +137,7 @@ class DefaultRole(DatabaseDataclass):
 
     Attributes:
         guild_id (int): The id of the guild.
-        role_id (int): A id of the guild's default role..
+        role_id (int): A id of the guild's default role.
     """
 
     guild_id: int
@@ -160,3 +190,49 @@ class ReactionRole(DatabaseDataclass):
         """
 
         return self.message_id, self.reaction
+
+
+@dataclasses.dataclass()
+class RunescapeAlert(DatabaseDataclass):
+    """
+    A DatabaseDataclass that stores a Runescape Item Alert.
+
+    Attributes:
+        owner_id (int): The alert's owner id.
+        created (int): The time the alert was created.
+        item_id (int): The item id for this alert.
+        current_alerts (int): The current number of times this alert has fired.
+        maximum_alerts (Optional[int]): The maximum number of alerts.
+        frequency (Optional[int]): The frequency this alert should trigger, in seconds.
+        last_alert (Optional[int]): The time of the last alert.
+        initial_low (Optional[int]): The item's instant-sell price at the time this alert was created.
+        initial_high (Optional[int]): The item's instant-buy price at the time this alert was created.
+        target_low (Optional[int]): The target instant-buy price that would trigger this alert.
+        target_high (Optional[int]): The target instant-sell price that would trigger this alert.
+    """
+
+    owner_id: int
+    created: int
+    item_id: int
+    current_alerts: int
+    maximum_alerts: Optional[int]
+    last_alert: Optional[int]
+    frequency: Optional[int]
+    initial_low: Optional[int]
+    initial_high: Optional[int]
+    target_low: Optional[int]
+    target_high: Optional[int]
+
+    def record_alert(self, last_alert_time: int) -> None:
+        """
+        Updates the last alert time and current alert count.
+
+        Parameters:
+            last_alert_time (int) The time the alert was last sent.
+
+        Returns:
+            None.
+        """
+
+        self.current_alerts += 1
+        self.last_alert = last_alert_time

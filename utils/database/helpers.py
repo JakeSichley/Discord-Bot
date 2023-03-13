@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import List, Tuple, Any, Optional, Iterable, Type, TypeVar
+from typing import List, Tuple, Any, Optional, Iterable, Type, TypeVar, Union
 
 import aiosqlite
 from typing_extensions import TypeGuard
@@ -33,7 +33,11 @@ T = TypeVar('T')
 
 
 async def execute_query(
-        database: str, query: str, values: Optional[Tuple[Any, ...]] = None
+        database: str,
+        query: str,
+        values: Optional[Tuple[Any, ...]] = None,
+        *,
+        errors_to_suppress: Optional[Union[Type[aiosqlite.Error], Tuple[Type[aiosqlite.Error], ...]]] = None
 ) -> Optional[int]:
     """
     A method that executes a sqlite3 statement.
@@ -43,6 +47,8 @@ async def execute_query(
         database (str): The name of the bot's database.
         query (str): The statement to execute.
         values (Tuple[Any, ...]): The values to insert into the query.
+        errors_to_suppress (Optional[Union[Type[aiosqlite.Error], Tuple[Type[aiosqlite.Error], ...]]]): Errors that
+            should be suppressed during execution.
 
     Raises:
         aiosqlite.Error.
@@ -53,6 +59,11 @@ async def execute_query(
 
     values = values or tuple()
 
+    if errors_to_suppress is None:
+        errors_to_suppress = tuple()
+    elif isinstance(errors_to_suppress, aiosqlite.Error):
+        errors_to_suppress = (errors_to_suppress,)
+
     try:
         async with aiosqlite.connect(database) as connection:
             affected = await connection.execute(query, values)
@@ -60,7 +71,8 @@ async def execute_query(
             return affected.rowcount
 
     except aiosqlite.Error as error:
-        bot_logger.error(f'Execute Query ("{query}"). {error}.')
+        if not isinstance(error, errors_to_suppress):
+            bot_logger.error(f'Execute Query ("{query}"). {error}.')
         raise error
 
 
@@ -102,7 +114,7 @@ async def typed_retrieve_query(
         database: str, data_type: Type[T], query: str, values: Optional[Tuple[Any, ...]] = None,
 ) -> List[T]:
     """
-    A typed SQLite 'SELECT' query. Attempts to coerced retrieved rows to the specified data type.
+    A typed SQLite 'SELECT' query. Attempts to retrieve and coerce rows to the specified data type.
 
     Examples:
         There's three primary ways to use `typed_retrieve_query`:
@@ -165,7 +177,7 @@ async def typed_retrieve_query(
         aiosqlite.Error.
 
     Returns:
-        (List[Any]): A list of sqlite3 row objects. Can be empty.
+        (List[T]): A list of transformed sqlite3 row objects. Can be empty.
     """
 
     values = values if values else tuple()
@@ -190,9 +202,36 @@ async def typed_retrieve_query(
                 f'Query: {query}\n'
                 f'Params: {values}'
             )
-            pass
 
     return transformed_entries
+
+
+async def typed_retrieve_one_query(
+        database: str, data_type: Type[T], query: str, values: Optional[Tuple[Any, ...]] = None,
+) -> T:
+    """
+    A typed SQLite 'SELECT' query. Attempts to retrieve and coerce a single row to the specified data type.
+
+    Parameters:
+        database (str): The name of the bot's database.
+        data_type (T): The data type to coerce returned rows to.
+        query (str): The statement to execute.
+        values (Tuple[Any, ...]): The values to insert into the query.
+
+    Raises:
+        aiosqlite.Error.
+
+    Returns:
+        (T): A single transformed sqlite3 row object.
+    """
+
+    rows = await typed_retrieve_query(database, data_type, query, values)
+
+    try:
+        return rows[0]
+    except KeyError as e:
+        bot_logger.error(f'Retrieve One Query ("{query}"). {e}.')
+        raise aiosqlite.Error(f'Failed to fetch any rows')
 
 
 class Sqlite3Typing:
@@ -203,7 +242,7 @@ class Sqlite3Typing:
     @staticmethod
     def fetchall(val: Iterable[object]) -> TypeGuard[Iterable[Tuple[Any, ...]]]:
         """
-        A TypeGuard for mypy to assert that `fetchall() -> Iterable[sqlite3.Row]` == Iterable[Tuple[Any, ...]].
+        A TypeGuard for mypy to assert that `fetchall() -> Iterable[sqlite3.Row] == Iterable[Tuple[Any, ...]]`.
 
         Parameters:
             val (Iterable[object]): The sqlite3.Rows to typeguard.
@@ -217,7 +256,7 @@ class Sqlite3Typing:
     @staticmethod
     def fetchone(val: object) -> TypeGuard[Optional[Tuple[Any, ...]]]:
         """
-        A TypeGuard for mypy to assert that `fetchone() -> Optional[sqlite3.Row]` == Optional[Tuple[Any, ...]].
+        A TypeGuard for mypy to assert that `fetchone() -> Optional[sqlite3.Row] == Optional[Tuple[Any, ...]]`.
 
         Parameters:
             val (object): The sqlite3.Row to typeguard.

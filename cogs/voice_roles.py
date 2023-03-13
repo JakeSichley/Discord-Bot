@@ -23,17 +23,17 @@ SOFTWARE.
 """
 
 from asyncio import sleep
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import discord
 from aiosqlite import Error as aiosqliteError
-from cache import ExpiringCache  # type: ignore
 from discord.ext import commands
 
 from dreambot import DreamBot
 from utils.context import Context
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import VoiceRole
+from utils.expiring_dict import ExpiringDict
 from utils.logging_formatter import bot_logger
 from utils.prompts import prompt_user_for_voice_channel, prompt_user_for_role
 from utils.utils import cleanup
@@ -62,7 +62,7 @@ class VoiceRoles(commands.Cog):
         """
 
         self.bot = bot
-        self.cache = ExpiringCache(self.CACHE_TTL)
+        self.cache: ExpiringDict[Tuple[int, int], None] = ExpiringDict(self.CACHE_TTL)
 
     @commands.guild_only()
     @commands.group(name='voicerole', aliases=['vr', 'voiceroles'])
@@ -336,7 +336,8 @@ class VoiceRoles(commands.Cog):
         try:
             await member.edit(roles=updated_roles, reason=reason)
         except discord.HTTPException as e:
-            bot_logger.error(f'Voice Role - Role Edit Error. {e.status}. {e.text}')
+            if not isinstance(e, discord.Forbidden):
+                bot_logger.error(f'Voice Role - Role Edit Error. {e.status}. {e.text}')
 
 
 async def setup(bot: DreamBot) -> None:
