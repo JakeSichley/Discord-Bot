@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from asyncio import sleep
+from asyncio import Event
 from collections import defaultdict
 from contextlib import suppress
 from itertools import chain
@@ -53,8 +53,7 @@ ONE_YEAR = 31_556_926
 
 
 # TODO: Add frequently accessed item_id's (global? user?) for /runescape_item
-# TODO: Testing
-# TODO: Need a view command to view existing alert stats
+# TODO: Autocomplete market values for fields..?
 
 
 class Runescape(commands.GroupCog, group_name='runescape', group_description='Commands for Old School Runescape'):
@@ -92,6 +91,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         self.item_names_to_ids: Dict[str, int] = {}  # [item_name: item_id]
         self.alerts: Dict[int, Dict[int, RunescapeAlert]] = defaultdict(dict)  # [user_id: [item_id: RunescapeAlert]]
         self.backoff = ExponentialBackoff(3600 * 4)
+        self.initial_mapping_data_event: Event = Event()
         self.query_mapping_data.start()
         self.query_market_data.start()
 
@@ -281,6 +281,56 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             await interaction.response.send_message('Successfully updated alert.', ephemeral=True)
             self.alerts[interaction.user.id][item_id] = alert
 
+    @alert_subgroup.command(name='view', description='Views an existing item alert.')
+    @app_commands.describe(item_id='The item to view an alert for')
+    @app_commands.rename(item_id='item')
+    async def view_alert(self, interaction: Interaction, item_id: int) -> None:
+        """
+        Views an existing market alert for a Runescape item.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            item_id (int): The internal id of the item.
+
+        Returns:
+            None.
+        """
+
+        if item_id not in self.alerts[interaction.user.id] or item_id not in self.item_data:
+            await interaction.response.send_message("I'm unable to find that alert.", ephemeral=True)
+            return
+
+        alert = self.alerts[interaction.user.id][item_id]
+        item = self.item_data[item_id]
+
+        embed = discord.Embed(
+            title=item.name,
+            description=item.examine,
+            color=0x971212,
+            url=f'https://oldschool.runescape.wiki/w/{item.name.replace(" ", "_")}'
+        )
+        embed.set_thumbnail(url=f'https://static.runelite.net/cache/item/icon/{item_id}.png')
+
+        embed.add_field(name='Alert Buy Price', value=f'{alert.target_high:,} coins' if alert.target_high else 'N/A')
+        embed.add_field(name='Alert Sell Price', value=f'{alert.target_low:,} coins' if alert.target_low else 'N/A')
+        embed.add_field(name='​', value='​')
+        embed.add_field(name='Initial Buy Price', value=f'{alert.initial_low:,} coins' if alert.initial_low else 'N/A')
+        embed.add_field(
+            name='Initial Sell Price', value=f'{alert.initial_high:,} coins' if alert.initial_high else 'N/A'
+        )
+        embed.add_field(name='​', value='​')
+        embed.add_field(name='Alert Frequency', value=f'{alert.frequency} seconds' if alert.frequency else 'None')
+        # TODO: format alert frequency to not be raw seconds
+        embed.add_field(name='Last Alert', value=format_unix_dt(alert.last_alert, "R") if alert.last_alert else 'Never')
+        embed.add_field(name='​', value='​')
+        embed.add_field(name='Current Alerts', value=str(alert.current_alerts) if alert.current_alerts else '0')
+        embed.add_field(name='Maximum Alerts', value=str(alert.maximum_alerts) if alert.maximum_alerts else 'None')
+        embed.add_field(name='​', value='​')
+
+        embed.set_footer(text='Please report any issues to my owner!')
+
+        await interaction.response.send_message(embed=embed)
+
     @alert_subgroup.command(name='delete', description='Deletes an existing item alert.')
     @app_commands.describe(item_id='The item to delete alerts for')
     @app_commands.rename(item_id='item')
@@ -343,31 +393,16 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         )
         embed.set_thumbnail(url=f'https://static.runelite.net/cache/item/icon/{item_id}.png')
 
-        buy_price = f'{item.high:,} coins' if item.high else 'N/A'
-        embed.add_field(name='Buy Price', value=buy_price)
-
-        sell_price = f'{item.low:,} coins' if item.low else 'N/A'
-        embed.add_field(name='Sell Price', value=sell_price)
-
-        limit = f'{item.limit:,}' if item.limit else 'N/A'
-        embed.add_field(name='Buy Limit', value=limit)
-
-        buy_time = format_unix_dt(item.highTime, 'R') if item.highTime else 'N/A'
-        embed.add_field(name='Buy Time', value=buy_time)
-
-        sell_time = format_unix_dt(item.lowTime, 'R') if item.lowTime else 'N/A'
-        embed.add_field(name='Sell Time', value=sell_time)
-
+        embed.add_field(name='Buy Price', value=f'{item.high:,} coins' if item.high else 'N/A')
+        embed.add_field(name='Sell Price', value=f'{item.low:,} coins' if item.low else 'N/A')
+        embed.add_field(name='Buy Limit', value=f'{item.limit:,}' if item.limit else 'N/A')
+        embed.add_field(name='Buy Time', value=format_unix_dt(item.highTime, 'R') if item.highTime else 'N/A')
+        embed.add_field(name='Sell Time', value=format_unix_dt(item.lowTime, 'R') if item.lowTime else 'N/A')
         embed.add_field(name='​', value='​')
-
-        high_alch = f'{item.highalch:,} coins' if item.highalch else 'N/A'
-        embed.add_field(name='High Alch', value=high_alch)
-
-        low_alch = f'{item.lowalch:,} coins' if item.lowalch else 'N/A'
-        embed.add_field(name='Low Alch', value=low_alch)
-
-        value = f'{item.value:,} coins' if item.value else 'N/A'
-        embed.add_field(name='Value', value=value)
+        embed.add_field(name='High Alch', value=f'{item.highalch:,} coins' if item.highalch else 'N/A')
+        embed.add_field(name='Low Alch', value=f'{item.lowalch:,} coins' if item.lowalch else 'N/A')
+        embed.add_field(name='Value', value=f'{item.value:,} coins' if item.value else 'N/A')
+        embed.set_footer(text='Please report any issues to my owner!')
 
         embed.set_footer(text='Please report any issues to my owner!')
 
@@ -375,6 +410,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
     # noinspection PyUnusedLocal
     @edit_alert.autocomplete('item_id')
+    @view_alert.autocomplete('item_id')
     @delete_alert.autocomplete('item_id')
     async def runescape_alert_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
@@ -467,6 +503,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             bot_logger.error(f'OSRS Mapping Query Unhandled Exception: {type(e)} - {e}')
             await self.bot.report_exception(e)
 
+        else:
+            self.initial_mapping_data_event.set()
+
     @tasks.loop(seconds=MARKET_QUERY_INTERVAL)
     async def query_market_data(self) -> None:
         """
@@ -508,9 +547,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             await self.check_alerts()
 
     @query_market_data.before_loop
-    async def market_data_delay(self) -> None:
+    async def wait_for_item_data(self) -> None:
         """
-        Delays fetching market data for 3 seconds to allow for item data to be fetched first.
+        Waits to fetch market data until the initial item data has been fetched.
 
         Parameters:
             None.
@@ -519,7 +558,8 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             None.
         """
 
-        await sleep(3)
+        await self.initial_mapping_data_event.wait()
+        await self.bot.wait_until_ready()
 
     async def check_alerts(self) -> None:
         """
