@@ -444,6 +444,8 @@ class ActionBitMenu(menus.Menu):
         """
 
         super().__init__(timeout=300, delete_message_after=True, clear_reactions_after=True)
+        self.ctx: Context
+        self.bot: DreamBot
         self.embed = build_actions_embed(actions)
         self.bits = bits
         self.condition = condition
@@ -578,6 +580,9 @@ class ActionBitMenu(menus.Menu):
         Returns:
             None.
         """
+
+        if self.ctx.guild is None:
+            return
 
         await execute_query(
             self.bot.database,
