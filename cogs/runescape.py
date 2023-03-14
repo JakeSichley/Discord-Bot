@@ -735,7 +735,7 @@ async def record_alert(database: str, user_id: int, item_id: int, last_alert_tim
         last_alert_time (int): The time of the last alert.
 
     Returns:
-        (Optional[Tag]).
+        None.
     """
 
     try:
