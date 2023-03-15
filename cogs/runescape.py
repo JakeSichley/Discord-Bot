@@ -38,6 +38,8 @@ from discord.app_commands import Choice, Transform, Range
 from discord.ext import commands, tasks
 from discord.utils import utcnow
 
+from humanfriendly import format_timespan
+
 from dreambot import DreamBot
 from utils.database.helpers import execute_query, typed_retrieve_query, typed_retrieve_one_query
 from utils.database.table_dataclasses import RunescapeAlert
@@ -360,8 +362,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             name='Initial Sell Price', value=f'{alert.initial_high:,} coins' if alert.initial_high else 'N/A'
         )
         embed.add_field(name='​', value='​')
-        embed.add_field(name='Alert Frequency', value=f'{alert.frequency} seconds' if alert.frequency else 'None')
-        # TODO: format alert frequency to not be raw seconds
+        embed.add_field(name='Alert Frequency', value=format_timespan(alert.frequency) if alert.frequency else 'None')
         embed.add_field(name='Last Alert', value=format_unix_dt(alert.last_alert, "R") if alert.last_alert else 'Never')
         embed.add_field(name='​', value='​')
         embed.add_field(name='Current Alerts', value=str(alert.current_alerts) if alert.current_alerts else '0')
