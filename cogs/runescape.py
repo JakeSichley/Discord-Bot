@@ -231,7 +231,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             await interaction.response.send_message('Successfully created alert.', ephemeral=True)
             self.alerts[interaction.user.id][item_id] = alert
 
-    @alert_subgroup.command(name='edit', description='Edit an existing item alert. Use "-1" to remove a value.')
+    @alert_subgroup.command(
+        name='edit', description='Edit an existing item alert. You do not have to use autocomplete options.'
+    )
     @app_commands.describe(
         item_id='The item to edit alerts for',
         low_price='Optional: Trigger an alert if the instant buy price goes below this',
@@ -462,8 +464,6 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
     @add_alert.autocomplete('low_price')
     @add_alert.autocomplete('high_price')
-    @edit_alert.autocomplete('low_price')
-    @edit_alert.autocomplete('high_price')
     async def runescape_item_market_price_autocomplete(self, interaction, current: str) -> List[Choice]:
         """
         Autocompletes item market prices for price parameters.
@@ -489,6 +489,64 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         if interaction.namespace.high_price == current and item.high is not None:
             return [Choice(name=f'Current Market High: {item.high:,} coins', value=str(item.high))]
+
+        return [Choice(name=current, value=current)] if current else []
+
+    @edit_alert.autocomplete('low_price')
+    @edit_alert.autocomplete('high_price')
+    @edit_alert.autocomplete('alert_frequency')
+    @edit_alert.autocomplete('maximum_alerts')
+    async def runescape_edit_item_autocomplete(self, interaction, current: str) -> List[Choice]:
+        """
+        Autocompletes parameters for the edit command, which also allows for sentinel values.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            current (str): The user's current input.
+
+        Returns:
+            (List[Choice]): A list of relevant Choices for the current input.
+        """
+
+        item_id = interaction.namespace.item
+
+        if item_id not in self.item_data or item_id not in self.alerts[interaction.user.id]:
+            return []
+
+        choices = [Choice(name=current, value=current)] if current else []
+        sentinel_choice = Choice(name='Remove Existing Value', value='-1')
+
+        item = self.item_data[interaction.namespace.item]
+        alert = self.alerts[interaction.user.id][item_id]
+
+        # this technically breaks if the user types the exact same value for high and low
+        # this isn't allowed with how alerts work, but is an edge case none-the-less
+
+        if interaction.namespace.low_price == current and item.low is not None:
+            choices.append(Choice(name=f'Current Market Low: {item.low:,} coins', value=str(item.low)))
+
+            if alert.target_low is not None:
+                choices.append(sentinel_choice)
+
+            return choices
+
+        if interaction.namespace.high_price == current and item.high is not None:
+            choices.append(Choice(name=f'Current Market High: {item.high:,} coins', value=str(item.high)))
+
+            if alert.target_high is not None:
+                choices.append(sentinel_choice)
+
+            return choices
+
+        if interaction.namespace.alert_frequency == current and alert.frequency is not None:
+            choices.append(sentinel_choice)
+
+            return choices
+
+        if interaction.namespace.maximum_alerts == current and alert.maximum_alerts is not None:
+            choices.append(sentinel_choice)
+
+            return choices
 
         return []
 
