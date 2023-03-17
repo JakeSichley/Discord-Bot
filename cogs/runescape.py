@@ -52,9 +52,13 @@ from utils.utils import format_unix_dt, generate_autocomplete_choices
 FIVE_MINUTES = 300
 ONE_YEAR = 31_556_926
 
+SENTINEL_CHOICE = Choice(name='Remove Existing Value', value='-1')
+
 
 # TODO: Add frequently accessed item_id's (global? user?) for /runescape_item
 
+# autocomplete namespaces result in a lot of duplicated code
+# noinspection DuplicatedCode
 class Runescape(commands.GroupCog, group_name='runescape', group_description='Commands for Old School Runescape'):
     """
     A Cogs class that contains Old School Runescape commands.
@@ -113,6 +117,10 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         for alert in alerts:
             self.alerts[alert.owner_id][alert.item_id] = alert
+
+    """
+    MARK: - App Commands
+    """
 
     @app_commands.command(name='item', description='Returns basic data and market information for a given item')
     @app_commands.describe(item_id='The item to retrieve data for')
@@ -408,11 +416,15 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
             await interaction.response.send_message('Successfully deleted alert.', ephemeral=True)
 
+    """
+    MARK: - Autocomplete Methods
+    """
+
     # noinspection PyUnusedLocal
     @edit_alert.autocomplete('item_id')
     @view_alert.autocomplete('item_id')
     @delete_alert.autocomplete('item_id')
-    async def runescape_alert_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def existing_alert_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
         Autocompletes item names to item id's for alert commands from a subset of item's with existing alerts.
 
@@ -442,7 +454,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     # noinspection PyUnusedLocal
     @runescape_item.autocomplete('item_id')
     @add_alert.autocomplete('item_id')
-    async def runescape_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
         Autocompletes item names to item id's for the alert.add and item commands.
 
@@ -463,8 +475,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         )
 
     @add_alert.autocomplete('low_price')
-    @add_alert.autocomplete('high_price')
-    async def runescape_item_market_price_autocomplete(self, interaction, current: str) -> List[Choice]:
+    async def item_market_low_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
         Autocompletes item market prices for price parameters.
 
@@ -476,27 +487,51 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             (List[Choice]): A list of relevant Choices for the current input.
         """
 
+        choices = []
+
         if interaction.namespace.item not in self.item_data:
-            return []
+            return choices
 
         item = self.item_data[interaction.namespace.item]
 
-        # this technically breaks if the user types the exact same value for high and low
-        # this isn't allowed with how alerts work, but is an edge case none-the-less
-
         if interaction.namespace.low_price == current and item.low is not None:
-            return [Choice(name=f'Current Market Low: {item.low:,} coins', value=str(item.low))]
+            choices.append(Choice(name=f'Current Market Low: {item.low:,} coins', value=str(item.low)))
+
+        if current:
+            choices.append(Choice(name=current, value=current))
+
+        return choices
+
+    @add_alert.autocomplete('high_price')
+    async def item_market_high_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+        """
+        Autocompletes item market prices for price parameters.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            current (str): The user's current input.
+
+        Returns:
+            (List[Choice]): A list of relevant Choices for the current input.
+        """
+
+        choices = []
+
+        if interaction.namespace.item not in self.item_data:
+            return choices
+
+        item = self.item_data[interaction.namespace.item]
 
         if interaction.namespace.high_price == current and item.high is not None:
             return [Choice(name=f'Current Market High: {item.high:,} coins', value=str(item.high))]
 
-        return [Choice(name=current, value=current)] if current else []
+        if current:
+            choices.append(Choice(name=current, value=current))
+
+        return choices
 
     @edit_alert.autocomplete('low_price')
-    @edit_alert.autocomplete('high_price')
-    @edit_alert.autocomplete('alert_frequency')
-    @edit_alert.autocomplete('maximum_alerts')
-    async def runescape_edit_item_autocomplete(self, interaction, current: str) -> List[Choice]:
+    async def edit_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
         Autocompletes parameters for the edit command, which also allows for sentinel values.
 
@@ -508,47 +543,120 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             (List[Choice]): A list of relevant Choices for the current input.
         """
 
+        choices = []
+
         item_id = interaction.namespace.item
 
         if item_id not in self.item_data or item_id not in self.alerts[interaction.user.id]:
-            return []
-
-        choices = [Choice(name=current, value=current)] if current else []
-        sentinel_choice = Choice(name='Remove Existing Value', value='-1')
+            return choices
 
         item = self.item_data[interaction.namespace.item]
         alert = self.alerts[interaction.user.id][item_id]
 
-        # this technically breaks if the user types the exact same value for high and low
-        # this isn't allowed with how alerts work, but is an edge case none-the-less
-
-        if interaction.namespace.low_price == current and item.low is not None:
+        if item.low is not None:
             choices.append(Choice(name=f'Current Market Low: {item.low:,} coins', value=str(item.low)))
 
-            if alert.target_low is not None:
-                choices.append(sentinel_choice)
+        if alert.target_low is not None:
+            choices.append(SENTINEL_CHOICE)
 
+        if current:
+            choices.append(Choice(name=current, value=current))
+
+        return choices
+
+    @edit_alert.autocomplete('high_price')
+    async def edit_item_high_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+        """
+        Autocompletes parameters for the edit command, which also allows for sentinel values.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            current (str): The user's current input.
+
+        Returns:
+            (List[Choice]): A list of relevant Choices for the current input.
+        """
+
+        choices = []
+
+        item_id = interaction.namespace.item
+
+        if item_id not in self.item_data or item_id not in self.alerts[interaction.user.id]:
             return choices
 
-        if interaction.namespace.high_price == current and item.high is not None:
+        item = self.item_data[interaction.namespace.item]
+        alert = self.alerts[interaction.user.id][item_id]
+
+        if item.high is not None:
             choices.append(Choice(name=f'Current Market High: {item.high:,} coins', value=str(item.high)))
 
-            if alert.target_high is not None:
-                choices.append(sentinel_choice)
+        if alert.target_high is not None:
+            choices.append(SENTINEL_CHOICE)
 
+        if current:
+            choices.append(Choice(name=current, value=current))
+
+        return choices
+
+    @edit_alert.autocomplete('alert_frequency')
+    async def edit_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+        """
+        Autocompletes parameters for the edit command, which also allows for sentinel values.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            current (str): The user's current input.
+
+        Returns:
+            (List[Choice]): A list of relevant Choices for the current input.
+        """
+
+        choices = []
+
+        if interaction.namespace.item not in self.alerts[interaction.user.id]:
             return choices
 
-        if interaction.namespace.alert_frequency == current and alert.frequency is not None:
-            choices.append(sentinel_choice)
+        alert = self.alerts[interaction.user.id][interaction.namespace.item]
 
+        if alert.frequency is not None:
+            choices.append(SENTINEL_CHOICE)
+
+        if current:
+            choices.append(Choice(name=current, value=current))
+
+        return choices
+
+    @edit_alert.autocomplete('maximum_alerts')
+    async def edit_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+        """
+        Autocompletes parameters for the edit command, which also allows for sentinel values.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            current (str): The user's current input.
+
+        Returns:
+            (List[Choice]): A list of relevant Choices for the current input.
+        """
+
+        choices = []
+
+        if interaction.namespace.item not in self.alerts[interaction.user.id]:
             return choices
 
-        if interaction.namespace.maximum_alerts == current and alert.maximum_alerts is not None:
-            choices.append(sentinel_choice)
+        alert = self.alerts[interaction.user.id][interaction.namespace.item]
 
-            return choices
+        if alert.maximum_alerts is not None:
+            choices.append(SENTINEL_CHOICE)
 
-        return []
+        if current:
+            choices.append(Choice(name=current, value=current))
+
+        return choices
+
+    """
+    MARK: - Tasks
+    """
 
     @tasks.loop(seconds=MAPPING_QUERY_INTERVAL)
     async def query_mapping_data(self) -> None:
@@ -648,6 +756,10 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         await self.initial_mapping_data_event.wait()
         await self.bot.wait_until_ready()
+
+    """
+    MARK: - Alert Helpers
+    """
 
     async def check_alerts(self) -> None:
         """
