@@ -51,6 +51,8 @@ from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 FIVE_MINUTES = 300
 ONE_YEAR = 31_556_926
+MIN_ALERTS = 1
+MAX_ALERTS = 2147483647
 
 SENTINEL_CHOICE = Choice(name='Remove Existing Value', value='-1')
 
@@ -182,7 +184,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             low_price: Optional[Transform[int, RunescapeNumberTransformer]] = None,
             high_price: Optional[Transform[int, RunescapeNumberTransformer]] = None,
             alert_frequency: Optional[Transform[int, HumanDatetimeDuration(FIVE_MINUTES, ONE_YEAR)]] = None,
-            maximum_alerts: Optional[Range[int, 1, 9000]] = None  # just over a month of max frequency alerts
+            maximum_alerts: Optional[Range[int, MIN_ALERTS, MAX_ALERTS]] = None
     ) -> None:
         """
         Creates a market alert for a Runescape item.
@@ -259,7 +261,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             alert_frequency: Optional[
                 Transform[int, HumanDatetimeDuration(FIVE_MINUTES, ONE_YEAR, sentinel_value='-1')]
             ] = None,
-            maximum_alerts: Optional[Transform[int, SentinelRange(1, 9000, sentinel_value=-1)]] = None
+            maximum_alerts: Optional[Transform[int, SentinelRange(MIN_ALERTS, MAX_ALERTS, sentinel_value=-1)]] = None
     ) -> None:
         """
         Edits an existing market alert for a Runescape item.
@@ -487,7 +489,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             (List[Choice]): A list of relevant Choices for the current input.
         """
 
-        choices = []
+        choices: List[Choice] = []
 
         if interaction.namespace.item not in self.item_data:
             return choices
@@ -515,7 +517,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             (List[Choice]): A list of relevant Choices for the current input.
         """
 
-        choices = []
+        choices: List[Choice] = []
 
         if interaction.namespace.item not in self.item_data:
             return choices
@@ -543,7 +545,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             (List[Choice]): A list of relevant Choices for the current input.
         """
 
-        choices = []
+        choices: List[Choice] = []
 
         item_id = interaction.namespace.item
 
@@ -577,7 +579,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             (List[Choice]): A list of relevant Choices for the current input.
         """
 
-        choices = []
+        choices: List[Choice] = []
 
         item_id = interaction.namespace.item
 
@@ -598,8 +600,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         return choices
 
+    @add_alert.autocomplete('alert_frequency')
     @edit_alert.autocomplete('alert_frequency')
-    async def edit_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def edit_item_alert_frequency_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
         Autocompletes parameters for the edit command, which also allows for sentinel values.
 
@@ -611,14 +614,17 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             (List[Choice]): A list of relevant Choices for the current input.
         """
 
-        choices = []
-
         if interaction.namespace.item not in self.alerts[interaction.user.id]:
-            return choices
+            return []
+
+        choices = [
+            Choice(name='Maximum Frequency: 5 minutes', value=str(FIVE_MINUTES)),
+            Choice(name='Minimum Frequency: 1 year', value=str(ONE_YEAR))
+        ]
 
         alert = self.alerts[interaction.user.id][interaction.namespace.item]
 
-        if alert.frequency is not None:
+        if alert.frequency is not None and interaction.command is not None and 'edit' in interaction.command.name:
             choices.append(SENTINEL_CHOICE)
 
         if current:
@@ -626,8 +632,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         return choices
 
+    @add_alert.autocomplete('maximum_alerts')
     @edit_alert.autocomplete('maximum_alerts')
-    async def edit_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def edit_item_maximum_alerts_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
         Autocompletes parameters for the edit command, which also allows for sentinel values.
 
@@ -639,14 +646,17 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             (List[Choice]): A list of relevant Choices for the current input.
         """
 
-        choices = []
-
         if interaction.namespace.item not in self.alerts[interaction.user.id]:
-            return choices
+            return []
+
+        choices = [
+            Choice(name=f'Minimum Alerts: {MIN_ALERTS:,} alert', value=str(MIN_ALERTS)),
+            Choice(name=f'Maximum Alerts: {MAX_ALERTS:,} alerts', value=str(MAX_ALERTS))
+        ]
 
         alert = self.alerts[interaction.user.id][interaction.namespace.item]
 
-        if alert.maximum_alerts is not None:
+        if alert.maximum_alerts is not None and interaction.command is not None and 'edit' in interaction.command.name:
             choices.append(SENTINEL_CHOICE)
 
         if current:
