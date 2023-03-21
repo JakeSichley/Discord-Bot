@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+# 2.10.1
+### Features
+* Full autocomplete support for `Runescape` commands
+
 # 2.10.0
 ### Features
 * Add Grand Exchange Market Alerts to `Runescape` Cog
