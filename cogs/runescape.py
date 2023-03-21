@@ -38,6 +38,8 @@ from discord.app_commands import Choice, Transform, Range
 from discord.ext import commands, tasks
 from discord.utils import utcnow
 
+from humanfriendly import format_timespan
+
 from dreambot import DreamBot
 from utils.database.helpers import execute_query, typed_retrieve_query, typed_retrieve_one_query
 from utils.database.table_dataclasses import RunescapeAlert
@@ -48,14 +50,17 @@ from utils.transformers import RunescapeNumberTransformer, HumanDatetimeDuration
 from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 FIVE_MINUTES = 300
-ONE_DAY = 86_400
 ONE_YEAR = 31_556_926
+MIN_ALERTS = 1
+MAX_ALERTS = 2147483647
+
+SENTINEL_CHOICE = Choice(name='Remove Existing Value', value='-1')
 
 
 # TODO: Add frequently accessed item_id's (global? user?) for /runescape_item
-# TODO: Autocomplete market values for fields..?
 
-
+# autocomplete namespaces result in a lot of duplicated code
+# noinspection DuplicatedCode
 class Runescape(commands.GroupCog, group_name='runescape', group_description='Commands for Old School Runescape'):
     """
     A Cogs class that contains Old School Runescape commands.
@@ -115,6 +120,54 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         for alert in alerts:
             self.alerts[alert.owner_id][alert.item_id] = alert
 
+    """
+    MARK: - App Commands
+    """
+
+    @app_commands.command(name='item', description='Returns basic data and market information for a given item')
+    @app_commands.describe(item_id='The item to retrieve data for')
+    @app_commands.rename(item_id='item')
+    async def runescape_item(self, interaction: Interaction, item_id: int) -> None:
+        """
+        Retrieves market and basic data about an Old School Runescape item.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            item_id (int): The internal id of the item.
+
+        Returns:
+            None.
+        """
+
+        if item_id not in self.item_data:
+            await interaction.response.send_message("I'm unable to find that item.", ephemeral=True)
+            return
+
+        item = self.item_data[item_id]
+
+        embed = discord.Embed(
+            title=item.name,
+            description=item.examine,
+            color=0x971212,
+            url=f'https://oldschool.runescape.wiki/w/{item.name.replace(" ", "_")}'
+        )
+        embed.set_thumbnail(url=f'https://static.runelite.net/cache/item/icon/{item_id}.png')
+
+        embed.add_field(name='Buy Price', value=f'{item.high:,} coins' if item.high else 'N/A')
+        embed.add_field(name='Sell Price', value=f'{item.low:,} coins' if item.low else 'N/A')
+        embed.add_field(name='Buy Limit', value=f'{item.limit:,}' if item.limit else 'N/A')
+        embed.add_field(name='Buy Time', value=format_unix_dt(item.highTime, 'R') if item.highTime else 'N/A')
+        embed.add_field(name='Sell Time', value=format_unix_dt(item.lowTime, 'R') if item.lowTime else 'N/A')
+        embed.add_field(name='​', value='​')
+        embed.add_field(name='High Alch', value=f'{item.highalch:,} coins' if item.highalch else 'N/A')
+        embed.add_field(name='Low Alch', value=f'{item.lowalch:,} coins' if item.lowalch else 'N/A')
+        embed.add_field(name='Value', value=f'{item.value:,} coins' if item.value else 'N/A')
+        embed.set_footer(text='Please report any issues to my owner!')
+
+        embed.set_footer(text='Please report any issues to my owner!')
+
+        await interaction.response.send_message(embed=embed)
+
     @alert_subgroup.command(name='add', description='Registers an item for market alerts')
     @app_commands.describe(
         item_id='The item to receive alerts for',
@@ -131,7 +184,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             low_price: Optional[Transform[int, RunescapeNumberTransformer]] = None,
             high_price: Optional[Transform[int, RunescapeNumberTransformer]] = None,
             alert_frequency: Optional[Transform[int, HumanDatetimeDuration(FIVE_MINUTES, ONE_YEAR)]] = None,
-            maximum_alerts: Optional[Range[int, 1, 9000]] = None  # just over a month of max frequency alerts
+            maximum_alerts: Optional[Range[int, MIN_ALERTS, MAX_ALERTS]] = None
     ) -> None:
         """
         Creates a market alert for a Runescape item.
@@ -188,7 +241,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             await interaction.response.send_message('Successfully created alert.', ephemeral=True)
             self.alerts[interaction.user.id][item_id] = alert
 
-    @alert_subgroup.command(name='edit', description='Edit an existing item alert. Use "-1" to remove a value.')
+    @alert_subgroup.command(
+        name='edit', description='Edit an existing item alert. You do not have to use autocomplete options.'
+    )
     @app_commands.describe(
         item_id='The item to edit alerts for',
         low_price='Optional: Trigger an alert if the instant buy price goes below this',
@@ -206,7 +261,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             alert_frequency: Optional[
                 Transform[int, HumanDatetimeDuration(FIVE_MINUTES, ONE_YEAR, sentinel_value='-1')]
             ] = None,
-            maximum_alerts: Optional[Transform[int, SentinelRange(1, 9000, sentinel_value=-1)]] = None
+            maximum_alerts: Optional[Transform[int, SentinelRange(MIN_ALERTS, MAX_ALERTS, sentinel_value=-1)]] = None
     ) -> None:
         """
         Edits an existing market alert for a Runescape item.
@@ -319,8 +374,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             name='Initial Sell Price', value=f'{alert.initial_high:,} coins' if alert.initial_high else 'N/A'
         )
         embed.add_field(name='​', value='​')
-        embed.add_field(name='Alert Frequency', value=f'{alert.frequency} seconds' if alert.frequency else 'None')
-        # TODO: format alert frequency to not be raw seconds
+        embed.add_field(name='Alert Frequency', value=format_timespan(alert.frequency) if alert.frequency else 'None')
         embed.add_field(name='Last Alert', value=format_unix_dt(alert.last_alert, "R") if alert.last_alert else 'Never')
         embed.add_field(name='​', value='​')
         embed.add_field(name='Current Alerts', value=str(alert.current_alerts) if alert.current_alerts else '0')
@@ -364,57 +418,17 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
             await interaction.response.send_message('Successfully deleted alert.', ephemeral=True)
 
-    @app_commands.command(name='item', description='Returns basic data and market information for a given item')
-    @app_commands.describe(item_id='The item to retrieve data for')
-    @app_commands.rename(item_id='item')
-    async def runescape_item(self, interaction: Interaction, item_id: int) -> None:
-        """
-        Retrieves market and basic data about an Old School Runescape item.
-
-        Parameters:
-            interaction (Interaction): The invocation interaction.
-            item_id (int): The internal id of the item.
-
-        Returns:
-            None.
-        """
-
-        if item_id not in self.item_data:
-            await interaction.response.send_message("I'm unable to find that item.", ephemeral=True)
-            return
-
-        item = self.item_data[item_id]
-
-        embed = discord.Embed(
-            title=item.name,
-            description=item.examine,
-            color=0x971212,
-            url=f'https://oldschool.runescape.wiki/w/{item.name.replace(" ", "_")}'
-        )
-        embed.set_thumbnail(url=f'https://static.runelite.net/cache/item/icon/{item_id}.png')
-
-        embed.add_field(name='Buy Price', value=f'{item.high:,} coins' if item.high else 'N/A')
-        embed.add_field(name='Sell Price', value=f'{item.low:,} coins' if item.low else 'N/A')
-        embed.add_field(name='Buy Limit', value=f'{item.limit:,}' if item.limit else 'N/A')
-        embed.add_field(name='Buy Time', value=format_unix_dt(item.highTime, 'R') if item.highTime else 'N/A')
-        embed.add_field(name='Sell Time', value=format_unix_dt(item.lowTime, 'R') if item.lowTime else 'N/A')
-        embed.add_field(name='​', value='​')
-        embed.add_field(name='High Alch', value=f'{item.highalch:,} coins' if item.highalch else 'N/A')
-        embed.add_field(name='Low Alch', value=f'{item.lowalch:,} coins' if item.lowalch else 'N/A')
-        embed.add_field(name='Value', value=f'{item.value:,} coins' if item.value else 'N/A')
-        embed.set_footer(text='Please report any issues to my owner!')
-
-        embed.set_footer(text='Please report any issues to my owner!')
-
-        await interaction.response.send_message(embed=embed)
+    """
+    MARK: - Autocomplete Methods
+    """
 
     # noinspection PyUnusedLocal
     @edit_alert.autocomplete('item_id')
     @view_alert.autocomplete('item_id')
     @delete_alert.autocomplete('item_id')
-    async def runescape_alert_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def existing_alert_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
-        Retrieves market and basic data about an Old School Runescape item.
+        Autocompletes item names to item id's for alert commands from a subset of item's with existing alerts.
 
         Parameters:
             interaction (Interaction): The invocation interaction.
@@ -442,9 +456,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     # noinspection PyUnusedLocal
     @runescape_item.autocomplete('item_id')
     @add_alert.autocomplete('item_id')
-    async def runescape_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
-        Retrieves market and basic data about an Old School Runescape item.
+        Autocompletes item names to item id's for the alert.add and item commands.
 
         Parameters:
             interaction (Interaction): The invocation interaction.
@@ -461,6 +475,198 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             current,
             [(self.item_data[key].name, key) for key in self.item_data.keys()]
         )
+
+    @add_alert.autocomplete('low_price')
+    async def item_market_low_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+        """
+        Autocompletes item market prices for price parameters.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            current (str): The user's current input.
+
+        Returns:
+            (List[Choice]): A list of relevant Choices for the current input.
+        """
+
+        choices: List[Choice] = []
+
+        if interaction.namespace.item not in self.item_data:
+            return choices
+
+        item = self.item_data[interaction.namespace.item]
+
+        if interaction.namespace.low_price == current and item.low is not None:
+            choices.append(Choice(name=f'Current Market Low: {item.low:,} coins', value=str(item.low)))
+
+        if current:
+            choices.append(Choice(name=current, value=current))
+
+        return choices
+
+    @add_alert.autocomplete('high_price')
+    async def item_market_high_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+        """
+        Autocompletes item market prices for price parameters.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            current (str): The user's current input.
+
+        Returns:
+            (List[Choice]): A list of relevant Choices for the current input.
+        """
+
+        choices: List[Choice] = []
+
+        if interaction.namespace.item not in self.item_data:
+            return choices
+
+        item = self.item_data[interaction.namespace.item]
+
+        if interaction.namespace.high_price == current and item.high is not None:
+            return [Choice(name=f'Current Market High: {item.high:,} coins', value=str(item.high))]
+
+        if current:
+            choices.append(Choice(name=current, value=current))
+
+        return choices
+
+    @edit_alert.autocomplete('low_price')
+    async def edit_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+        """
+        Autocompletes parameters for the edit command, which also allows for sentinel values.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            current (str): The user's current input.
+
+        Returns:
+            (List[Choice]): A list of relevant Choices for the current input.
+        """
+
+        choices: List[Choice] = []
+
+        item_id = interaction.namespace.item
+
+        if item_id not in self.item_data or item_id not in self.alerts[interaction.user.id]:
+            return choices
+
+        item = self.item_data[interaction.namespace.item]
+        alert = self.alerts[interaction.user.id][item_id]
+
+        if item.low is not None:
+            choices.append(Choice(name=f'Current Market Low: {item.low:,} coins', value=str(item.low)))
+
+        if alert.target_low is not None:
+            choices.append(SENTINEL_CHOICE)
+
+        if current:
+            choices.append(Choice(name=current, value=current))
+
+        return choices
+
+    @edit_alert.autocomplete('high_price')
+    async def edit_item_high_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+        """
+        Autocompletes parameters for the edit command, which also allows for sentinel values.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            current (str): The user's current input.
+
+        Returns:
+            (List[Choice]): A list of relevant Choices for the current input.
+        """
+
+        choices: List[Choice] = []
+
+        item_id = interaction.namespace.item
+
+        if item_id not in self.item_data or item_id not in self.alerts[interaction.user.id]:
+            return choices
+
+        item = self.item_data[interaction.namespace.item]
+        alert = self.alerts[interaction.user.id][item_id]
+
+        if item.high is not None:
+            choices.append(Choice(name=f'Current Market High: {item.high:,} coins', value=str(item.high)))
+
+        if alert.target_high is not None:
+            choices.append(SENTINEL_CHOICE)
+
+        if current:
+            choices.append(Choice(name=current, value=current))
+
+        return choices
+
+    @add_alert.autocomplete('alert_frequency')
+    @edit_alert.autocomplete('alert_frequency')
+    async def edit_item_alert_frequency_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+        """
+        Autocompletes parameters for the edit command, which also allows for sentinel values.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            current (str): The user's current input.
+
+        Returns:
+            (List[Choice]): A list of relevant Choices for the current input.
+        """
+
+        if interaction.namespace.item not in self.alerts[interaction.user.id]:
+            return []
+
+        choices = [
+            Choice(name='Maximum Frequency: 5 minutes', value=str(FIVE_MINUTES)),
+            Choice(name='Minimum Frequency: 1 year', value=str(ONE_YEAR))
+        ]
+
+        alert = self.alerts[interaction.user.id][interaction.namespace.item]
+
+        if alert.frequency is not None and interaction.command is not None and 'edit' in interaction.command.name:
+            choices.append(SENTINEL_CHOICE)
+
+        if current:
+            choices.append(Choice(name=current, value=current))
+
+        return choices
+
+    @add_alert.autocomplete('maximum_alerts')
+    @edit_alert.autocomplete('maximum_alerts')
+    async def edit_item_maximum_alerts_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+        """
+        Autocompletes parameters for the edit command, which also allows for sentinel values.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            current (str): The user's current input.
+
+        Returns:
+            (List[Choice]): A list of relevant Choices for the current input.
+        """
+
+        if interaction.namespace.item not in self.alerts[interaction.user.id]:
+            return []
+
+        choices = [
+            Choice(name=f'Minimum Alerts: {MIN_ALERTS:,} alert', value=str(MIN_ALERTS)),
+            Choice(name=f'Maximum Alerts: {MAX_ALERTS:,} alerts', value=str(MAX_ALERTS))
+        ]
+
+        alert = self.alerts[interaction.user.id][interaction.namespace.item]
+
+        if alert.maximum_alerts is not None and interaction.command is not None and 'edit' in interaction.command.name:
+            choices.append(SENTINEL_CHOICE)
+
+        if current:
+            choices.append(Choice(name=current, value=current))
+
+        return choices
+
+    """
+    MARK: - Tasks
+    """
 
     @tasks.loop(seconds=MAPPING_QUERY_INTERVAL)
     async def query_mapping_data(self) -> None:
@@ -560,6 +766,10 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         await self.initial_mapping_data_event.wait()
         await self.bot.wait_until_ready()
+
+    """
+    MARK: - Alert Helpers
+    """
 
     async def check_alerts(self) -> None:
         """
@@ -735,7 +945,7 @@ async def record_alert(database: str, user_id: int, item_id: int, last_alert_tim
         last_alert_time (int): The time of the last alert.
 
     Returns:
-        (Optional[Tag]).
+        None.
     """
 
     try:
