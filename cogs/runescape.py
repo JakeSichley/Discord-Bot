@@ -476,7 +476,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         )
 
     @add_alert.autocomplete('low_price')
-    async def item_market_low_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def add_item_market_low_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
         Autocompletes item market prices for price parameters.
 
@@ -504,7 +504,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         return choices
 
     @add_alert.autocomplete('high_price')
-    async def item_market_high_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def add_item_market_high_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
         Autocompletes item market prices for price parameters.
 
