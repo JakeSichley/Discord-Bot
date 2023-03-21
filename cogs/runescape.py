@@ -971,7 +971,7 @@ def percentage_change(start: int, final: int) -> str:
     """
 
     change = (final - start) / start
-    return '{0:.2f}%'.format(change * 100)
+    return '{0:,.2f}%'.format(change * 100)
 
 
 async def setup(bot: DreamBot) -> None:
