@@ -37,7 +37,6 @@ from discord import app_commands, Interaction
 from discord.app_commands import Choice, Transform, Range
 from discord.ext import commands, tasks
 from discord.utils import utcnow
-
 from humanfriendly import format_timespan
 
 from dreambot import DreamBot
@@ -61,6 +60,7 @@ SENTINEL_CHOICE = Choice(name='Remove Existing Value', value='-1')
 
 # autocomplete namespaces result in a lot of duplicated code
 # noinspection DuplicatedCode
+# noinspection PyUnusedLocal
 class Runescape(commands.GroupCog, group_name='runescape', group_description='Commands for Old School Runescape'):
     """
     A Cogs class that contains Old School Runescape commands.
@@ -422,7 +422,6 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     MARK: - Autocomplete Methods
     """
 
-    # noinspection PyUnusedLocal
     @edit_alert.autocomplete('item_id')
     @view_alert.autocomplete('item_id')
     @delete_alert.autocomplete('item_id')
@@ -477,7 +476,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         )
 
     @add_alert.autocomplete('low_price')
-    async def item_market_low_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def add_item_market_low_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
         Autocompletes item market prices for price parameters.
 
@@ -505,7 +504,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         return choices
 
     @add_alert.autocomplete('high_price')
-    async def item_market_high_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def add_item_market_high_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
         Autocompletes item market prices for price parameters.
 
@@ -525,7 +524,53 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         item = self.item_data[interaction.namespace.item]
 
         if interaction.namespace.high_price == current and item.high is not None:
-            return [Choice(name=f'Current Market High: {item.high:,} coins', value=str(item.high))]
+            choices.append(Choice(name=f'Current Market High: {item.high:,} coins', value=str(item.high)))
+
+        if current:
+            choices.append(Choice(name=current, value=current))
+
+        return choices
+
+    @add_alert.autocomplete('alert_frequency')
+    async def add_item_alert_frequency_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+        """
+        Autocompletes parameters for the edit command, which also allows for sentinel values.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            current (str): The user's current input.
+
+        Returns:
+            (List[Choice]): A list of relevant Choices for the current input.
+        """
+
+        choices = [
+            Choice(name='Maximum Frequency: 5 minutes', value=f'{FIVE_MINUTES}s'),
+            Choice(name='Minimum Frequency: 1 year', value=f'{ONE_YEAR}s')
+        ]
+
+        if current:
+            choices.append(Choice(name=current, value=current))
+
+        return choices
+
+    @add_alert.autocomplete('maximum_alerts')
+    async def add_item_maximum_alerts_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+        """
+        Autocompletes parameters for the edit command, which also allows for sentinel values.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            current (str): The user's current input.
+
+        Returns:
+            (List[Choice]): A list of relevant Choices for the current input.
+        """
+
+        choices = [
+            Choice(name=f'Minimum Alerts: {MIN_ALERTS:,} alert', value=str(MIN_ALERTS)),
+            Choice(name=f'Maximum Alerts: {MAX_ALERTS:,} alerts', value=str(MAX_ALERTS))
+        ]
 
         if current:
             choices.append(Choice(name=current, value=current))
@@ -600,7 +645,6 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         return choices
 
-    @add_alert.autocomplete('alert_frequency')
     @edit_alert.autocomplete('alert_frequency')
     async def edit_item_alert_frequency_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
@@ -624,7 +668,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         alert = self.alerts[interaction.user.id][interaction.namespace.item]
 
-        if alert.frequency is not None and interaction.command is not None and 'edit' in interaction.command.name:
+        if alert.frequency is not None:
             choices.append(SENTINEL_CHOICE)
 
         if current:
@@ -632,7 +676,6 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         return choices
 
-    @add_alert.autocomplete('maximum_alerts')
     @edit_alert.autocomplete('maximum_alerts')
     async def edit_item_maximum_alerts_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
@@ -656,7 +699,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         alert = self.alerts[interaction.user.id][interaction.namespace.item]
 
-        if alert.maximum_alerts is not None and interaction.command is not None and 'edit' in interaction.command.name:
+        if alert.maximum_alerts is not None:
             choices.append(SENTINEL_CHOICE)
 
         if current:
@@ -971,7 +1014,7 @@ def percentage_change(start: int, final: int) -> str:
     """
 
     change = (final - start) / start
-    return '{0:.2f}%'.format(change * 100)
+    return '{0:,.2f}%'.format(change * 100)
 
 
 async def setup(bot: DreamBot) -> None:
