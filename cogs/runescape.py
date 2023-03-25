@@ -53,8 +53,6 @@ ONE_YEAR = 31_556_926
 MIN_ALERTS = 1
 MAX_ALERTS = 2147483647
 
-# SENTINEL_CHOICE = Choice(name='Remove Existing Value', value='-1')
-
 
 # TODO: Add frequently accessed item_id's (global? user?) for /runescape_item
 
@@ -499,7 +497,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(Choice(name=f'Current Market Low: {item.low:,} coins', value=str(item.low)))
 
         if current:
-            choices.append(Choice(name=f'New Value: {current}', value=current))
+            choices.insert(0, Choice(name=f'New Value: {current}', value=current))
 
         return choices
 
@@ -527,7 +525,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(Choice(name=f'Current Market High: {item.high:,} coins', value=str(item.high)))
 
         if current:
-            choices.append(Choice(name=f'New Value: {current}', value=current))
+            choices.insert(0, Choice(name=f'New Value: {current}', value=current))
 
         return choices
 
@@ -550,7 +548,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         ]
 
         if current:
-            choices.append(Choice(name=f'New Value: {current}', value=current))
+            choices.insert(0, Choice(name=f'New Value: {current}', value=current))
 
         return choices
 
@@ -573,7 +571,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         ]
 
         if current:
-            choices.append(Choice(name=f'New Value: {current}', value=current))
+            choices.insert(0, Choice(name=f'New Value: {current}', value=current))
 
         return choices
 
@@ -607,7 +605,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(generate_sentinel_choice(f'{alert.target_low:,} coins'))
 
         if current:
-            choices.append(Choice(name=f'New Value: {current}', value=current))
+            choices.insert(0, Choice(name=f'New Value: {current}', value=current))
 
         return choices
 
@@ -641,7 +639,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(generate_sentinel_choice(f'{alert.target_high:,} coins'))
 
         if current:
-            choices.append(Choice(name=f'New Value: {current}', value=current))
+            choices.insert(0, Choice(name=f'New Value: {current}', value=current))
 
         return choices
 
@@ -672,7 +670,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(generate_sentinel_choice(format_timespan(alert.frequency)))
 
         if current:
-            choices.append(Choice(name=f'New Value: {current}', value=current))
+            choices.insert(0, Choice(name=f'New Value: {current}', value=current))
 
         return choices
 
@@ -703,7 +701,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(generate_sentinel_choice(f'{MAX_ALERTS:,} alerts'))
 
         if current:
-            choices.append(Choice(name=f'New Value: {current}', value=current))
+            choices.insert(0, Choice(name=f'New Value: {current}', value=current))
 
         return choices
 
