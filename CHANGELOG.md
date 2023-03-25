@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+# 2.10.3
+### Features
+* Improve descriptors for default and current parameters for `Runescape` commands
+
 # 2.10.2
 ### Issues
 * Fix autocomplete for duplicate parameters in `Runescape` Cog
