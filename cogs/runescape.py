@@ -499,7 +499,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(Choice(name=f'Current Market Low: {item.low:,} coins', value=str(item.low)))
 
         if current:
-            choices.append(Choice(name=current, value=current))
+            choices.append(Choice(name=f'New Value: {current}', value=current))
 
         return choices
 
@@ -527,7 +527,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(Choice(name=f'Current Market High: {item.high:,} coins', value=str(item.high)))
 
         if current:
-            choices.append(Choice(name=current, value=current))
+            choices.append(Choice(name=f'New Value: {current}', value=current))
 
         return choices
 
@@ -550,7 +550,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         ]
 
         if current:
-            choices.append(Choice(name=current, value=current))
+            choices.append(Choice(name=f'New Value: {current}', value=current))
 
         return choices
 
@@ -573,7 +573,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         ]
 
         if current:
-            choices.append(Choice(name=current, value=current))
+            choices.append(Choice(name=f'New Value: {current}', value=current))
 
         return choices
 
@@ -607,7 +607,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(generate_sentinel_choice(f'{alert.target_low:,} coins'))
 
         if current:
-            choices.append(Choice(name=current, value=current))
+            choices.append(Choice(name=f'New Value: {current}', value=current))
 
         return choices
 
@@ -641,7 +641,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(generate_sentinel_choice(f'{alert.target_high:,} coins'))
 
         if current:
-            choices.append(Choice(name=current, value=current))
+            choices.append(Choice(name=f'New Value: {current}', value=current))
 
         return choices
 
@@ -672,7 +672,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(generate_sentinel_choice(format_timespan(alert.frequency)))
 
         if current:
-            choices.append(Choice(name=current, value=current))
+            choices.append(Choice(name=f'New Value: {current}', value=current))
 
         return choices
 
@@ -703,7 +703,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(generate_sentinel_choice(f'{MAX_ALERTS:,} alerts'))
 
         if current:
-            choices.append(Choice(name=current, value=current))
+            choices.append(Choice(name=f'New Value: {current}', value=current))
 
         return choices
 
