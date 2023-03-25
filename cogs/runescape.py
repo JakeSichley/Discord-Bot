@@ -53,7 +53,7 @@ ONE_YEAR = 31_556_926
 MIN_ALERTS = 1
 MAX_ALERTS = 2147483647
 
-SENTINEL_CHOICE = Choice(name='Remove Existing Value', value='-1')
+# SENTINEL_CHOICE = Choice(name='Remove Existing Value', value='-1')
 
 
 # TODO: Add frequently accessed item_id's (global? user?) for /runescape_item
@@ -604,7 +604,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(Choice(name=f'Current Market Low: {item.low:,} coins', value=str(item.low)))
 
         if alert.target_low is not None:
-            choices.append(SENTINEL_CHOICE)
+            choices.append(generate_sentinel_choice(f'{alert.target_low:,} coins'))
 
         if current:
             choices.append(Choice(name=current, value=current))
@@ -638,7 +638,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(Choice(name=f'Current Market High: {item.high:,} coins', value=str(item.high)))
 
         if alert.target_high is not None:
-            choices.append(SENTINEL_CHOICE)
+            choices.append(generate_sentinel_choice(f'{alert.target_high:,} coins'))
 
         if current:
             choices.append(Choice(name=current, value=current))
@@ -669,7 +669,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         alert = self.alerts[interaction.user.id][interaction.namespace.item]
 
         if alert.frequency is not None:
-            choices.append(SENTINEL_CHOICE)
+            choices.append(generate_sentinel_choice(format_timespan(alert.frequency)))
 
         if current:
             choices.append(Choice(name=current, value=current))
@@ -700,7 +700,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         alert = self.alerts[interaction.user.id][interaction.namespace.item]
 
         if alert.maximum_alerts is not None:
-            choices.append(SENTINEL_CHOICE)
+            choices.append(generate_sentinel_choice(f'{MAX_ALERTS:,} alerts'))
 
         if current:
             choices.append(Choice(name=current, value=current))
@@ -999,6 +999,20 @@ async def record_alert(database: str, user_id: int, item_id: int, last_alert_tim
         )
     except aiosqliteError:
         pass
+
+
+def generate_sentinel_choice(current_value: str) -> Choice:
+    """
+    Generates a sentinel value, appending with the current parameter's value.
+
+    Parameters:
+        current_value (str): The parameter's current value.
+
+    Returns:
+        (Choice): The sentinel choice.
+    """
+
+    return Choice(name=f'Remove Existing Value: {current_value}', value='-1')
 
 
 def percentage_change(start: int, final: int) -> str:
