@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.10.4
+### Internal
+* Bump discord.py version to 2.3.1
+
 # 2.10.3
 ### Features
 * Improve descriptors for default and current parameters for `Runescape` commands
