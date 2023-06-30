@@ -796,6 +796,9 @@ class ReactionRolePagination:
             None.
         """
 
+        if self.embed is None:
+            return
+
         if not self.message:
             self.message = await self.ctx.send(embed=self.embed)
         else:
