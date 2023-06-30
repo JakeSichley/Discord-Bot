@@ -82,7 +82,7 @@ class Exceptions(commands.Cog):
 
         ignored = (
             commands.CommandNotFound, commands.UserInputError, commands.CheckFailure, ClientResponseError,
-            commands.CommandOnCooldown
+            commands.CommandOnCooldown, commands.DisabledCommand
         )
 
         if not isinstance(error, ignored):

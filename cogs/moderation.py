@@ -155,7 +155,7 @@ class Moderation(commands.Cog):
 
     @commands.has_guild_permissions(manage_roles=True)
     @commands.bot_has_guild_permissions(manage_roles=True)
-    @commands.command(name='bulkadd')
+    @commands.command(name='bulkadd', enabled=False)
     async def bulk_add_roles(self, ctx: Context, role: discord.Role, *, members: str) -> None:
         """
         Special Note:
