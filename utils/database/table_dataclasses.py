@@ -24,6 +24,7 @@ SOFTWARE.
 
 import dataclasses
 from typing import Tuple, Optional, Union, Type, Any, get_args, get_origin
+from utils.guild_feature import GuildFeature
 
 
 def expand_optional_types(field_type: Type) -> Union[Type, Tuple[Type, ...]]:
@@ -137,7 +138,7 @@ class DefaultRole(DatabaseDataclass):
 
     Attributes:
         guild_id (int): The id of the guild.
-        role_id (int): A id of the guild's default role.
+        role_id (int): The id of the guild's default role.
     """
 
     guild_id: int
@@ -236,3 +237,30 @@ class RunescapeAlert(DatabaseDataclass):
 
         self.current_alerts += 1
         self.last_alert = last_alert_time
+
+
+@dataclasses.dataclass
+class GuildFeatures(DatabaseDataclass):
+    """
+    A DatabaseDataclass that stores a guild's feature information.
+
+    Attributes:
+        guild_id (int): The id of the guild.
+        features (int): The features of the guild.
+    """
+
+    guild_id: int
+    features: int
+
+    def has_feature(self, feature: GuildFeature) -> bool:
+        """
+        Checks whether the feature is active for this guild.
+
+        Parameters:
+            feature (GuildFeature): The feature to check for.
+
+        Returns:
+            bool.
+        """
+
+        return bool(self.features & feature)
