@@ -28,7 +28,7 @@ from discord.ext import commands
 from dreambot import DreamBot
 from utils.database.helpers import typed_retrieve_query
 from utils.logging_formatter import bot_logger
-from utils.database import table_dataclasses
+from utils.database import table_dataclasses as TableDC
 from discord import app_commands, Interaction
 from discord.app_commands import Choice, Transform, Range
 from collections import defaultdict
@@ -59,7 +59,7 @@ class GuildFeatures(commands.Cog):
         """
 
         self.bot = bot
-        self.features: dict[int, table_dataclasses.GuildFeatures] = dict()
+        self.features: dict[int, TableDC.GuildFeatures] = dict()
 
     async def cog_load(self) -> None:
         """
@@ -74,7 +74,7 @@ class GuildFeatures(commands.Cog):
 
         features = await typed_retrieve_query(
             self.bot.database,
-            table_dataclasses.GuildFeatures,
+            TableDC.GuildFeatures,
             'SELECT * FROM GUILD_FEATURES'
         )
 
@@ -85,7 +85,9 @@ class GuildFeatures(commands.Cog):
     MARK: - App Commands
     """
 
-    @feature_subgroup.command(name='status', description='Checks feature statuses for the current guild')
+    @feature_subgroup.command(  # type: ignore[arg-type]
+        name='status', description='Checks feature statuses for the current guild'
+    )
     async def check_guild_features(self, interaction: Interaction) -> None:
         """
         Retrieves feature statuses for the current guild.
@@ -103,7 +105,7 @@ class GuildFeatures(commands.Cog):
         try:
             features = self.features[interaction.guild_id]
         except KeyError:
-            features = table_dataclasses.GuildFeatures(interaction.guild_id, 0)
+            features = TableDC.GuildFeatures(interaction.guild_id, 0)
 
         embed = discord.Embed(
             title='Guild Features',
