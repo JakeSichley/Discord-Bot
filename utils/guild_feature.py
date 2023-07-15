@@ -22,10 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from enum import IntFlag, auto
+from enum import IntEnum, auto
+from typing import Optional
 
 
-class GuildFeature(IntFlag):
+class GuildFeature(IntEnum):
     """
     An Enum class that represents variables toggleable features for a guild.
     """
@@ -45,23 +46,26 @@ def has_guild_feature(features: int, feature: GuildFeature) -> bool:
         bool.
     """
 
-    return bool(features & feature)
+    return bool(features & (1 << feature.value - 1))
 
 
-def set_guild_feature(features: int, feature: GuildFeature, value: bool) -> int:
+def set_guild_feature(features: int, feature: GuildFeature, value: Optional[bool]) -> int:
     """
     Sets a feature status for this guild.
 
     Parameters:
         features (int): The features the guild currently has.
         feature (GuildFeature): The feature whose status to modify.
-        value (bool): The status of the feature.
+        value (Optional[bool]): The status of the feature.
 
     Returns:
         int.
     """
 
+    if value is None:
+        return features
+
     if value:
-        return features | feature
+        return features | (1 << feature.value - 1)
     else:
-        return features ^ feature
+        return features & ~(1 << feature.value - 1)
