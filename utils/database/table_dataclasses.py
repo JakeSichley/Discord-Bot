@@ -88,6 +88,29 @@ class DatabaseDataclass:
 
 
 @dataclasses.dataclass
+class Tag(DatabaseDataclass):
+    """
+    A dataclass that represents the internal structure of a Tag.
+
+    Attributes:
+        name (str): The name of the tag.
+        content (str): The tag's content.
+        guild_id (int): The guild this tag belongs to.
+        owner_id (int): The user that created this tag.
+        uses (int): The number of times this tag has been used.
+        created (int): The time this tag was created.
+
+    """
+
+    name: str
+    content: str
+    guild_id: int
+    owner_id: int
+    uses: int
+    created: int
+
+
+@dataclasses.dataclass
 class PartialLoggingAction(DatabaseDataclass):
     """
     A DatabaseDataclass that stores the logging channel_id and bits for a guild.
