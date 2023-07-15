@@ -236,7 +236,7 @@ class Tags(commands.Cog):
         tag = await fetch_tag(self.bot.database, ctx.guild.id, tag_name)
 
         if tag:
-            await ctx.send(tag.content)
+            await ctx.send(tag.content, allowed_mentions=discord.AllowedMentions.none())
             await increment_tag_count(self.bot.database, tag_name, ctx.guild.id)
             return
 
@@ -320,7 +320,7 @@ class Tags(commands.Cog):
         tag = await fetch_tag(self.bot.database, ctx.guild.id)
 
         if tag:
-            await ctx.safe_send(f'**Tag `{tag.name}`**\n{tag.content}')
+            await ctx.safe_send(f'**Tag `{tag.name}`**\n{tag.content}', allowed_mentions=discord.AllowedMentions.none())
         else:
             await ctx.send(f'No tags exist for this guild.')
 
