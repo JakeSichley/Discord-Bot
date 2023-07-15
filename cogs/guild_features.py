@@ -22,17 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from typing import Optional
+
 import discord
+from aiosqlite import Error as aiosqliteError
+from discord import app_commands, Interaction
 from discord.ext import commands
 
 from dreambot import DreamBot
-from utils.database.helpers import typed_retrieve_query
+from utils.database.helpers import execute_query
+from utils.guild_feature import GuildFeature, has_guild_feature, set_guild_feature
 from utils.logging_formatter import bot_logger
-from utils.database import table_dataclasses as TableDC
-from discord import app_commands, Interaction
-from discord.app_commands import Choice, Transform, Range
-from collections import defaultdict
-from utils.guild_feature import GuildFeature
 
 
 class GuildFeatures(commands.Cog):
@@ -59,27 +59,6 @@ class GuildFeatures(commands.Cog):
         """
 
         self.bot = bot
-        self.features: dict[int, TableDC.GuildFeatures] = dict()
-
-    async def cog_load(self) -> None:
-        """
-        A special method that acts as a cog local post-invoke hook.
-
-        Parameters:
-            None.
-
-        Returns:
-            None.
-        """
-
-        features = await typed_retrieve_query(
-            self.bot.database,
-            TableDC.GuildFeatures,
-            'SELECT * FROM GUILD_FEATURES'
-        )
-
-        for feature in features:
-            self.features[feature.guild_id] = feature
 
     """
     MARK: - App Commands
@@ -102,10 +81,7 @@ class GuildFeatures(commands.Cog):
         assert interaction.guild_id is not None
         assert interaction.guild is not None
 
-        try:
-            features = self.features[interaction.guild_id]
-        except KeyError:
-            features = TableDC.GuildFeatures(interaction.guild_id, 0)
+        features = self.bot.cache.guild_features.get(interaction.guild_id, 0)
 
         embed = discord.Embed(
             title='Guild Features',
@@ -114,86 +90,59 @@ class GuildFeatures(commands.Cog):
         )
 
         for feature in GuildFeature:
-            embed.add_field(name=f'{feature.name}', value='Enabled' if features.has_feature(feature) else 'Disabled')
+            embed.add_field(
+                name=f'{feature.name}', value='Enabled' if has_guild_feature(features, feature) else 'Disabled'
+            )
 
         embed.set_footer(text='Please report any issues to my owner!')
 
         await interaction.response.send_message(embed=embed)
 
-    """"
-    @alert_subgroup.command(name='add', description='Registers an item for market alerts')
+    @feature_subgroup.command(name='modify', description='Modify feature statuses for the current guild')
     @app_commands.describe(
-        item_id='The item to receive alerts for',
-        low_price='Optional: Trigger an alert if the instant buy price goes below this',
-        high_price='Optional: Trigger an alert if the instant sell price goes above this',
-        alert_frequency='Optional: How frequently you should be notified that the price has exceeded a target.',
-        maximum_alerts='Optional: Remove the alert after receiving this many notifications'
+        direct_tag_invoke='Optional: Whether to send tags automatically without needing the tag command',
     )
-    @app_commands.rename(item_id='item')
-    async def add_alert(
+    async def modify_guild_features(
             self,
             interaction: Interaction,
-            item_id: int,
-            low_price: Optional[Transform[int, RunescapeNumberTransformer]] = None,
-            high_price: Optional[Transform[int, RunescapeNumberTransformer]] = None,
-            alert_frequency: Optional[Transform[int, HumanDatetimeDuration(FIVE_MINUTES, ONE_YEAR)]] = None,
-            maximum_alerts: Optional[Range[int, MIN_ALERTS, MAX_ALERTS]] = None
+            direct_tag_invoke: Optional[bool] = None,
     ) -> None:
-        ""
-        Creates a market alert for a Runescape item.
+        """
+        Modifies feature statuses for the current guild.
 
         Parameters:
             interaction (Interaction): The invocation interaction.
-            item_id (int): The internal id of the item.
-            low_price (Optional[int]): Trigger an alert if the item's instant buy price goes below this.
-            high_price (Optional[int]): Trigger an alert if the item's instant sell price goes above this.
-            alert_frequency (Optional[int]): How frequently an alert should be triggered (in seconds).
-            maximum_alerts (Optional[int]): The maximum number of alerts to trigger before deleting this alert.
+            direct_tag_invoke (Optional[bool]): Whether tags are able to be directly invoked in this guild.
 
         Returns:
             None.
-        ""
+        """
 
-        alert = RunescapeAlert(
-            interaction.user.id,
-            int(utcnow().timestamp()),
-            item_id,
-            0,
-            maximum_alerts,
-            None,
-            alert_frequency,
-            self.item_data[item_id].low,
-            self.item_data[item_id].high,
-            low_price,
-            high_price
-        )
+        feature_mapping = {
+            GuildFeature.TAG_DIRECT_INVOKE: direct_tag_invoke
+        }
 
-        if item_id not in self.item_data:
-            await interaction.response.send_message("I'm unable to find that item.", ephemeral=True)
+        if all(x is None for x in feature_mapping.values()):
+            await interaction.response.send_message('No guild features were modified.', ephemeral=True)
             return
 
-        if low_price is not None and high_price is not None and low_price >= high_price:
-            await interaction.response.send_message(
-                'You cannot have a low price greater than or equal to the high price.', ephemeral=True
-            )
-            return
+        features = self.bot.cache.guild_features.get(interaction.guild_id, 0)
+
+        for feature, value in feature_mapping.items():
+            features = set_guild_feature(features, feature, value)
 
         try:
             await execute_query(
                 self.bot.database,
-                'INSERT INTO RUNESCAPE_ALERTS VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                alert.unpack(),
-                errors_to_suppress=aiosqlite.IntegrityError
+                'INSERT INTO GUILD_FEATURES (GUILD_ID, FEATURES) VALUES (?, ?) '
+                'ON CONFLICT(GUILD_ID) DO UPDATE SET FEATURES=EXCLUDED.FEATURES',
+                (interaction.guild_id, features)
             )
-        except aiosqliteError as e:
-            if isinstance(e, IntegrityError):
-                await interaction.response.send_message('You already have an alert for this item.', ephemeral=True)
-            else:
-                await interaction.response.send_message('Failed to create an alert for this item.', ephemeral=True)
+        except aiosqliteError:
+            await interaction.response.send_message('Failed to modify guild features as requested.', ephemeral=True)
         else:
-            await interaction.response.send_message('Successfully created alert.', ephemeral=True)
-            self.alerts[interaction.user.id][item_id] = alert
-        """
+            await interaction.response.send_message('Successfully modified guild features.', ephemeral=True)
+            self.bot.cache.guild_features[interaction.guild_id] = features
 
 
 async def setup(bot: DreamBot) -> None:
