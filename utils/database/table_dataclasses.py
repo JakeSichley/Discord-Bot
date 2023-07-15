@@ -46,6 +46,7 @@ def expand_optional_types(field_type: Type) -> Union[Type, Tuple[Type, ...]]:
 
 @dataclasses.dataclass
 class DatabaseDataclass:
+    # TODO: Python >= 3.10 -> Convert to Slots
     """
     A `dataclass` used to enforce type-safety for type-specified database retrievals.
 
@@ -274,16 +275,3 @@ class GuildFeatures(DatabaseDataclass):
 
     guild_id: int
     features: int
-
-    def has_feature(self, feature: GuildFeature) -> bool:
-        """
-        Checks whether the feature is active for this guild.
-
-        Parameters:
-            feature (GuildFeature): The feature to check for.
-
-        Returns:
-            bool.
-        """
-
-        return bool(self.features & feature)

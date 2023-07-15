@@ -31,3 +31,37 @@ class GuildFeature(IntFlag):
     """
 
     TAG_DIRECT_INVOKE = auto()
+
+
+def has_guild_feature(features: int, feature: GuildFeature) -> bool:
+    """
+    Checks whether the feature is active for this guild.
+
+    Parameters:
+        features (int): The features the guild currently has.
+        feature (GuildFeature): The feature to check for.
+
+    Returns:
+        bool.
+    """
+
+    return bool(features & feature)
+
+
+def set_guild_feature(features: int, feature: GuildFeature, value: bool) -> int:
+    """
+    Sets a feature status for this guild.
+
+    Parameters:
+        features (int): The features the guild currently has.
+        feature (GuildFeature): The feature whose status to modify.
+        value (bool): The status of the feature.
+
+    Returns:
+        int.
+    """
+
+    if value:
+        return features | feature
+    else:
+        return features ^ feature
