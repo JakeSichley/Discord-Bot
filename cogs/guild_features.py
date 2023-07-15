@@ -98,7 +98,9 @@ class GuildFeatures(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
-    @feature_subgroup.command(name='modify', description='Modify feature statuses for the current guild')
+    @feature_subgroup.command(  # type: ignore[arg-type]
+        name='modify', description='Modify feature statuses for the current guild'
+    )
     @app_commands.describe(
         direct_tag_invoke='Optional: Whether to send tags automatically without needing the tag command',
     )
@@ -117,6 +119,8 @@ class GuildFeatures(commands.Cog):
         Returns:
             None.
         """
+
+        assert interaction.guild_id is not None
 
         feature_mapping = {
             GuildFeature.TAG_DIRECT_INVOKE: direct_tag_invoke
