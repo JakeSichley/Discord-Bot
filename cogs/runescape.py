@@ -171,9 +171,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     @alert_subgroup.command(name='add', description='Registers an item for market alerts')  # type: ignore[arg-type]
     @app_commands.describe(
         item_id='The item to receive alerts for',
-        low_price='Optional: Trigger an alert if the instant buy price goes below this',
-        high_price='Optional: Trigger an alert if the instant sell price goes above this',
-        alert_frequency='Optional: How frequently you should be notified that the price has exceeded a target.',
+        low_price='Optional: Trigger an alert if the instant buy price goes below this value',
+        high_price='Optional: Trigger an alert if the instant sell price goes above this value',
+        alert_frequency='Optional: How frequently you should be notified that the price has exceeded a target',
         maximum_alerts='Optional: Remove the alert after receiving this many notifications'
     )
     @app_commands.rename(item_id='item')
@@ -246,10 +246,10 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     )
     @app_commands.describe(
         item_id='The item to edit alerts for',
-        low_price='Optional: Trigger an alert if the instant buy price goes below this',
-        high_price='Optional: Trigger an alert if the instant sell price goes above this',
-        alert_frequency='Optional: How frequently you should be notified that the price has exceeded a target.',
-        maximum_alerts='Optional: Remove the alert after receiving this many notifications. Resets existing count.'
+        low_price='Optional: Trigger an alert if the instant buy price goes below this value',
+        high_price='Optional: Trigger an alert if the instant sell price goes above this value',
+        alert_frequency='Optional: How frequently you should be notified that the price has exceeded a target',
+        maximum_alerts='Optional: Remove the alert after receiving this many notifications. Resets existing count'
     )
     @app_commands.rename(item_id='item')
     async def edit_alert(
