@@ -31,7 +31,7 @@ from aiosqlite import Error as aiosqliteError
 from utils.database import table_dataclasses as TableDC
 from utils.database.helpers import typed_retrieve_query
 from utils.logging_formatter import bot_logger
-
+from utils.guild_feature import GuildFeature, has_guild_feature
 
 class TableCache:
     """
@@ -208,3 +208,19 @@ class TableCache:
             self.guild_features = current_guild_features
         else:
             bot_logger.info('Completed Guild Features retrieval.')
+
+    def guild_feature_enabled(self, guild_id: int, feature: GuildFeature) -> bool:
+        """
+        Checks the GuildFeatures cache for a feature's status for a specific guild.
+
+        Parameters:
+            guild_id (int): The id of the guild.
+            feature (GuildFeature): The feature to check.
+
+        Returns:
+            (bool).
+        """
+
+        features = self.guild_features.get(guild_id, 0)
+
+        return has_guild_feature(features, feature)
