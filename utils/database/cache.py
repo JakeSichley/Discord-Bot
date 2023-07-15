@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019-2022 Jake Sichley
+Copyright (c) 2019-2023 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -30,8 +30,9 @@ from aiosqlite import Error as aiosqliteError
 
 from utils.database import table_dataclasses as TableDC
 from utils.database.helpers import typed_retrieve_query
-from utils.logging_formatter import bot_logger
 from utils.guild_feature import GuildFeature, has_guild_feature
+from utils.logging_formatter import bot_logger
+
 
 class TableCache:
     """

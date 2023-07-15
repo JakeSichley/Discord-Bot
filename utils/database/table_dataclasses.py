@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019-2022 Jake Sichley
+Copyright (c) 2019-2023 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,6 @@ SOFTWARE.
 
 import dataclasses
 from typing import Tuple, Optional, Union, Type, Any, get_args, get_origin
-from utils.guild_feature import GuildFeature
 
 
 def expand_optional_types(field_type: Type) -> Union[Type, Tuple[Type, ...]]:
