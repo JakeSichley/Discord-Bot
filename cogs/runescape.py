@@ -122,7 +122,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     MARK: - App Commands
     """
 
-    @app_commands.command(name='item', description='Returns basic data and market information for a given item')
+    @app_commands.command(  # type: ignore[arg-type]
+        name='item', description='Returns basic data and market information for a given item'
+    )
     @app_commands.describe(item_id='The item to retrieve data for')
     @app_commands.rename(item_id='item')
     async def runescape_item(self, interaction: Interaction, item_id: int) -> None:
@@ -166,7 +168,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         await interaction.response.send_message(embed=embed)
 
-    @alert_subgroup.command(name='add', description='Registers an item for market alerts')
+    @alert_subgroup.command(name='add', description='Registers an item for market alerts')  # type: ignore[arg-type]
     @app_commands.describe(
         item_id='The item to receive alerts for',
         low_price='Optional: Trigger an alert if the instant buy price goes below this',
@@ -239,7 +241,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             await interaction.response.send_message('Successfully created alert.', ephemeral=True)
             self.alerts[interaction.user.id][item_id] = alert
 
-    @alert_subgroup.command(
+    @alert_subgroup.command(  # type: ignore[arg-type]
         name='edit', description='Edit an existing item alert. You do not have to use autocomplete options.'
     )
     @app_commands.describe(
@@ -334,7 +336,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             await interaction.response.send_message('Successfully updated alert.', ephemeral=True)
             self.alerts[interaction.user.id][item_id] = alert
 
-    @alert_subgroup.command(name='view', description='Views an existing item alert.')
+    @alert_subgroup.command(name='view', description='Views an existing item alert.')  # type: ignore[arg-type]
     @app_commands.describe(item_id='The item to view an alert for')
     @app_commands.rename(item_id='item')
     async def view_alert(self, interaction: Interaction, item_id: int) -> None:
@@ -383,7 +385,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         await interaction.response.send_message(embed=embed)
 
-    @alert_subgroup.command(name='delete', description='Deletes an existing item alert.')
+    @alert_subgroup.command(name='delete', description='Deletes an existing item alert.')  # type: ignore[arg-type]
     @app_commands.describe(item_id='The item to delete alerts for')
     @app_commands.rename(item_id='item')
     async def delete_alert(self, interaction: Interaction, item_id: int) -> None:
