@@ -73,7 +73,7 @@ class DDO(commands.Cog):
 
         self.bot = bot
         self.api_data = {server: None for server in self.SERVERS}
-        self.backoff = ExponentialBackoff(3600 * 4)
+        self.backoff = ExponentialBackoff(60 * 60 * 4)
         self.query_ddo_audit.start()
 
     @commands.command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')

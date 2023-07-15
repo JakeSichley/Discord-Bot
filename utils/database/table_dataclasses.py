@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019-2022 Jake Sichley
+Copyright (c) 2019-2023 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -45,6 +45,7 @@ def expand_optional_types(field_type: Type) -> Union[Type, Tuple[Type, ...]]:
 
 @dataclasses.dataclass
 class DatabaseDataclass:
+    # TODO: Python >= 3.10 -> Convert to Slots
     """
     A `dataclass` used to enforce type-safety for type-specified database retrievals.
 
@@ -84,6 +85,29 @@ class DatabaseDataclass:
         """
 
         return dataclasses.astuple(self)
+
+
+@dataclasses.dataclass
+class Tag(DatabaseDataclass):
+    """
+    A dataclass that represents the internal structure of a Tag.
+
+    Attributes:
+        name (str): The name of the tag.
+        content (str): The tag's content.
+        guild_id (int): The guild this tag belongs to.
+        owner_id (int): The user that created this tag.
+        uses (int): The number of times this tag has been used.
+        created (int): The time this tag was created.
+
+    """
+
+    name: str
+    content: str
+    guild_id: int
+    owner_id: int
+    uses: int
+    created: int
 
 
 @dataclasses.dataclass
@@ -137,7 +161,7 @@ class DefaultRole(DatabaseDataclass):
 
     Attributes:
         guild_id (int): The id of the guild.
-        role_id (int): A id of the guild's default role.
+        role_id (int): The id of the guild's default role.
     """
 
     guild_id: int
@@ -236,3 +260,17 @@ class RunescapeAlert(DatabaseDataclass):
 
         self.current_alerts += 1
         self.last_alert = last_alert_time
+
+
+@dataclasses.dataclass
+class GuildFeatures(DatabaseDataclass):
+    """
+    A DatabaseDataclass that stores a guild's feature information.
+
+    Attributes:
+        guild_id (int): The id of the guild.
+        features (int): The features of the guild.
+    """
+
+    guild_id: int
+    features: int
