@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019-2022 Jake Sichley
+Copyright (c) 2019-2023 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,7 @@ from discord.utils import format_dt
 
 from dreambot import DreamBot
 from utils.context import Context
+from utils.guild_feature import GuildFeature
 from utils.logging_formatter import bot_logger
 
 
@@ -74,18 +75,21 @@ class Exceptions(commands.Cog):
             None.
         """
 
+        if ctx.command is None and ctx.guild is not None and isinstance(error, commands.CommandNotFound):
+            await self.try_direct_tag_invoke(ctx)
+
         if ctx.command is None or hasattr(ctx.command, 'on_error'):
             return
 
         if isinstance(error, commands.CommandInvokeError):
             error = error.__cause__  # type: ignore[assignment]
 
-        ignored = (
+        not_logged = (
             commands.CommandNotFound, commands.UserInputError, commands.CheckFailure, ClientResponseError,
             commands.CommandOnCooldown, commands.DisabledCommand
         )
 
-        if not isinstance(error, ignored):
+        if not isinstance(error, not_logged):
             bot_logger.warning(f'Ignoring exception in command {ctx.command}:')
             print_exception(type(error), error, error.__traceback__, file=stderr)
 
@@ -198,6 +202,36 @@ class Exceptions(commands.Cog):
         print_exception(type(error), error, error.__traceback__, file=stderr)
 
         await self.bot.report_exception(error)
+
+    async def try_direct_tag_invoke(self, ctx: Context) -> None:
+        """
+        When a `CommandNotFound` exception is raised, this method will attempt to directly invoke a corresponding tag,
+        if applicable.
+        The Guild Feature `TAG_DIRECT_INVOKE` must be enabled.
+        During direct tag invocation, the normal suggestions or tag-not-found responses will be suppressed.
+
+        Parameters:
+            ctx (Context): The invocation context.
+
+        Returns:
+            None.
+        """
+
+        assert ctx.guild is not None
+
+        tag_cog = self.bot.get_cog('Tags')
+        direct_invoke_enabled = self.bot.cache.guild_feature_enabled(ctx.guild.id, GuildFeature.TAG_DIRECT_INVOKE)
+
+        if (
+            tag_cog is None or
+            not direct_invoke_enabled or
+            not hasattr(tag_cog, 'get_tag')
+        ):
+            return
+
+        potential_tag = ctx.message.content.removeprefix(ctx.prefix or self.bot.default_prefix)
+
+        await ctx.invoke(tag_cog.get_tag, tag_name=potential_tag)  # type: ignore[arg-type]
 
 
 async def setup(bot: DreamBot) -> None:
