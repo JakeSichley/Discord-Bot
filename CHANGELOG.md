@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.11.0
+### Features
+* Add `GuildFeatures` Cog
+
+### Internal
+* Bump mypy version to 1.3.0
+
 ## 2.10.4
 ### Internal
 * Bump discord.py version to 2.3.1

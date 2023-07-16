@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019-2022 Jake Sichley
+Copyright (c) 2019-2023 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional, List, Union, Tuple, Annotated
 
@@ -34,7 +33,7 @@ from dreambot import DreamBot
 from utils.context import Context
 from utils.converters import StringConverter
 from utils.database.helpers import execute_query, typed_retrieve_query
-from utils.database.table_dataclasses import DatabaseDataclass
+from utils.database.table_dataclasses import Tag
 from utils.logging_formatter import bot_logger
 from utils.prompts import prompt_user_for_content
 from utils.utils import cleanup, valid_content
@@ -52,29 +51,6 @@ TagName = StringConverter(
     mutator=lambda x: x.strip().lower(),
     constraint=lambda x: x is not None and 3 <= len(x) <= 100 and x not in ReservedTags
 )
-
-
-@dataclass
-class Tag(DatabaseDataclass):
-    """
-    A dataclass that represents the internal structure of a Tag.
-
-    Attributes:
-        name (str): The name of the tag.
-        content (str): The tag's content.
-        guild_id (int): The guild this tag belongs to.
-        owner_id (int): The user that created this tag.
-        uses (int): The number of times this tag has been used.
-        created (int): The time this tag was created.
-
-    """
-
-    name: str
-    content: str
-    guild_id: int
-    owner_id: int
-    uses: int
-    created: int
 
 
 class Tags(commands.Cog):
