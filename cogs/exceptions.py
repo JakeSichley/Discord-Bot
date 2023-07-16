@@ -75,7 +75,7 @@ class Exceptions(commands.Cog):
             None.
         """
 
-        if ctx.command is None and isinstance(error, commands.CommandNotFound) and ctx.guild is not None:
+        if ctx.command is None and ctx.guild is not None and isinstance(error, commands.CommandNotFound):
             await self.try_direct_tag_invoke(ctx)
 
         if ctx.command is None or hasattr(ctx.command, 'on_error'):
