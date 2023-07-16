@@ -216,6 +216,9 @@ class Tags(commands.Cog):
             await increment_tag_count(self.bot.database, tag_name, ctx.guild.id)
             return
 
+        if len(ctx.invoked_parents) == 0:  # this was invoked via GuildFeature.TAG_DIRECT_INVOKE
+            return
+
         potential_tags = await search_tags(self.bot.database, ctx.guild.id, tag_name)
 
         if potential_tags:
