@@ -11,10 +11,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 ### Features
-* Add `GuildFeature::TAG_DIRECT_INVOKE` 
-
 ### Internal
 ### Issues
+
+## 2.12.0
+### Features
+* Add `GuildFeature::TAG_DIRECT_INVOKE`
+* Reduce minimum `Tag` name length to 2 characters, down from 3
+
+### Internal
+* Default existing `Tags` to `AllowedMentions::None`
+* Add internal support for more granular `AllowedMentions` for `Tags` in the future
 
 ## 2.11.0
 ### Features
