@@ -30,7 +30,7 @@ from aiosqlite import Error as aiosqliteError
 
 from utils.database import table_dataclasses as TableDC
 from utils.database.helpers import typed_retrieve_query
-from utils.guild_feature import GuildFeature, has_guild_feature
+from utils.enums.guild_feature import GuildFeature, has_guild_feature
 from utils.logging_formatter import bot_logger
 
 
