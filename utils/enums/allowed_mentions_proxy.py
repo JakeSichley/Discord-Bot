@@ -30,7 +30,7 @@ from typing import List
 
 class AllowedMentionsProxy(IntEnum):
     """
-    x
+    An Enum class provides a proxy mapping between an app_command.Choice and AllowedMentions.
     """
 
     NONE = 0
@@ -45,9 +45,13 @@ class AllowedMentionsProxy(IntEnum):
     @staticmethod
     def app_command_choices() -> List[Choice]:
         """
+        Returns a list of choices representing proxy options.
+
+        Parameters:
+            None.
 
         Returns:
-
+            (List[Choice]).
         """
 
         return _ALLOWED_MENTION_PROXY_CHOICES
@@ -55,12 +59,13 @@ class AllowedMentionsProxy(IntEnum):
     @staticmethod
     def mapper(proxy_type: 'AllowedMentionsProxy') -> AllowedMentions:
         """
+        Checks whether the feature is active for this guild.
 
-        Args:
-            proxy_type:
+        Parameters:
+            proxy_type (AllowedMentionsProxy): The proxy to convert.
 
         Returns:
-
+            (AllowedMentions).
         """
 
         return _ALLOWED_MENTION_PROXY_MAPPING.get(proxy_type, AllowedMentions.none())

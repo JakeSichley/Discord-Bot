@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019-2022 Jake Sichley
+Copyright (c) 2019-2023 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,13 +23,12 @@ SOFTWARE.
 """
 
 from datetime import datetime, timedelta
-from enum import Enum
 from typing import Any, TypedDict, Optional
 
 import aiohttp
 
+from utils.enums.network_return_type import NetworkReturnType
 from utils.logging_formatter import bot_logger
-
 
 Headers = TypedDict(
     'Headers',
@@ -41,16 +40,6 @@ Headers = TypedDict(
     },
     total=False
 )
-
-
-class NetworkReturnType(Enum):
-    """
-    An Enum class that represents how a network request's response should be returned.
-    """
-
-    TEXT = 1  # str
-    JSON = 2  # Union[Dict[Any, Optional[Any]]]
-    BYTES = 3  # bytes
 
 
 async def network_request(

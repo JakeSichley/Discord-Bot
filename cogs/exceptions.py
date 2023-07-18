@@ -34,7 +34,7 @@ from discord.utils import format_dt
 
 from dreambot import DreamBot
 from utils.context import Context
-from utils.guild_feature import GuildFeature
+from utils.enums.guild_feature import GuildFeature
 from utils.logging_formatter import bot_logger
 
 
