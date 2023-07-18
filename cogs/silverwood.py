@@ -61,7 +61,7 @@ class Silverwood(commands.Cog):
             (bool).
         """
 
-        return ctx.guild is not None #  and ctx.guild.id == 1127457916992110735
+        return ctx.guild is not None and ctx.guild.id == 1127457916992110735
 
     @commands.command(name='cc', hidden=True)
     async def cc_command(self, ctx: Context) -> None:
