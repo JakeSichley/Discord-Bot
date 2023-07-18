@@ -51,7 +51,7 @@ ReservedTags = (
 
 TagName = StringConverter(
     mutator=lambda x: x.strip().lower(),
-    constraint=lambda x: x is not None and 3 <= len(x) <= 100 and x not in ReservedTags
+    constraint=lambda x: x is not None and 2 <= len(x) <= 100 and x not in ReservedTags
 )
 
 
