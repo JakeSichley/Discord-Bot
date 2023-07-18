@@ -50,7 +50,7 @@ class Silverwood(commands.Cog):
 
         self.bot = bot
 
-    async def cog_check(self, ctx: Context) -> bool:
+    async def cog_check(self, ctx: Context) -> bool:  # type: ignore[override]
         """
         Custom Cog Check.
 
