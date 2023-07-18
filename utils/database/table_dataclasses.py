@@ -25,6 +25,8 @@ SOFTWARE.
 import dataclasses
 from typing import Tuple, Optional, Union, Type, Any, get_args, get_origin
 
+from utils.enums.allowed_mentions_proxy import AllowedMentionsProxy
+
 
 def expand_optional_types(field_type: Type) -> Union[Type, Tuple[Type, ...]]:
     """
@@ -108,6 +110,21 @@ class Tag(DatabaseDataclass):
     owner_id: int
     uses: int
     created: int
+    _allowed_mentions: int
+
+    @property
+    def allowed_mentions(self) -> AllowedMentionsProxy:
+        """
+        Maps the stored `allowed_mentions` int to an AllowedMentionsProxy.
+
+        Parameters:
+            None.
+
+        Returns:
+            (AllowedMentionsProxy).
+        """
+
+        return AllowedMentionsProxy(self._allowed_mentions)
 
 
 @dataclasses.dataclass

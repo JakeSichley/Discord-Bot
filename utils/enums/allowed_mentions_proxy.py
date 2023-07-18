@@ -57,7 +57,7 @@ class AllowedMentionsProxy(IntEnum):
         return _ALLOWED_MENTION_PROXY_CHOICES
 
     @staticmethod
-    def mapper(proxy_type: 'AllowedMentionsProxy') -> AllowedMentions:
+    def mapping(proxy_type: 'AllowedMentionsProxy') -> AllowedMentions:
         """
         Checks whether the feature is active for this guild.
 

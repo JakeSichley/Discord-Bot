@@ -34,12 +34,14 @@ from utils.context import Context
 from utils.converters import StringConverter
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import Tag
+from utils.enums.allowed_mentions_proxy import AllowedMentionsProxy
 from utils.logging_formatter import bot_logger
 from utils.prompts import prompt_user_for_content
 from utils.utils import cleanup, valid_content
 
 # TODO: Add user profile picture to tag info
 # TODO: Make random tag embed?
+# TODO: Provide interface for AllowedMentionsProxy when migrating to /commands
 
 ReservedTags = (
     'tag', 'create', 'add', 'get', 'fetch', 'edit', 'alias', 'random',
@@ -129,10 +131,11 @@ class Tags(commands.Cog):
             try:
                 await execute_query(
                     self.bot.database,
-                    'INSERT INTO TAGS (NAME, CONTENT, GUILD_ID, OWNER_ID, USES, CREATED) VALUES (?, ?, ?, ?, ?, ?)',
+                    'INSERT INTO TAGS (NAME, CONTENT, GUILD_ID, OWNER_ID, USES, CREATED, ALLOWED_MENTIONS) '
+                    'VALUES (?, ?, ?, ?, ?, ?, ?)',
                     (
                         tag_name, content, ctx.guild.id, ctx.author.id, 0,
-                        int(datetime.now(tz=timezone.utc).timestamp())
+                        int(datetime.now(tz=timezone.utc).timestamp()), 0
                     )
                 )
             except aiosqliteError:
@@ -212,7 +215,7 @@ class Tags(commands.Cog):
         tag = await fetch_tag(self.bot.database, ctx.guild.id, tag_name)
 
         if tag:
-            await ctx.send(tag.content, allowed_mentions=discord.AllowedMentions.none())
+            await ctx.send(tag.content, allowed_mentions=AllowedMentionsProxy.mapping(tag.allowed_mentions))
             await increment_tag_count(self.bot.database, tag_name, ctx.guild.id)
             return
 
@@ -299,7 +302,10 @@ class Tags(commands.Cog):
         tag = await fetch_tag(self.bot.database, ctx.guild.id)
 
         if tag:
-            await ctx.safe_send(f'**Tag `{tag.name}`**\n{tag.content}', allowed_mentions=discord.AllowedMentions.none())
+            await ctx.safe_send(
+                f'**Tag `{tag.name}`**\n{tag.content}',
+                allowed_mentions=AllowedMentionsProxy.mapping(tag.allowed_mentions)
+            )
         else:
             await ctx.send(f'No tags exist for this guild.')
 
