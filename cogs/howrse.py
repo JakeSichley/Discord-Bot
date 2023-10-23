@@ -26,9 +26,9 @@ import discord
 from discord.ext import commands
 
 from dreambot import DreamBot
+from utils.checks import guild_only
 from utils.context import Context
 from utils.logging_formatter import bot_logger
-from utils.checks import guild_only
 
 
 class Howrse(commands.Cog):
