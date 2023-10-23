@@ -28,6 +28,7 @@ from discord.ext import commands
 from dreambot import DreamBot
 from utils.context import Context
 from utils.logging_formatter import bot_logger
+from utils.checks import guild_only
 
 
 class Howrse(commands.Cog):
@@ -50,19 +51,7 @@ class Howrse(commands.Cog):
 
         self.bot = bot
 
-    async def cog_check(self, ctx: Context) -> bool:  # type: ignore[override]
-        """
-        Custom Cog Check.
-
-        Parameters:
-            ctx (Context): The invocation context.
-
-        Returns:
-            (bool).
-        """
-
-        return ctx.guild is not None and ctx.guild.id == 1127457916992110735
-
+    @guild_only(1127457916992110735)
     @commands.command(name='cc', hidden=True)
     async def cc_command(self, ctx: Context) -> None:
         """
@@ -80,6 +69,7 @@ class Howrse(commands.Cog):
         embed.set_image(url='https://media.giphy.com/media/sNH6OwnLEcxRnOlbLA/giphy.gif')
         await ctx.send(content=content, embed=embed)
 
+    @guild_only(1127457916992110735)
     @commands.command(name='wins', hidden=True)
     async def wins_command(self, ctx: Context) -> None:
         """
@@ -95,6 +85,7 @@ class Howrse(commands.Cog):
         content = 'https://media.giphy.com/media/MH35qIXXwoewkXVHg0/giphy.gif'
         await ctx.send(content=content)
 
+    @guild_only(1127457916992110735)
     @commands.command(name='wp', hidden=True)
     async def wp_command(self, ctx: Context) -> None:
         """
