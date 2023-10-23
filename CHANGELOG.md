@@ -11,11 +11,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 ### Features
+### Internal
+### Issues
+
+## 2.12.2
+### Features
 * Add `all` option to `Moderation::Purge`
 * Add hardcoded Howrse::Horsemen commands until embed support is added to `Tags`
 ### Internal
 * Add custom `guild_only` check with guild_id allowances
-### Issues
 
 ## 2.12.1
 ### Features
