@@ -30,9 +30,9 @@ from utils.context import Context
 from utils.logging_formatter import bot_logger
 
 
-class Silverwood(commands.Cog):
+class Howrse(commands.Cog):
     """
-    A Cogs class that contains Silverwood commands for the bot.
+    A Cogs class that contains Howrse commands for the bot.
 
     # TODO: These commands can be replaced after adding embed support for tags
 
@@ -42,7 +42,7 @@ class Silverwood(commands.Cog):
 
     def __init__(self, bot: DreamBot) -> None:
         """
-        The constructor for the Silverwood class.
+        The constructor for the Howrse class.
 
         Parameters:
             bot (DreamBot): The Discord bot.
@@ -124,5 +124,5 @@ async def setup(bot: DreamBot) -> None:
         None.
     """
 
-    await bot.add_cog(Silverwood(bot))
-    bot_logger.info('Completed Setup for Cog: Silverwood')
+    await bot.add_cog(Howrse(bot))
+    bot_logger.info('Completed Setup for Cog: Howrse')
