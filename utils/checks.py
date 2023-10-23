@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Callable
+from typing import Callable, Union, List
 
 from discord.ext import commands
 
@@ -94,5 +94,34 @@ def ensure_git_credentials() -> Callable:
         """
 
         return ctx.bot.git is not None
+
+    return commands.check(predicate)
+
+
+def guild_only(guild_id: Union[int, List[int]]) -> Callable:
+    """
+    Only allows command execution for the specified guild.
+
+    Parameters:
+        guild_id (guild_id: Union[int, List[int]]): The id of the guild authorized to execute this command.
+
+    Returns:
+        (Callable[[], Context]): The resulting wrapped predicate.
+    """
+
+    guild_ids = guild_id if isinstance(guild_id, list) else [guild_id]
+
+    def predicate(ctx: Context) -> bool:
+        """
+        A commands.check decorator that git commands are able to properly execute.
+
+        Parameters:
+            ctx (Context): The invocation context.
+
+        Returns:
+            (bool): Whether the bot was initialized with git credentials.
+        """
+
+        return ctx.guild is not None and ctx.guild.id in guild_ids
 
     return commands.check(predicate)

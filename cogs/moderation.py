@@ -24,7 +24,7 @@ SOFTWARE.
 
 from contextlib import suppress
 from re import findall, sub
-from typing import Union, Optional
+from typing import Union, Optional, Literal
 
 import discord
 from aiosqlite import Error as aiosqliteError
@@ -38,6 +38,8 @@ from utils.logging_formatter import bot_logger
 
 CHANNEL_OBJECT = Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]
 PERMISSIONS_PARENT = Union[discord.Role, discord.Member]
+PURGEABLE_INSTANCES = (discord.StageChannel, discord.TextChannel, discord.Thread, discord.VoiceChannel)
+PURGEABLE_TYPE = Union[discord.StageChannel, discord.TextChannel, discord.Thread, discord.VoiceChannel]
 
 
 class Moderation(commands.Cog):
@@ -74,9 +76,9 @@ class Moderation(commands.Cog):
 
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True, read_message_history=True)
-    @commands.command(name='purge', help='Purges n+1 messages from the current channel. If a user is supplied, the bot '
-                                         'will purge any message from that user in the last n messages.')
-    async def purge(self, ctx: Context, limit: int = 0, user: Optional[discord.Member] = None) -> None:
+    @commands.command(name='purge', help='Purges n+1 messages from the current channel. Specify `all` to completely '
+                                         'clear the channel.')
+    async def purge(self, ctx: Context, limit: Union[int, Literal['all']] = 0) -> None:
         """
         A method to purge messages from a channel.
         Should a user ID be supplied, any messages from that user in the last (limit) messages will be deleted.
@@ -88,27 +90,30 @@ class Moderation(commands.Cog):
 
         Parameters:
             ctx (Context): The invocation context.
-            limit (int): The number of messages to purge. Default: 0.
-            user (discord.User): The User to delete messages from. Default: None.
-
-        Output:
-            None.
+            limit (Union[int, Literal['all']]): The number of messages to purge. Default: 0.
 
         Returns:
             None.
         """
 
-        if not isinstance(ctx.channel, (discord.TextChannel, discord.Thread, discord.VoiceChannel)):
+        if not isinstance(ctx.channel, PURGEABLE_INSTANCES):
             return
 
-        if limit > 10:
-            if not await ctx.confirmation_prompt(f'Are you sure you want to delete {limit} messages?'):
-                return
+        confirmation = ctx.confirmation_prompt(f'Are you sure you want to delete up to {limit} messages?')
+        if (limit == 'all' or limit >= 10) and not await confirmation:
+            return
 
-        if user is None:
+        if isinstance(limit, int):
             await ctx.channel.purge(limit=limit + 1)
+            return
+
+        if isinstance(ctx.channel, discord.Thread):
+            await ctx.channel.purge(limit=ctx.channel.message_count + 1)
         else:
-            await ctx.channel.purge(limit=limit + 1, check=lambda m: m.author == user)
+            position = ctx.channel.position
+            new_channel = await ctx.channel.clone(reason=f'Full channel purge; executed by {ctx.author}')
+            await ctx.channel.delete(reason=f'Full channel purge; executed by {ctx.author}')
+            await new_channel.edit(position=position)
 
     @commands.has_guild_permissions(manage_channels=True)
     @commands.bot_has_guild_permissions(manage_channels=True)
