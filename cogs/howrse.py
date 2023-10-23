@@ -53,7 +53,7 @@ class Howrse(commands.Cog):
 
     @guild_only(1127457916992110735)
     @commands.command(name='cc', hidden=True)
-    async def cc_command(self, ctx: Context) -> None:
+    async def silverwood_cc_command(self, ctx: Context) -> None:
         """
         Custom Command.
 
@@ -71,7 +71,7 @@ class Howrse(commands.Cog):
 
     @guild_only(1127457916992110735)
     @commands.command(name='wins', hidden=True)
-    async def wins_command(self, ctx: Context) -> None:
+    async def silverwood_wins_command(self, ctx: Context) -> None:
         """
         Custom Command.
 
@@ -87,7 +87,7 @@ class Howrse(commands.Cog):
 
     @guild_only(1127457916992110735)
     @commands.command(name='wp', hidden=True)
-    async def wp_command(self, ctx: Context) -> None:
+    async def silverwood_wp_command(self, ctx: Context) -> None:
         """
         Custom Command.
 
@@ -101,6 +101,60 @@ class Howrse(commands.Cog):
         content = '@here\nFills in Western Pleasure please! ♡'
         embed = discord.Embed()
         embed.set_image(url='https://media.giphy.com/media/KKreoxYTGq3aRCbRLh/giphy.gif')
+        await ctx.send(content=content, embed=embed)
+
+    @guild_only(1165414326417502218)
+    @commands.command(name='xc', hidden=True)
+    async def horsemen_xc_command(self, ctx: Context) -> None:
+        """
+        Custom Command.
+
+        Parameters:
+            ctx (Context): The invocation context.
+
+        Returns:
+            None.
+        """
+
+        content = '@here Fills in Cross-Country please! ♡'
+        embed = discord.Embed()
+        embed.set_image(url='https://media.giphy.com/media/sNH6OwnLEcxRnOlbLA/giphy.gif')
+        await ctx.send(content=content, embed=embed)
+
+    @guild_only(1165414326417502218)
+    @commands.command(name='c', hidden=True)
+    async def horsemen_c_command(self, ctx: Context) -> None:
+        """
+        Custom Command.
+
+        Parameters:
+            ctx (Context): The invocation context.
+
+        Returns:
+            None.
+        """
+
+        content = '@here Fills in Cutting please! ♡'
+        embed = discord.Embed()
+        embed.set_image(url='https://media.giphy.com/media/KKreoxYTGq3aRCbRLh/giphy.gif')
+        await ctx.send(content=content, embed=embed)
+
+    @guild_only(1165414326417502218)
+    @commands.command(name='w', hidden=True)
+    async def horsemen_w_command(self, ctx: Context) -> None:
+        """
+        Custom Command.
+
+        Parameters:
+            ctx (Context): The invocation context.
+
+        Returns:
+            None.
+        """
+
+        content = 'Thank you for wins! ♡'
+        embed = discord.Embed()
+        embed.set_image(url='https://media.tenor.com/Np6Be0U7BocAAAAC/groove-i-win.gif')
         await ctx.send(content=content, embed=embed)
 
 
