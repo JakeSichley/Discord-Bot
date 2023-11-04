@@ -26,13 +26,14 @@ import discord
 from discord.ext import commands
 
 from dreambot import DreamBot
+from utils.checks import guild_only
 from utils.context import Context
 from utils.logging_formatter import bot_logger
 
 
-class Silverwood(commands.Cog):
+class Howrse(commands.Cog):
     """
-    A Cogs class that contains Silverwood commands for the bot.
+    A Cogs class that contains Howrse commands for the bot.
 
     # TODO: These commands can be replaced after adding embed support for tags
 
@@ -42,7 +43,7 @@ class Silverwood(commands.Cog):
 
     def __init__(self, bot: DreamBot) -> None:
         """
-        The constructor for the Silverwood class.
+        The constructor for the Howrse class.
 
         Parameters:
             bot (DreamBot): The Discord bot.
@@ -50,21 +51,9 @@ class Silverwood(commands.Cog):
 
         self.bot = bot
 
-    async def cog_check(self, ctx: Context) -> bool:  # type: ignore[override]
-        """
-        Custom Cog Check.
-
-        Parameters:
-            ctx (Context): The invocation context.
-
-        Returns:
-            (bool).
-        """
-
-        return ctx.guild is not None and ctx.guild.id == 1127457916992110735
-
+    @guild_only(1127457916992110735)
     @commands.command(name='cc', hidden=True)
-    async def cc_command(self, ctx: Context) -> None:
+    async def silverwood_cc_command(self, ctx: Context) -> None:
         """
         Custom Command.
 
@@ -80,8 +69,9 @@ class Silverwood(commands.Cog):
         embed.set_image(url='https://media.giphy.com/media/sNH6OwnLEcxRnOlbLA/giphy.gif')
         await ctx.send(content=content, embed=embed)
 
+    @guild_only(1127457916992110735)
     @commands.command(name='wins', hidden=True)
-    async def wins_command(self, ctx: Context) -> None:
+    async def silverwood_wins_command(self, ctx: Context) -> None:
         """
         Custom Command.
 
@@ -95,8 +85,9 @@ class Silverwood(commands.Cog):
         content = 'https://media.giphy.com/media/MH35qIXXwoewkXVHg0/giphy.gif'
         await ctx.send(content=content)
 
+    @guild_only(1127457916992110735)
     @commands.command(name='wp', hidden=True)
-    async def wp_command(self, ctx: Context) -> None:
+    async def silverwood_wp_command(self, ctx: Context) -> None:
         """
         Custom Command.
 
@@ -112,6 +103,60 @@ class Silverwood(commands.Cog):
         embed.set_image(url='https://media.giphy.com/media/KKreoxYTGq3aRCbRLh/giphy.gif')
         await ctx.send(content=content, embed=embed)
 
+    @guild_only(1165414326417502218)
+    @commands.command(name='xc', hidden=True)
+    async def horsemen_xc_command(self, ctx: Context) -> None:
+        """
+        Custom Command.
+
+        Parameters:
+            ctx (Context): The invocation context.
+
+        Returns:
+            None.
+        """
+
+        content = '@here Fills in Cross-Country please! ♡'
+        embed = discord.Embed()
+        embed.set_image(url='https://media.giphy.com/media/sNH6OwnLEcxRnOlbLA/giphy.gif')
+        await ctx.send(content=content, embed=embed)
+
+    @guild_only(1165414326417502218)
+    @commands.command(name='c', hidden=True)
+    async def horsemen_c_command(self, ctx: Context) -> None:
+        """
+        Custom Command.
+
+        Parameters:
+            ctx (Context): The invocation context.
+
+        Returns:
+            None.
+        """
+
+        content = '@here Fills in Cutting please! ♡'
+        embed = discord.Embed()
+        embed.set_image(url='https://media.giphy.com/media/KKreoxYTGq3aRCbRLh/giphy.gif')
+        await ctx.send(content=content, embed=embed)
+
+    @guild_only(1165414326417502218)
+    @commands.command(name='w', hidden=True)
+    async def horsemen_w_command(self, ctx: Context) -> None:
+        """
+        Custom Command.
+
+        Parameters:
+            ctx (Context): The invocation context.
+
+        Returns:
+            None.
+        """
+
+        content = 'Thank you for wins! ♡'
+        embed = discord.Embed()
+        embed.set_image(url='https://media.tenor.com/Np6Be0U7BocAAAAC/groove-i-win.gif')
+        await ctx.send(content=content, embed=embed)
+
 
 async def setup(bot: DreamBot) -> None:
     """
@@ -124,5 +169,5 @@ async def setup(bot: DreamBot) -> None:
         None.
     """
 
-    await bot.add_cog(Silverwood(bot))
-    bot_logger.info('Completed Setup for Cog: Silverwood')
+    await bot.add_cog(Howrse(bot))
+    bot_logger.info('Completed Setup for Cog: Howrse')
