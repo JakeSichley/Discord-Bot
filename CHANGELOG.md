@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.12.2
+### Internal
+* Bump Pillow to `10.1.0` (CVE-2023-44271)
+
 ## 2.12.1
 ### Features
 * Add hardcoded Silverwood commands until embed support is added to `Tags`
