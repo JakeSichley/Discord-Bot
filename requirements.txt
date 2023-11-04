@@ -2,7 +2,7 @@ aiohttp==3.7.4
 aiosqlite==0.17.0
 async_timeout==3.0.1
 beautifulsoup4==4.10.0
-Pillow==9.2.0
+Pillow==10.1.0
 protobuf==3.19.5
 python-dotenv==0.19.2
 pytz==2020.1
