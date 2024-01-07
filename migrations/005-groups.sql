@@ -1,0 +1,22 @@
+-- Revises: 004
+-- Creation Date: 2024-01-06 20:17:05 UTC
+-- Reason: Add Groups
+
+CREATE TABLE IF NOT EXISTS "GROUPS" (
+    "GROUP_ID"          TEXT NOT NULL,
+    "GUILD_ID"          INTEGER NOT NULL,
+    "OWNER_ID"          INTEGER NOT NULL,
+    "CREATED"           INTEGER NOT NULL,
+    "NAME"              TEXT NOT NULL,
+    PRIMARY KEY("GROUP_ID")
+);
+
+CREATE TABLE IF NOT EXISTS "GROUP_MEMBERS" (
+    "MEMBER_ID"         INTEGER NOT NULL,
+    "JOINED"            INTEGER NOT NULL,
+    "GROUP_ID"          TEXT NOT NULL,
+    FOREIGN KEY("GROUP_ID") REFERENCES GROUPS("GROUP_ID") ON DELETE CASCADE,
+    PRIMARY KEY("GROUP_ID", "MEMBER_ID")
+);
+
+PRAGMA user_version = 5;
