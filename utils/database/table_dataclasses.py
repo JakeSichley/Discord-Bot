@@ -319,11 +319,13 @@ class GroupMember(DatabaseDataclass):
     A DatabaseDataclass that stores a guild's feature information.
 
     Attributes:
-        member_id (int):
-        joined (int): The time this
+        member_id (int): The id of the member.
+        guild_id (int): The id of the guild.
+        joined (int): The time this member joined the group.
         group_name (str): The name of the group this member belongs to.
     """
 
     member_id: int
+    guild_id: int
     joined: int
     group_name: str
