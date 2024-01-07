@@ -291,3 +291,39 @@ class GuildFeatures(DatabaseDataclass):
 
     guild_id: int
     features: int
+
+
+@dataclasses.dataclass
+class Group(DatabaseDataclass):
+    """
+    A DatabaseDataclass that stores a guild's feature information.
+
+    Attributes:
+        guild_id (int): The id of the guild.
+        owner_id (int): The id of the owner of this group.
+        created (int): The time this group was created.
+        group_name (str): The name of this group.
+        max_members (Optional[int]): The maximum number of members this group may have, if any.
+    """
+
+    guild_id: int
+    owner_id: int
+    created: int
+    group_name: str
+    max_members: Optional[int]
+
+
+@dataclasses.dataclass
+class GroupMember(DatabaseDataclass):
+    """
+    A DatabaseDataclass that stores a guild's feature information.
+
+    Attributes:
+        member_id (int):
+        joined (int): The time this
+        group_name (str): The name of the group this member belongs to.
+    """
+
+    member_id: int
+    joined: int
+    group_name: str
