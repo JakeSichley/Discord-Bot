@@ -28,11 +28,11 @@ from discord.ext import commands
 from dreambot import DreamBot
 from utils.logging_formatter import bot_logger
 
-from utils.database.helpers import execute_query, typed_retrieve_query, typed_retrieve_one_query
+from utils.database.helpers import execute_query, typed_retrieve_query
 import aiosqlite
 from discord.utils import utcnow
 from aiosqlite import Error as aiosqliteError, IntegrityError
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, Union
 from collections import defaultdict
 
 from utils.database.table_dataclasses import Group, GroupMember
@@ -130,7 +130,6 @@ class Groups(commands.Cog):
         else:
             await interaction.response.send_message('Successfully created group.', ephemeral=True)
             self.groups[interaction.guild_id][group_name] = group
-
 
     @group_subgroup.command(  # type: ignore[arg-type]
         name='delete', description='Deletes an existing group from the guild'
@@ -335,17 +334,19 @@ class Groups(commands.Cog):
             await interaction.response.send_message(embed=embed)
 
 
-def generate_member_description(group_members: List[GroupMember], guild: discord.Guild) -> str:
+def generate_group_member_fields(group_members: List[GroupMember], guild: discord.Guild) -> Tuple[str, str]:
     """
-    Generates a list of group members suitable for an embed field.
+    Generates strings of group member information suitable for embed fields.
 
     Parameters:
         group_members (List[GroupMember]): The list of group members to format.
         guild (discord.Guild): The guild the group members belong to.
 
     Returns:
-        (str): The formatted list.
+        (Tuple[str, str]): The formatted strings.
     """
+
+    # todo: refactor this method... shouldn't generate both fields
 
     members = [
         (fetched_member, member.joined) for member in group_members
@@ -353,7 +354,20 @@ def generate_member_description(group_members: List[GroupMember], guild: discord
     ]
 
     if not members:
-        return "Error while generating member list"
+        return 'Error while generating member list', 'N/A'
+
+    last_member_index = find_last_index_under_threshold([x[0].name for x in members])
+    last_timestamp_index = find_last_index_under_threshold([str(x[1]) for x in members])
+
+    last_member_index = last_member_index if last_member_index is not None else len(members)
+    last_timestamp_index = last_timestamp_index if last_timestamp_index is not None else len(members)
+
+    minimum_index = min(last_member_index, last_timestamp_index)
+
+    if minimum_index <= 0:
+        return 'Error while generating member list', 'N/A'
+
+    for me
 
     max_name_length = max(len(x[0].name) for x in members)
 
@@ -363,6 +377,28 @@ def generate_member_description(group_members: List[GroupMember], guild: discord
         return formatted[:formatted.rindex('\n', 0, 1024)]
     except ValueError:
         return formatted
+
+
+def find_last_index_under_threshold(collection: List[str]) -> Optional[int]:
+    """
+    Finds the last element (index) that would allow the collection to remain under the embed field limit (1024).
+
+    Parameters:
+        collection (List[str]): The elements to examine.
+
+    Returns:
+        (Optional[int]): The index of the last viable element, if any.
+    """
+
+    running_total = 0
+
+    for index, element in enumerate(collection):
+        if running_total + len(element) + 1 <= 1024:
+            running_total += len(element) + 1  # newline
+        else:
+            return index - 1
+
+    return None
 
 
 async def setup(bot: DreamBot) -> None:
