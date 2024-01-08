@@ -442,7 +442,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         alerts = self.alerts[interaction.user.id]
 
         if not current:
-            return [Choice(name=self.item_data[x.item_id].name, value=x.item_id) for x in alerts.values()]
+            return [Choice(name=self.item_data[x.item_id].name, value=x.item_id) for x in list(alerts.values())[:25]]
 
         return generate_autocomplete_choices(
             current,
@@ -466,7 +466,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         """
 
         if not current:
-            return [Choice(name=self.item_data[x].name, value=x) for x in self.item_data][:25]
+            return [Choice(name=item.name, value=item_id) for item_id, item in list(self.item_data.items())[:25]]
 
         return generate_autocomplete_choices(
             current,
