@@ -296,7 +296,7 @@ class GuildFeatures(DatabaseDataclass):
 @dataclasses.dataclass
 class Group(DatabaseDataclass):
     """
-    A DatabaseDataclass that stores a guild's feature information.
+    A DatabaseDataclass that stores information about a Group.
 
     Attributes:
         guild_id (int): The id of the guild.
@@ -317,7 +317,7 @@ class Group(DatabaseDataclass):
 @dataclasses.dataclass
 class GroupMember(DatabaseDataclass):
     """
-    A DatabaseDataclass that stores a guild's feature information.
+    A DatabaseDataclass that stores information about a Group Member.
 
     Attributes:
         guild_id (int): The id of the guild.
