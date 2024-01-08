@@ -21,24 +21,23 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
+
+from collections import defaultdict
+from contextlib import suppress
+from typing import Optional, Dict, List, Tuple
+
+import aiosqlite
 import discord
+from aiosqlite import Error as aiosqliteError, IntegrityError
 from discord import app_commands, Interaction
 from discord.app_commands import Choice, Range
 from discord.ext import commands
+from discord.utils import utcnow
 
 from dreambot import DreamBot
-from utils.logging_formatter import bot_logger
-
 from utils.database.helpers import execute_query, typed_retrieve_query
-import aiosqlite
-from discord.utils import utcnow
-from aiosqlite import Error as aiosqliteError, IntegrityError
-from typing import Optional, Dict, List, Tuple, Union
-from collections import defaultdict
-
 from utils.database.table_dataclasses import Group, GroupMember
-from contextlib import suppress
-
+from utils.logging_formatter import bot_logger
 from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 
@@ -348,7 +347,6 @@ class Groups(commands.Cog):
             embed.set_footer(text='Please report any issues to my owner!')
             await interaction.response.send_message(embed=embed)
 
-
     """
     MARK: - Autocomplete Methods
     """
@@ -418,6 +416,7 @@ def calculate_member_and_joined_max_splice(group_members: List[Tuple[discord.Mem
     last_timestamp_index = last_timestamp_index if last_timestamp_index is not None else len(group_members)
 
     return min(last_member_index, last_timestamp_index)
+
 
 def find_last_index_under_threshold(collection: List[str]) -> Optional[int]:
     """
