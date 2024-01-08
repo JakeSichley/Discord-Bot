@@ -183,7 +183,6 @@ class Groups(commands.Cog):
             with suppress(KeyError):
                 del self.groups[interaction.guild_id][group_name]
 
-    # todo: autocomplete
     @group_subgroup.command(  # type: ignore[arg-type]
         name='join', description='Joins a group'
     )
@@ -234,7 +233,6 @@ class Groups(commands.Cog):
             await interaction.response.send_message('Successfully joined the group.', ephemeral=True)
             self.groups[interaction.guild_id][group_name].current_members += 1
 
-    # todo: autocomplete
     @group_subgroup.command(  # type: ignore[arg-type]
         name='leave', description='Leaves a group'
     )
@@ -263,8 +261,6 @@ class Groups(commands.Cog):
             await interaction.response.send_message('That group does not exist!', ephemeral=True)
             return
 
-        group = self.groups[interaction.guild_id][group_name]
-
         try:
             await execute_query(
                 self.bot.database,
@@ -277,7 +273,6 @@ class Groups(commands.Cog):
             await interaction.response.send_message('Successfully left the group.', ephemeral=True)
             self.groups[interaction.guild_id][group_name].current_members -= 1
 
-    # todo: autocomplete
     @group_subgroup.command(  # type: ignore[arg-type]
         name='view', description='Views a group'
     )
@@ -374,7 +369,7 @@ class Groups(commands.Cog):
             (List[Choice]): A list of relevant Choices for the current input.
         """
 
-        # TODO: Autocomplete logic for v2. Probably need to cache group members for autocomplete efficiency.
+        # TODO: Autocomplete logic for v2. Need to cache group members for autocomplete efficiency.
         """
         create -> none
         delete
