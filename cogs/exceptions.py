@@ -196,8 +196,8 @@ class Exceptions(commands.Cog):
             return
 
         bot_logger.warning(
-            f'Encountered AppCommandError in command {interaction.command.name}. '
-            f'User: {interaction.user}. Guild: {interaction.guild.id if interaction.guild is not None else "None"}.\n'
+            f'Encountered AppCommandError in command {interaction.command.qualified_name}. '
+            f'User: `{interaction.user}` Guild: `{interaction.guild.id if interaction.guild is not None else "None"}`\n'
         )
         print_exception(type(error), error, error.__traceback__, file=stderr)
 
