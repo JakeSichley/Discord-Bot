@@ -23,6 +23,7 @@ SOFTWARE.
 """
 import discord
 from discord import app_commands, Interaction
+from discord.app_commands import Choice, Range
 from discord.ext import commands
 
 from dreambot import DreamBot
@@ -41,6 +42,7 @@ from contextlib import suppress
 from utils.utils import format_unix_dt
 
 # TODO: Autocomplete group names; cache group names -> group members not cached, viewable with CD [fetch from DB]
+# TODO: Groups v2 -> edit group
 
 
 class Groups(commands.Cog):
@@ -92,8 +94,8 @@ class Groups(commands.Cog):
     async def create_group(
             self,
             interaction: Interaction,
-            group_name: app_commands.Range[str, 1, 100],
-            max_members: Optional[app_commands.Range[int, 1, None]] = None
+            group_name: Range[str, 1, 100],
+            max_members: Optional[Range[int, 1, None]] = None
     ) -> None:
         """
         Creates a new group for the guild. Name must be unique.
@@ -138,7 +140,7 @@ class Groups(commands.Cog):
     async def delete_group(
             self,
             interaction: Interaction,
-            group_name: app_commands.Range[str, 1, 100],
+            group_name: Range[str, 1, 100],
     ) -> None:
         """
         Deletes an existing group from the guild.
@@ -188,7 +190,7 @@ class Groups(commands.Cog):
     async def join_group(
             self,
             interaction: Interaction,
-            group_name: app_commands.Range[str, 1, 100],
+            group_name: Range[str, 1, 100],
     ) -> None:
         """
         Joins an existing group.
@@ -239,7 +241,7 @@ class Groups(commands.Cog):
     async def leave_group(
             self,
             interaction: Interaction,
-            group_name: app_commands.Range[str, 1, 100],
+            group_name: Range[str, 1, 100],
     ) -> None:
         """
         Leaves an existing group.
@@ -282,7 +284,7 @@ class Groups(commands.Cog):
     async def view_group(
             self,
             interaction: Interaction,
-            group_name: app_commands.Range[str, 1, 100],
+            group_name: Range[str, 1, 100],
     ) -> None:
         """
         Views an existing group.
@@ -349,6 +351,52 @@ class Groups(commands.Cog):
             embed.add_field(name='Joined', value=joined_field)
             embed.set_footer(text='Please report any issues to my owner!')
             await interaction.response.send_message(embed=embed)
+
+
+    """
+    MARK: - Autocomplete Methods
+    """
+
+    # @edit_alert.autocomplete('item_id')
+    # @view_alert.autocomplete('item_id')
+    # @delete_alert.autocomplete('item_id')
+    async def existing_alert_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+        """
+        Autocompletes
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            current (str): The user's current input.
+
+        Returns:
+            (List[Choice]): A list of relevant Choices for the current input.
+        """
+
+        # TODO: Autocomplete logic for v2. Probably need to cache group members for autocomplete efficiency.
+        """
+        create -> none
+        delete
+            mod -> all
+            not mod -> own
+        join -> not full + not in
+        leave -> in
+        view -> all
+        """
+
+        # check cache
+        if len(self.alerts[interaction.user.id]) == 0:
+            return []
+
+        alerts = self.alerts[interaction.user.id]
+
+        if not current:
+            return [Choice(name=self.item_data[x.item_id].name, value=x.item_id) for x in alerts.values()]
+
+        return generate_autocomplete_choices(
+            current,
+            [(self.item_data[x.item_id].name, x.item_id) for x in alerts.values()],
+            minimum_threshold=100
+        )
 
 
 def calculate_member_and_joined_max_splice(group_members: List[Tuple[discord.Member, int]]) -> int:
