@@ -39,10 +39,11 @@ from collections import defaultdict
 from utils.database.table_dataclasses import Group, GroupMember
 from contextlib import suppress
 
-from utils.utils import format_unix_dt
+from utils.utils import format_unix_dt, generate_autocomplete_choices
+
 
 # TODO: Autocomplete group names; cache group names -> group members not cached, viewable with CD [fetch from DB]
-# TODO: Groups v2 -> edit group
+# TODO: Groups v2 -> edit group, optional group icon url
 
 
 class Groups(commands.Cog):
@@ -332,13 +333,13 @@ class Groups(commands.Cog):
                 positions_field = 'N/A'
                 joined_field = 'N/A'
             else:
-                members_field = '\n'.join(x[0].name for x in member_list[:max_elements])
+                members_field = '\n'.join(x[0].mention for x in member_list[:max_elements])
                 positions_field = '\n'.join(str(x) for x in range(1, max_elements + 1))
                 joined_field = '\n'.join(format_unix_dt(x[1], 'R') for x in member_list[:max_elements])
 
-            embed = discord.Embed(title=f'{group.group_name} Members', color=0x72fb72)
+            embed = discord.Embed(title=f'{group.group_name} Members', color=0x64d1ff)
             embed.set_thumbnail(
-                url='https://media.discordapp.net/attachments/634530033754570762/1193835224665165886/groups_icon.png'
+                url='https://cdn.discordapp.com/attachments/634530033754570762/1194039472514408479/group_icon.png'
             )
             embed.add_field(name='Owner', value=f'{owner.name if owner is not None else "N/A"}')
             embed.add_field(name='Created', value=format_unix_dt(group.created, 'R'))
@@ -357,12 +358,13 @@ class Groups(commands.Cog):
     MARK: - Autocomplete Methods
     """
 
-    # @edit_alert.autocomplete('item_id')
-    # @view_alert.autocomplete('item_id')
-    # @delete_alert.autocomplete('item_id')
-    async def existing_alert_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    @delete_group.autocomplete('group_name')
+    @join_group.autocomplete('group_name')
+    @leave_group.autocomplete('group_name')
+    @view_group.autocomplete('group_name')
+    async def existing_group_name_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
-        Autocompletes
+        Autocompletes group names for the current guild.
 
         Parameters:
             interaction (Interaction): The invocation interaction.
@@ -383,18 +385,19 @@ class Groups(commands.Cog):
         view -> all
         """
 
-        # check cache
-        if len(self.alerts[interaction.user.id]) == 0:
+        assert interaction.guild_id is not None  # guild_only
+
+        groups = self.groups[interaction.guild_id]
+
+        if not groups:
             return []
 
-        alerts = self.alerts[interaction.user.id]
-
         if not current:
-            return [Choice(name=self.item_data[x.item_id].name, value=x.item_id) for x in alerts.values()]
+            return [Choice(name=x, value=x) for x in list(groups.keys())[:25]]
 
         return generate_autocomplete_choices(
             current,
-            [(self.item_data[x.item_id].name, x.item_id) for x in alerts.values()],
+            [(x, x) for x in groups.keys()],
             minimum_threshold=100
         )
 
