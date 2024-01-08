@@ -317,7 +317,22 @@ class Groups(commands.Cog):
         except aiosqliteError:
             await interaction.response.send_message('Failed to fetch group members.', ephemeral=True)
         else:
-            member_list = generate_member_description(group_members, interaction.guild) if group_members else 'None'
+            group_members.sort(key=lambda x: x.joined)
+            member_list = [
+                (fetched_member, member.joined) for member in group_members
+                if (fetched_member := interaction.guild.get_member(member.member_id))
+            ]
+
+            max_elements = calculate_member_and_joined_max_splice(member_list)
+
+            if max_elements <= 0:
+                members_field = 'Error generating members field'
+                positions_field = 'N/A'
+                joined_field = 'N/A'
+            else:
+                members_field = '\n'.join(x[0].name for x in member_list[:max_elements])
+                positions_field = '\n'.join(str(x) for x in range(1, max_elements + 1))
+                joined_field = '\n'.join(format_unix_dt(x[1], 'R') for x in member_list[:max_elements])
 
             embed = discord.Embed(title=f'{group.group_name} Members', color=0x72fb72)
             embed.set_thumbnail(
@@ -329,55 +344,34 @@ class Groups(commands.Cog):
             embed.add_field(name='Current Members', value=f'{group.current_members:,}')
             embed.add_field(name='Max Members', value=max_members_str)
             embed.add_field(name='​', value='​')
-            embed.add_field(name='Members', value=member_list, inline=False)
+            embed.add_field(name='Members', value=members_field)
+            embed.add_field(name='Position', value=positions_field)
+            embed.add_field(name='Joined', value=joined_field)
             embed.set_footer(text='Please report any issues to my owner!')
             await interaction.response.send_message(embed=embed)
 
 
-def generate_group_member_fields(group_members: List[GroupMember], guild: discord.Guild) -> Tuple[str, str]:
+def calculate_member_and_joined_max_splice(group_members: List[Tuple[discord.Member, int]]) -> int:
     """
-    Generates strings of group member information suitable for embed fields.
+    Calculates the maximum splice of the member and joined embed fields.
 
     Parameters:
         group_members (List[GroupMember]): The list of group members to format.
-        guild (discord.Guild): The guild the group members belong to.
 
     Returns:
-        (Tuple[str, str]): The formatted strings.
+        (int) The maximum splice of fields.
     """
 
-    # todo: refactor this method... shouldn't generate both fields
+    if not group_members:
+        return -1
 
-    members = [
-        (fetched_member, member.joined) for member in group_members
-        if (fetched_member := guild.get_member(member.member_id))
-    ]
+    last_member_index = find_last_index_under_threshold([x[0].name for x in group_members])
+    last_timestamp_index = find_last_index_under_threshold([str(x[1]) for x in group_members])
 
-    if not members:
-        return 'Error while generating member list', 'N/A'
+    last_member_index = last_member_index if last_member_index is not None else len(group_members)
+    last_timestamp_index = last_timestamp_index if last_timestamp_index is not None else len(group_members)
 
-    last_member_index = find_last_index_under_threshold([x[0].name for x in members])
-    last_timestamp_index = find_last_index_under_threshold([str(x[1]) for x in members])
-
-    last_member_index = last_member_index if last_member_index is not None else len(members)
-    last_timestamp_index = last_timestamp_index if last_timestamp_index is not None else len(members)
-
-    minimum_index = min(last_member_index, last_timestamp_index)
-
-    if minimum_index <= 0:
-        return 'Error while generating member list', 'N/A'
-
-    for me
-
-    max_name_length = max(len(x[0].name) for x in members)
-
-    formatted = '\n'.join([f'{x[0].name:{max_name_length + 1}}    {format_unix_dt(x[1], "R")}' for x in members])
-
-    try:
-        return formatted[:formatted.rindex('\n', 0, 1024)]
-    except ValueError:
-        return formatted
-
+    return min(last_member_index, last_timestamp_index)
 
 def find_last_index_under_threshold(collection: List[str]) -> Optional[int]:
     """
