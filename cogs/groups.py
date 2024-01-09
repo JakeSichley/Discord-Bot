@@ -90,7 +90,7 @@ class Groups(commands.Cog):
         name='create', description='Creates a new group for this guild'
     )
     @app_commands.describe(group_name='The name of the group')
-    @app_commands.describe(max_members='The maximum number of members this group can have [1, 32769]')
+    @app_commands.describe(max_members='Optional: The maximum number of members this group can have [1, 32769]')
     async def create_group(
             self,
             interaction: Interaction,
@@ -144,7 +144,7 @@ class Groups(commands.Cog):
     ) -> None:
         """
         Deletes an existing group from the guild.
-        You can only delete your own groups, unless you are a moderator (`manage_messages`).
+        You can only delete your own groups unless you are a moderator (`manage_messages`).
 
         Parameters:
             interaction (Interaction): The invocation interaction.
@@ -338,7 +338,7 @@ class Groups(commands.Cog):
             embed.add_field(name='Owner', value=f'{owner.name if owner is not None else "N/A"}')
             embed.add_field(name='Created', value=format_unix_dt(group.created, 'R'))
             embed.add_field(name='​', value='​')
-            embed.add_field(name='Current Members', value=f'{group.current_members:,}')
+            embed.add_field(name='Current Members', value=f'{len(member_list):,}')
             embed.add_field(name='Max Members', value=max_members_str)
             embed.add_field(name='​', value='​')
             embed.add_field(name='Members', value=members_field)
@@ -409,7 +409,7 @@ def calculate_member_and_joined_max_splice(group_members: List[Tuple[discord.Mem
     if not group_members:
         return -1
 
-    last_member_index = find_last_index_under_threshold([x[0].name for x in group_members])
+    last_member_index = find_last_index_under_threshold([x[0].mention for x in group_members])
     last_timestamp_index = find_last_index_under_threshold([str(x[1]) for x in group_members])
 
     last_member_index = last_member_index if last_member_index is not None else len(group_members)
