@@ -35,7 +35,7 @@ from discord.ext import commands
 from discord.utils import utcnow
 
 from dreambot import DreamBot
-from utils.database.helpers import execute_query, typed_retrieve_query
+from utils.database.helpers import execute_query, typed_retrieve_query, typed_retrieve_one_query
 from utils.database.table_dataclasses import Group, GroupMember
 from utils.logging_formatter import bot_logger
 from utils.utils import format_unix_dt, generate_autocomplete_choices
@@ -86,6 +86,7 @@ class Groups(commands.Cog):
         for group in groups:
             self.groups[group.guild_id][group.group_name] = group
 
+    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
     @group_subgroup.command(  # type: ignore[arg-type]
         name='create', description='Creates a new group for this guild'
     )
@@ -133,6 +134,7 @@ class Groups(commands.Cog):
             await interaction.response.send_message('Successfully created group.', ephemeral=True)
             self.groups[interaction.guild_id][group_name] = group
 
+    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
     @group_subgroup.command(  # type: ignore[arg-type]
         name='delete', description='Deletes an existing group from the guild'
     )
@@ -172,8 +174,8 @@ class Groups(commands.Cog):
         try:
             await execute_query(
                 self.bot.database,
-                'DELETE FROM GROUPS WHERE GROUP_NAME=?',
-                (group_name,)
+                'DELETE FROM GROUPS WHERE GROUP_NAME=? AND GUILD_ID=?',
+                (group_name, interaction.guild_id)
             )
         except aiosqliteError:
             await interaction.response.send_message('Failed to delete the group.', ephemeral=True)
@@ -182,6 +184,7 @@ class Groups(commands.Cog):
             with suppress(KeyError):
                 del self.groups[interaction.guild_id][group_name]
 
+    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
     @group_subgroup.command(  # type: ignore[arg-type]
         name='join', description='Joins a group'
     )
@@ -232,6 +235,7 @@ class Groups(commands.Cog):
             await interaction.response.send_message('Successfully joined the group.', ephemeral=True)
             self.groups[interaction.guild_id][group_name].current_members += 1
 
+    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
     @group_subgroup.command(  # type: ignore[arg-type]
         name='leave', description='Leaves a group'
     )
@@ -261,6 +265,21 @@ class Groups(commands.Cog):
             return
 
         try:
+            is_in_group = await typed_retrieve_one_query(
+                self.bot.database,
+                bool,
+                'SELECT EXISTS(SELECT 1 FROM GROUP_MEMBERS WHERE GUILD_ID=? AND MEMBER_ID=? AND GROUP_NAME=? LIMIT 1)',
+                (interaction.guild_id, interaction.user.id, group_name),
+            )
+        except aiosqliteError:
+            await interaction.response.send_message('Failed to check group membership.', ephemeral=True)
+            return
+        else:
+            if not is_in_group:
+                await interaction.response.send_message('You do not belong to that group!', ephemeral=True)
+                return
+
+        try:
             await execute_query(
                 self.bot.database,
                 'DELETE FROM GROUP_MEMBERS WHERE GUILD_ID=? AND MEMBER_ID=? AND GROUP_NAME=?',
@@ -272,6 +291,7 @@ class Groups(commands.Cog):
             await interaction.response.send_message('Successfully left the group.', ephemeral=True)
             self.groups[interaction.guild_id][group_name].current_members -= 1
 
+    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
     @group_subgroup.command(  # type: ignore[arg-type]
         name='view', description='Views a group'
     )
@@ -322,7 +342,11 @@ class Groups(commands.Cog):
 
             max_elements = calculate_member_and_joined_max_splice(member_list)
 
-            if max_elements <= 0:
+            if not member_list:
+                members_field = 'None'
+                positions_field = '-'
+                joined_field = '-'
+            elif max_elements <= 0:
                 members_field = 'Error generating members field'
                 positions_field = 'N/A'
                 joined_field = 'N/A'
