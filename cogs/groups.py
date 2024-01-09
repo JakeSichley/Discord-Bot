@@ -42,7 +42,7 @@ from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 
 # TODO: Autocomplete group names; cache group names -> group members not cached, viewable with CD [fetch from DB]
-# TODO: Groups v2 -> edit group, optional group icon url
+# TODO: Groups v2 -> edit group, optional group icon, kick from group
 
 
 class Groups(commands.Cog):
@@ -90,7 +90,7 @@ class Groups(commands.Cog):
     @group_subgroup.command(  # type: ignore[arg-type]
         name='create', description='Creates a new group for this guild'
     )
-    @app_commands.describe(group_name='The name of the group')
+    @app_commands.describe(group_name="The name of the group you'd like to create")
     @app_commands.describe(max_members='Optional: The maximum number of members this group can have [1, 32769]')
     async def create_group(
             self,
@@ -138,7 +138,7 @@ class Groups(commands.Cog):
     @group_subgroup.command(  # type: ignore[arg-type]
         name='delete', description='Deletes an existing group from the guild'
     )
-    @app_commands.describe(group_name='The name of the group')
+    @app_commands.describe(group_name="The name of the group you'd like to delete")
     async def delete_group(
             self,
             interaction: Interaction,
@@ -186,7 +186,7 @@ class Groups(commands.Cog):
 
     @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
-        name='join', description='Joins a group'
+        name='join', description='Joins an existing group'
     )
     @app_commands.describe(group_name="The name of the group you'd like to join")
     async def join_group(
@@ -237,9 +237,9 @@ class Groups(commands.Cog):
 
     @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
-        name='leave', description='Leaves a group'
+        name='leave', description="Leaves a group you're an existing member of"
     )
-    @app_commands.describe(group_name="The name of the group you'd like to join")
+    @app_commands.describe(group_name="The name of the group you'd like to leave")
     async def leave_group(
             self,
             interaction: Interaction,
@@ -268,7 +268,7 @@ class Groups(commands.Cog):
             is_in_group = await typed_retrieve_one_query(
                 self.bot.database,
                 bool,
-                'SELECT EXISTS(SELECT 1 FROM GROUP_MEMBERS WHERE GUILD_ID=? AND MEMBER_ID=? AND GROUP_NAME=? LIMIT 1)',
+                'SELECT EXISTS(SELECT 1 FROM GROUP_MEMBERS WHERE GUILD_ID=? AND MEMBER_ID=? AND GROUP_NAME=?)',
                 (interaction.guild_id, interaction.user.id, group_name),
             )
         except aiosqliteError:
@@ -293,7 +293,7 @@ class Groups(commands.Cog):
 
     @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
-        name='view', description='Views a group'
+        name='view', description='Views an existing group'
     )
     @app_commands.describe(group_name="The name of the group you'd like to view")
     async def view_group(
@@ -456,8 +456,9 @@ def find_last_index_under_threshold(collection: List[str]) -> Optional[int]:
     running_total = 0
 
     for index, element in enumerate(collection):
+        # +1 for future newline
         if running_total + len(element) + 1 <= 1024:
-            running_total += len(element) + 1  # newline
+            running_total += len(element) + 1
         else:
             return index - 1
 
