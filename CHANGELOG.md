@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.13.0
+### Features
+* Add `Groups` Cog
+### Internal
+* Internally limit autocomplete choice lists to 25
+
 ## 2.12.3
 ### Internal
 * Bump Pillow to `10.1.0` (CVE-2023-44271)
