@@ -24,7 +24,8 @@ SOFTWARE.
 
 from collections import defaultdict
 from contextlib import suppress
-from typing import Optional, Dict, List, Tuple, Set, NamedTuple
+from dataclasses import dataclass, field
+from typing import Optional, Dict, List, Tuple, Set
 
 import aiosqlite
 import discord
@@ -35,14 +36,12 @@ from discord.ext import commands
 from discord.utils import utcnow
 
 from dreambot import DreamBot
-from utils.database.helpers import execute_query, typed_retrieve_query, typed_retrieve_one_query
+from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import Group, GroupMember
 from utils.logging_formatter import bot_logger
 from utils.utils import format_unix_dt, generate_autocomplete_choices
-from dataclasses import dataclass, field
 
 
-# TODO: Autocomplete group names; cache group names -> group members not cached, viewable with CD [fetch from DB]
 # TODO: Groups v2 -> edit group, optional group icon, kick from group
 
 @dataclass
@@ -180,7 +179,7 @@ class Groups(commands.Cog):
         for group_member in group_members:
             self.groups[group_member.guild_id][group_member.group_name].add_member(group_member.member_id)
 
-    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
         name='create', description='Creates a new group for this guild'
     )
@@ -228,7 +227,7 @@ class Groups(commands.Cog):
             await interaction.response.send_message('Successfully created group.', ephemeral=True)
             self.groups[interaction.guild_id][group_name] = CompositeGroup(group)
 
-    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
         name='delete', description='Deletes an existing group from the guild'
     )
@@ -278,7 +277,7 @@ class Groups(commands.Cog):
             with suppress(KeyError):
                 del self.groups[interaction.guild_id][group_name]
 
-    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
         name='join', description='Joins an existing group'
     )
@@ -333,7 +332,7 @@ class Groups(commands.Cog):
             await interaction.response.send_message('Successfully joined the group.', ephemeral=True)
             self.groups[interaction.guild_id][group_name].add_member(interaction.user.id)
 
-    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
         name='leave', description="Leaves a group you're an existing member of"
     )
@@ -378,7 +377,7 @@ class Groups(commands.Cog):
             await interaction.response.send_message('Successfully left the group.', ephemeral=True)
             self.groups[interaction.guild_id][group_name].remove_member(interaction.user.id)
 
-    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
         name='view', description='Views an existing group'
     )
@@ -484,7 +483,6 @@ class Groups(commands.Cog):
 
         try:
             groups = self.groups[interaction.guild_id].keys()
-            print(groups)
         except AttributeError:
             return []
 
@@ -498,31 +496,26 @@ class Groups(commands.Cog):
             Leave -> Already joined
             View -> All
         """
-        try:
-            if interaction.command.name == 'delete':
-                if not interaction.user.guild_permissions.manage_messages:
-                    options = [
-                        x for x in groups if self.groups[interaction.guild_id][x].group.owner_id == interaction.user.id
-                    ]
-                else:
-                    options = [x for x in groups]
-            elif interaction.command.name == 'join':
-                options = [
-                    x for x in groups
-                    if not self.groups[interaction.guild_id][x].is_full
-                       and interaction.user.id not in self.groups[interaction.guild_id][x].members
-                ]
-            elif interaction.command.name == 'leave':
-                options = [x for x in groups if interaction.user.id in self.groups[interaction.guild_id][x].members]
-            elif interaction.command.name == 'view':
-                options = [x for x in groups]
-            else:
-                options = []
-        except Exception as e:
-            print(type(e), e, e.__traceback__)
-            return []
 
-        print('options', options)
+        if interaction.command.name == 'delete':
+            if not interaction.user.guild_permissions.manage_messages:
+                options = [
+                    x for x in groups if self.groups[interaction.guild_id][x].group.owner_id == interaction.user.id
+                ]
+            else:
+                options = [x for x in groups]
+        elif interaction.command.name == 'join':
+            options = [
+                x for x in groups
+                if not self.groups[interaction.guild_id][x].is_full
+                   and interaction.user.id not in self.groups[interaction.guild_id][x].members
+            ]
+        elif interaction.command.name == 'leave':
+            options = [x for x in groups if interaction.user.id in self.groups[interaction.guild_id][x].members]
+        elif interaction.command.name == 'view':
+            options = [x for x in groups]
+        else:
+            options = []
 
         if not current:
             return [Choice(name=x, value=x) for x in options[:25]]
