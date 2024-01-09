@@ -86,7 +86,7 @@ class Groups(commands.Cog):
         for group in groups:
             self.groups[group.guild_id][group.group_name] = group
 
-    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
+    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
         name='create', description='Creates a new group for this guild'
     )
@@ -134,7 +134,7 @@ class Groups(commands.Cog):
             await interaction.response.send_message('Successfully created group.', ephemeral=True)
             self.groups[interaction.guild_id][group_name] = group
 
-    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
+    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
         name='delete', description='Deletes an existing group from the guild'
     )
@@ -184,7 +184,7 @@ class Groups(commands.Cog):
             with suppress(KeyError):
                 del self.groups[interaction.guild_id][group_name]
 
-    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
+    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
         name='join', description='Joins a group'
     )
@@ -235,7 +235,7 @@ class Groups(commands.Cog):
             await interaction.response.send_message('Successfully joined the group.', ephemeral=True)
             self.groups[interaction.guild_id][group_name].current_members += 1
 
-    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
+    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
         name='leave', description='Leaves a group'
     )
@@ -291,7 +291,7 @@ class Groups(commands.Cog):
             await interaction.response.send_message('Successfully left the group.', ephemeral=True)
             self.groups[interaction.guild_id][group_name].current_members -= 1
 
-    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
+    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
         name='view', description='Views a group'
     )
