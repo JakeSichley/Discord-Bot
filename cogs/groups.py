@@ -64,7 +64,10 @@ class Groups(commands.Cog):
         """
 
         self.bot = bot
-        self.groups: Dict[int, Dict[str, Group]] = defaultdict(dict)  # [guild_id: [group_name: Group]]
+        # [guild_id: [group_name: Group]]
+        self.groups: Dict[int, Dict[str, Group]] = defaultdict(dict)
+        # [guild_id: [group_name: GroupMember]]
+        self.group_members: Dict[int, Dict[str, List[GroupMember]]] = dict(defaultdict(list))
 
     async def cog_load(self) -> None:
         """
@@ -85,6 +88,15 @@ class Groups(commands.Cog):
 
         for group in groups:
             self.groups[group.guild_id][group.group_name] = group
+
+        group_members = await typed_retrieve_query(
+            self.bot.database,
+            GroupMember,
+            'SELECT * FROM GROUP_MEMBERS'
+        )
+
+        for group_member in group_members:
+            self.group_members[group_member.guild_id][group_member.group_name].append(group_member)
 
     @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
