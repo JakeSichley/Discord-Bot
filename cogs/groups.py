@@ -24,7 +24,7 @@ SOFTWARE.
 
 from collections import defaultdict
 from contextlib import suppress
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, Set, NamedTuple
 
 import aiosqlite
 import discord
@@ -39,10 +39,94 @@ from utils.database.helpers import execute_query, typed_retrieve_query, typed_re
 from utils.database.table_dataclasses import Group, GroupMember
 from utils.logging_formatter import bot_logger
 from utils.utils import format_unix_dt, generate_autocomplete_choices
+from dataclasses import dataclass, field
 
 
 # TODO: Autocomplete group names; cache group names -> group members not cached, viewable with CD [fetch from DB]
 # TODO: Groups v2 -> edit group, optional group icon, kick from group
+
+@dataclass
+class CompositeGroup:
+    """
+    A dataclass that joins Groups and the id's of Group Members.
+
+    Attributes:
+        group (Group): The raw group.
+        members (Set[int]): The ids of the members of the group.
+    """
+
+    group: Group
+    members: Set[int] = field(default_factory=set, init=False)
+
+    def add_member(self, member_id: int) -> None:
+        """
+        Adds a member to this group.
+
+        Parameters:
+            member_id (int): The id of the member.
+
+        Returns:
+            None.
+        """
+
+        self.group.current_members += 1
+        self.members.add(member_id)
+
+    def remove_member(self, member_id: int) -> None:
+        """
+        Removes a member from this group.
+
+        Parameters:
+            member_id (int): The id of the member.
+
+        Returns:
+            None.
+        """
+
+        self.group.current_members -= 1
+        self.members.discard(member_id)
+
+    @property
+    def group_name(self) -> str:
+        """
+        Quick access to the group's name.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str).
+        """
+
+        return self.group.group_name
+
+    @property
+    def owner_id(self) -> int:
+        """
+        Quick access to the group's owner id.
+
+        Parameters:
+            None.
+
+        Returns:
+            (int).
+        """
+
+        return self.group.owner_id
+
+    @property
+    def is_full(self) -> bool:
+        """
+        Quick access to the group's capacity status.
+
+        Parameters:
+            None.
+
+        Returns:
+            (bool).
+        """
+
+        return self.group.is_full
 
 
 class Groups(commands.Cog):
@@ -64,10 +148,8 @@ class Groups(commands.Cog):
         """
 
         self.bot = bot
-        # [guild_id: [group_name: Group]]
-        self.groups: Dict[int, Dict[str, Group]] = defaultdict(dict)
-        # [guild_id: [group_name: GroupMember]]
-        self.group_members: Dict[int, Dict[str, List[GroupMember]]] = dict(defaultdict(list))
+        # [guild_id: [group_name: CompositeGroup]]
+        self.groups: Dict[int, Dict[str, CompositeGroup]] = defaultdict(dict)
 
     async def cog_load(self) -> None:
         """
@@ -87,7 +169,7 @@ class Groups(commands.Cog):
         )
 
         for group in groups:
-            self.groups[group.guild_id][group.group_name] = group
+            self.groups[group.guild_id][group.group_name] = CompositeGroup(group)
 
         group_members = await typed_retrieve_query(
             self.bot.database,
@@ -96,7 +178,7 @@ class Groups(commands.Cog):
         )
 
         for group_member in group_members:
-            self.group_members[group_member.guild_id][group_member.group_name].append(group_member)
+            self.groups[group_member.guild_id][group_member.group_name].add_member(group_member.member_id)
 
     @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
@@ -144,7 +226,7 @@ class Groups(commands.Cog):
                 await interaction.response.send_message('Failed to create a new group.', ephemeral=True)
         else:
             await interaction.response.send_message('Successfully created group.', ephemeral=True)
-            self.groups[interaction.guild_id][group_name] = group
+            self.groups[interaction.guild_id][group_name] = CompositeGroup(group)
 
     @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
@@ -177,7 +259,7 @@ class Groups(commands.Cog):
 
         group = self.groups[interaction.guild_id][group_name]
 
-        if group.owner_id != interaction.user.id and interaction.user.guild_permissions.manage_messages is False:
+        if group.owner_id != interaction.user.id and not interaction.user.guild_permissions.manage_messages:
             await interaction.response.send_message(
                 'You do not own that group or do not have permission to manage groups.', ephemeral=True
             )
@@ -225,9 +307,13 @@ class Groups(commands.Cog):
             await interaction.response.send_message('That group does not exist!', ephemeral=True)
             return
 
+        if interaction.user.id in self.groups[interaction.guild_id][group_name].members:
+            await interaction.response.send_message("You're already a member of this group!", ephemeral=True)
+            return
+
         group = self.groups[interaction.guild_id][group_name]
 
-        if group.max_members is not None and group.current_members >= group.max_members:
+        if group.is_full:
             await interaction.response.send_message('That group is full!', ephemeral=True)
             return
 
@@ -245,7 +331,7 @@ class Groups(commands.Cog):
                 await interaction.response.send_message('Failed to join the group.', ephemeral=True)
         else:
             await interaction.response.send_message('Successfully joined the group.', ephemeral=True)
-            self.groups[interaction.guild_id][group_name].current_members += 1
+            self.groups[interaction.guild_id][group_name].add_member(interaction.user.id)
 
     @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
@@ -276,20 +362,9 @@ class Groups(commands.Cog):
             await interaction.response.send_message('That group does not exist!', ephemeral=True)
             return
 
-        try:
-            is_in_group = await typed_retrieve_one_query(
-                self.bot.database,
-                bool,
-                'SELECT EXISTS(SELECT 1 FROM GROUP_MEMBERS WHERE GUILD_ID=? AND MEMBER_ID=? AND GROUP_NAME=?)',
-                (interaction.guild_id, interaction.user.id, group_name),
-            )
-        except aiosqliteError:
-            await interaction.response.send_message('Failed to check group membership.', ephemeral=True)
+        if interaction.user.id not in self.groups[interaction.guild_id][group_name].members:
+            await interaction.response.send_message('You are not a member of that group!', ephemeral=True)
             return
-        else:
-            if not is_in_group:
-                await interaction.response.send_message('You do not belong to that group!', ephemeral=True)
-                return
 
         try:
             await execute_query(
@@ -301,7 +376,7 @@ class Groups(commands.Cog):
             await interaction.response.send_message('Failed to leave the group.', ephemeral=True)
         else:
             await interaction.response.send_message('Successfully left the group.', ephemeral=True)
-            self.groups[interaction.guild_id][group_name].current_members -= 1
+            self.groups[interaction.guild_id][group_name].remove_member(interaction.user.id)
 
     @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
@@ -331,7 +406,7 @@ class Groups(commands.Cog):
             await interaction.response.send_message('That group does not exist!', ephemeral=True)
             return
 
-        group = self.groups[interaction.guild_id][group_name]
+        group = self.groups[interaction.guild_id][group_name].group
 
         owner = interaction.guild.get_member(group.owner_id)
         max_members_str = f'{group.max_members:,}' if group.max_members is not None else "None"
@@ -371,7 +446,7 @@ class Groups(commands.Cog):
             embed.set_thumbnail(
                 url='https://cdn.discordapp.com/attachments/634530033754570762/1194039472514408479/group_icon.png'
             )
-            embed.add_field(name='Owner', value=f'{owner.name if owner is not None else "N/A"}')
+            embed.add_field(name='Owner', value=f'{owner.mention if owner is not None else "N/A"}')
             embed.add_field(name='Created', value=format_unix_dt(group.created, 'R'))
             embed.add_field(name='​', value='​')
             embed.add_field(name='Current Members', value=f'{len(member_list):,}')
@@ -403,30 +478,58 @@ class Groups(commands.Cog):
             (List[Choice]): A list of relevant Choices for the current input.
         """
 
-        # TODO: Autocomplete logic for v2. Need to cache group members for autocomplete efficiency.
-        """
-        create -> none
-        delete
-            mod -> all
-            not mod -> own
-        join -> not full + not in
-        leave -> in
-        view -> all
-        """
-
+        assert isinstance(interaction.command, discord.app_commands.Command)  # decorator enforcement
         assert interaction.guild_id is not None  # guild_only
+        assert isinstance(interaction.user, discord.Member)  # guild_only
 
-        groups = self.groups[interaction.guild_id]
-
-        if not groups:
+        try:
+            groups = self.groups[interaction.guild_id].keys()
+            print(groups)
+        except AttributeError:
             return []
 
+        """
+        Autocomplete Logic:
+            Create -> None
+            Delete ~
+                is_moderator -> All
+                not_moderator -> User is owner
+            Join -> Not full and not already joined
+            Leave -> Already joined
+            View -> All
+        """
+        try:
+            if interaction.command.name == 'delete':
+                if not interaction.user.guild_permissions.manage_messages:
+                    options = [
+                        x for x in groups if self.groups[interaction.guild_id][x].group.owner_id == interaction.user.id
+                    ]
+                else:
+                    options = [x for x in groups]
+            elif interaction.command.name == 'join':
+                options = [
+                    x for x in groups
+                    if not self.groups[interaction.guild_id][x].is_full
+                       and interaction.user.id not in self.groups[interaction.guild_id][x].members
+                ]
+            elif interaction.command.name == 'leave':
+                options = [x for x in groups if interaction.user.id in self.groups[interaction.guild_id][x].members]
+            elif interaction.command.name == 'view':
+                options = [x for x in groups]
+            else:
+                options = []
+        except Exception as e:
+            print(type(e), e, e.__traceback__)
+            return []
+
+        print('options', options)
+
         if not current:
-            return [Choice(name=x, value=x) for x in list(groups.keys())[:25]]
+            return [Choice(name=x, value=x) for x in options[:25]]
 
         return generate_autocomplete_choices(
             current,
-            [(x, x) for x in groups.keys()],
+            [(x, x) for x in options],
             minimum_threshold=100
         )
 
