@@ -195,6 +195,10 @@ class Exceptions(commands.Cog):
             await interaction.response.send_message(f'{error}', ephemeral=True)
             return
 
+        if isinstance(error, app_commands.CommandOnCooldown):
+            await interaction.response.send_message(f'{error}', ephemeral=True)
+            return
+
         bot_logger.warning(
             f'Encountered AppCommandError in command {interaction.command.qualified_name}. '
             f'User: `{interaction.user}` Guild: `{interaction.guild.id if interaction.guild is not None else "None"}`\n'
