@@ -313,6 +313,20 @@ class Group(DatabaseDataclass):
     max_members: Optional[int]
     current_members: int = 0
 
+    @property
+    def is_full(self) -> bool:
+        """
+        Returns whether this group is at capacity.
+
+        Parameters:
+            None.
+
+        Returns:
+            (bool).
+        """
+
+        return self.max_members is not None and self.current_members >= self.max_members
+
 
 @dataclasses.dataclass
 class GroupMember(DatabaseDataclass):
