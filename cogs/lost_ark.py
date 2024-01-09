@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019-2023 Jake Sichley
+Copyright (c) 2019-2024 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -53,7 +53,8 @@ class LostArk(commands.Cog):
     @app_commands.describe(market_price='The market price of the item')
     @app_commands.describe(party_size='The size of your party, including you')
     async def loot_auction_split(
-            self, interaction: Interaction,
+            self,
+            interaction: Interaction,
             market_price: app_commands.Range[int, 1, None],
             party_size: app_commands.Range[int, 1, None]
     ) -> None:

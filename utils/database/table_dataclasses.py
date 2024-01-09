@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019-2023 Jake Sichley
+Copyright (c) 2019-2024 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -291,3 +291,42 @@ class GuildFeatures(DatabaseDataclass):
 
     guild_id: int
     features: int
+
+
+@dataclasses.dataclass
+class Group(DatabaseDataclass):
+    """
+    A DatabaseDataclass that stores information about a Group.
+
+    Attributes:
+        guild_id (int): The id of the guild.
+        owner_id (int): The id of the owner of this group.
+        created (int): The time this group was created.
+        group_name (str): The name of this group.
+        max_members (Optional[int]): The maximum number of members this group may have, if any.
+    """
+
+    guild_id: int
+    owner_id: int
+    created: int
+    group_name: str
+    max_members: Optional[int]
+    current_members: int = 0
+
+
+@dataclasses.dataclass
+class GroupMember(DatabaseDataclass):
+    """
+    A DatabaseDataclass that stores information about a Group Member.
+
+    Attributes:
+        guild_id (int): The id of the guild.
+        member_id (int): The id of the member.
+        joined (int): The time this member joined the group.
+        group_name (str): The name of the group this member belongs to.
+    """
+
+    guild_id: int
+    member_id: int
+    joined: int
+    group_name: str

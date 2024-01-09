@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019-2023 Jake Sichley
+Copyright (c) 2019-2024 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -162,8 +162,6 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         embed.add_field(name='High Alch', value=f'{item.highalch:,} coins' if item.highalch else 'N/A')
         embed.add_field(name='Low Alch', value=f'{item.lowalch:,} coins' if item.lowalch else 'N/A')
         embed.add_field(name='Value', value=f'{item.value:,} coins' if item.value else 'N/A')
-        embed.set_footer(text='Please report any issues to my owner!')
-
         embed.set_footer(text='Please report any issues to my owner!')
 
         await interaction.response.send_message(embed=embed)
@@ -444,7 +442,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         alerts = self.alerts[interaction.user.id]
 
         if not current:
-            return [Choice(name=self.item_data[x.item_id].name, value=x.item_id) for x in alerts.values()]
+            return [Choice(name=self.item_data[x.item_id].name, value=x.item_id) for x in list(alerts.values())[:25]]
 
         return generate_autocomplete_choices(
             current,
@@ -468,7 +466,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         """
 
         if not current:
-            return [Choice(name=self.item_data[x].name, value=x) for x in self.item_data][:25]
+            return [Choice(name=item.name, value=item_id) for item_id, item in list(self.item_data.items())[:25]]
 
         return generate_autocomplete_choices(
             current,

@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019-2023 Jake Sichley
+Copyright (c) 2019-2024 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -195,9 +195,13 @@ class Exceptions(commands.Cog):
             await interaction.response.send_message(f'{error}', ephemeral=True)
             return
 
+        if isinstance(error, app_commands.CommandOnCooldown):
+            await interaction.response.send_message(f'{error}', ephemeral=True)
+            return
+
         bot_logger.warning(
-            f'Encountered AppCommandError in command {interaction.command.name}. '
-            f'User: {interaction.user}. Guild: {interaction.guild.id if interaction.guild is not None else "None"}.\n'
+            f'Encountered AppCommandError in command {interaction.command.qualified_name}. '
+            f'User: `{interaction.user}` Guild: `{interaction.guild.id if interaction.guild is not None else "None"}`\n'
         )
         print_exception(type(error), error, error.__traceback__, file=stderr)
 

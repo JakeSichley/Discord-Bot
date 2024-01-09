@@ -66,6 +66,7 @@ async def execute_query(
 
     try:
         async with aiosqlite.connect(database) as connection:
+            await connection.execute('PRAGMA foreign_keys = ON')
             affected = await connection.execute(query, values)
             await connection.commit()
             return affected.rowcount
