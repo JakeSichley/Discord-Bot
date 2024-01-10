@@ -304,6 +304,7 @@ class Group(DatabaseDataclass):
         created (int): The time this group was created.
         group_name (str): The name of this group.
         max_members (Optional[int]): The maximum number of members this group may have, if any.
+        _ephemeral_updates (Bool): Whether updates to this group are ephemeral.
     """
 
     guild_id: int
@@ -312,6 +313,7 @@ class Group(DatabaseDataclass):
     group_name: str
     max_members: Optional[int]
     current_members: int = 0
+    _ephemeral_updates: int = 1
 
     @property
     def is_full(self) -> bool:
@@ -326,6 +328,20 @@ class Group(DatabaseDataclass):
         """
 
         return self.max_members is not None and self.current_members >= self.max_members
+
+    @property
+    def ephemeral_updates(self) -> bool:
+        """
+        Returns whether updates to this group should be ephemeral.
+
+        Parameters:
+            None.
+
+        Returns:
+            (bool).
+        """
+
+        return self._ephemeral_updates == 1
 
 
 @dataclasses.dataclass

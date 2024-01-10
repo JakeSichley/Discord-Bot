@@ -42,7 +42,7 @@ from utils.logging_formatter import bot_logger
 from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 
-# TODO: Groups v2 -> edit group, optional group icon, kick from group
+# TODO: Groups v2 -> edit group, kick from group, silent
 
 @dataclass
 class CompositeGroup:
