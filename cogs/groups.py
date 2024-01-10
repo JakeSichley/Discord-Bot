@@ -235,7 +235,8 @@ class Groups(commands.Cog):
             int(utcnow().timestamp()),
             group_name,
             max_members,
-            ephemeral_updates
+            0,
+            1 if ephemeral_updates else 0
         )
 
         try:
@@ -251,7 +252,13 @@ class Groups(commands.Cog):
             else:
                 await interaction.response.send_message('Failed to create a new group.', ephemeral=True)
         else:
-            await interaction.response.send_message('Successfully created group.', ephemeral=True)
+            if group.ephemeral_updates:
+                await interaction.response.send_message('Successfully created group.', ephemeral=True)
+            else:
+                await interaction.response.send_message(
+                    f'_{interaction.user.mention} created the group **{group_name}**_',
+                    allowed_mentions=discord.AllowedMentions.none()
+                )
             self.groups[interaction.guild_id][group_name] = CompositeGroup(group)
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
