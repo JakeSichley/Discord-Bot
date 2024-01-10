@@ -127,6 +127,20 @@ class CompositeGroup:
 
         return self.group.is_full
 
+    @property
+    def ephemeral_updates(self) -> bool:
+        """
+        Quick access to the group's ephemeral_updates property.
+
+        Parameters:
+            None.
+
+        Returns:
+            (bool).
+        """
+
+        return self.group.ephemeral_updates
+
 
 class Groups(commands.Cog):
     """
@@ -185,11 +199,16 @@ class Groups(commands.Cog):
     )
     @app_commands.describe(group_name="The name of the group you'd like to create")
     @app_commands.describe(max_members='Optional: The maximum number of members this group can have [1, 32769]')
+    @app_commands.describe(
+        ephemeral_updates='Optional: Whether updates to this group should be silent. Updates are silent by default.'
+    )
+    @app_commands.rename(ephemeral_updates='silent_updates')
     async def create_group(
             self,
             interaction: Interaction,
             group_name: Range[str, 1, 100],
-            max_members: Optional[Range[int, 1, None]] = None
+            max_members: Optional[Range[int, 1, None]] = None,
+            ephemeral_updates: bool = True
     ) -> None:
         """
         Creates a new group for the guild. Name must be unique.
@@ -198,6 +217,7 @@ class Groups(commands.Cog):
             interaction (Interaction): The invocation interaction.
             group_name (str): The name of the group to create.
             max_members (Optional[int]): The maximum number of members that can join this group.
+            ephemeral_updates (Bool): Whether updates to this group should be silent (ephemeral).
 
         Returns:
             None.
@@ -209,12 +229,19 @@ class Groups(commands.Cog):
             await interaction.response.send_message('A group with that name already exists.', ephemeral=True)
             return
 
-        group = Group(interaction.guild_id, interaction.user.id, int(utcnow().timestamp()), group_name, max_members)
+        group = Group(
+            interaction.guild_id,
+            interaction.user.id,
+            int(utcnow().timestamp()),
+            group_name,
+            max_members,
+            ephemeral_updates
+        )
 
         try:
             await execute_query(
                 self.bot.database,
-                'INSERT INTO GROUPS VALUES (?, ?, ?, ?, ?, ?)',
+                'INSERT INTO GROUPS VALUES (?, ?, ?, ?, ?, ?, ?)',
                 group.unpack(),
                 errors_to_suppress=aiosqlite.IntegrityError
             )
