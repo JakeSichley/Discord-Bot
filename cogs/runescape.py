@@ -51,7 +51,7 @@ from utils.utils import format_unix_dt, generate_autocomplete_choices
 FIVE_MINUTES = 300
 ONE_YEAR = 31_556_926
 MIN_ALERTS = 1
-MAX_ALERTS = 2147483647
+MAX_ALERTS = 2_147_483_647
 
 
 # TODO: Add frequently accessed item_id's (global? user?) for /runescape_item

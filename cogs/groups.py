@@ -526,8 +526,8 @@ class Groups(commands.Cog):
             Delete ~
                 is_moderator -> All
                 not_moderator -> User is owner
-            Join -> Not full and not already joined
-            Leave -> Already joined
+            Join -> Not full and user not already joined
+            Leave -> User Already joined
             View -> All
         """
 
