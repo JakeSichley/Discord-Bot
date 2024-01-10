@@ -297,15 +297,27 @@ class Admin(commands.Cog):
             None.
         """
 
-        try:
-            if (query.upper()).startswith('SELECT'):
+
+        if (query.upper()).startswith('SELECT'):
+            try:
                 result = await retrieve_query(self.bot.database, query)
                 await ctx.safe_send(str(result))
-            else:
-                affected = await execute_query(self.bot.database, query)
-                await ctx.send(f'Executed. {affected} rows affected.')
+            except aiosqliteError as e:
+                await ctx.send(f'Error: {e}')
+            finally:
+                return
+
+
+        if self.bot.environment == 'PROD':
+            if not await ctx.confirmation_prompt('Confirm potentially mutating statement?'):
+                await ctx.send('Discarding.')
+                return
+
+        try:
+            affected = await execute_query(self.bot.database, query)
+            await ctx.send(f'Executed. {affected} rows affected.')
         except aiosqliteError as e:
-            await ctx.send(f'Error: {e}')
+            await ctx.safe_send(f'Error: {type(e)} - {e}\n{e.__traceback__}')
 
     @commands.command(name='refresh', hidden=True)
     async def reload_prefixes(self, ctx: Context) -> None:
