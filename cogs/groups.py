@@ -43,6 +43,8 @@ from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 
 # TODO: Groups v2 -> edit group, kick from group
+# TODO: on_leave listener, remove from groups
+# TODO: Group owner leaves?
 
 
 @app_commands.guild_only
@@ -157,8 +159,9 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             if group.ephemeral_updates:
                 await interaction.response.send_message('Successfully created group.', ephemeral=True)
             else:
+                max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
                 await interaction.response.send_message(
-                    f'_{interaction.user.mention} created the group **{group_name}**_',
+                    f'_{interaction.user.mention} created group "**{group_name}**" ({max_members_str} max members)_',
                     allowed_mentions=discord.AllowedMentions.none()
                 )
             self.groups[interaction.guild_id][group_name] = CompositeGroup(group)
@@ -207,13 +210,13 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 (group_name, interaction.guild_id)
             )
         except aiosqliteError:
-            await interaction.response.send_message('Failed to delete the group.', ephemeral=True)
+            await interaction.response.send_message('Failed to delete group.', ephemeral=True)
         else:
             if group.ephemeral_updates:
-                await interaction.response.send_message('Successfully deleted the group.', ephemeral=True)
+                await interaction.response.send_message('Successfully deleted group.', ephemeral=True)
             else:
                 await interaction.response.send_message(
-                    f'_{interaction.user.mention} delete the group **{group_name}**_',
+                    f'_{interaction.user.mention} delete group "**{group_name}**" ({group.current_members:,} members)_',
                     allowed_mentions=discord.AllowedMentions.none()
                 )
 
@@ -270,15 +273,15 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             if isinstance(e, IntegrityError):
                 await interaction.response.send_message("You're already a member of this group!", ephemeral=True)
             else:
-                await interaction.response.send_message('Failed to join the group.', ephemeral=True)
+                await interaction.response.send_message('Failed to join group.', ephemeral=True)
         else:
             if group.ephemeral_updates:
-                await interaction.response.send_message('Successfully joined the group.', ephemeral=True)
+                await interaction.response.send_message('Successfully joined group.', ephemeral=True)
             else:
                 max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
                 await interaction.response.send_message(
-                    f'_{interaction.user.mention} joined the group **{group_name}** '
-                    f'({group.current_members + 1:,}/{max_members_str})_',
+                    f'_{interaction.user.mention} joined group "**{group_name}**" '
+                    f'({group.current_members + 1:,}/{max_members_str} members)_',
                     allowed_mentions=discord.AllowedMentions.none()
                 )
 
@@ -300,7 +303,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
         Parameters:
             interaction (Interaction): The invocation interaction.
-            group_name (str): The name of the group to join.
+            group_name (str): The name of the group to leave.
 
         Returns:
             None.
@@ -326,16 +329,86 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 (interaction.guild_id, interaction.user.id, group_name),
             )
         except aiosqliteError:
-            await interaction.response.send_message('Failed to leave the group.', ephemeral=True)
+            await interaction.response.send_message('Failed to leave group.', ephemeral=True)
         else:
             if group.ephemeral_updates:
-                await interaction.response.send_message('Successfully left the group.', ephemeral=True)
+                await interaction.response.send_message('Successfully left group.', ephemeral=True)
             else:
                 max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
                 await interaction.response.send_message(
-                    f'_{interaction.user.mention} left the group **{group_name}** '
-                    f'({group.current_members - 1:,}/{max_members_str})_',
+                    f'_{interaction.user.mention} left group "**{group_name}**" '
+                    f'({group.current_members - 1:,}/{max_members_str} members)_',
                     allowed_mentions=discord.AllowedMentions.none()
+                )
+
+            self.groups[interaction.guild_id][group_name].remove_member(interaction.user.id)
+
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
+    @app_commands.command(  # type: ignore[arg-type]
+        name='kick', description="Removes a member from an existing group"
+    )
+    @app_commands.describe(group_name="The name of you'd like to remove a member from")
+    @app_commands.describe(member="The member to remove")
+    async def kick_from_group(
+            self,
+            interaction: Interaction,
+            group_name: Range[str, 1, 100],
+            member: discord.Member,
+    ) -> None:
+        """
+        Kicks a member from a group.
+        You must either own the group or be a moderator to kick members from groups.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            group_name (str): The name of the group to remove a member from.
+            member (discord.Member): The member to remove.
+
+        Returns:
+            None.
+        """
+
+        assert isinstance(interaction.user, discord.Member)  # guild_only
+        assert interaction.guild_id is not None  # guild_only
+
+        if interaction.user.id == member.id:
+            await interaction.response.send_message("You can't kick yourself!", ephemeral=True)
+            return
+
+        if group_name not in self.groups[interaction.guild_id]:
+            await interaction.response.send_message('That group does not exist!', ephemeral=True)
+            return
+
+        group = self.groups[interaction.guild_id][group_name]
+
+        if group.owner_id != interaction.user.id and not interaction.user.guild_permissions.manage_messages:
+            await interaction.response.send_message(
+                'You do not own that group or do not have permission to manage groups.', ephemeral=True
+            )
+            return
+
+        if member.id not in group.members:
+            await interaction.response.send_message('That member does not belong to that group!', ephemeral=True)
+            return
+
+        try:
+            await execute_query(
+                self.bot.database,
+                'DELETE FROM GROUP_MEMBERS WHERE GUILD_ID=? AND MEMBER_ID=? AND GROUP_NAME=?',
+                (interaction.guild_id, member.id, group_name),
+            )
+        except aiosqliteError:
+            await interaction.response.send_message('Failed to kick member from group.', ephemeral=True)
+        else:
+            if group.ephemeral_updates:
+                await interaction.response.send_message('Successfully kicked member from group.', ephemeral=True)
+            else:
+                max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
+
+                await interaction.response.send_message(
+                    f'_{interaction.user.mention} removed {member.mention} from group "**{group_name}**" '
+                    f'({group.current_members - 1:,}/{max_members_str} members)_',
+                    allowed_mentions=discord.AllowedMentions(users=[member])
                 )
 
             self.groups[interaction.guild_id][group_name].remove_member(interaction.user.id)
@@ -427,6 +500,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @join_group.autocomplete('group_name')
     @leave_group.autocomplete('group_name')
     @view_group.autocomplete('group_name')
+    @kick_from_group.autocomplete('group_name')
     async def existing_group_name_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
         Autocompletes group names for the current guild.
@@ -459,7 +533,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             View -> All
         """
 
-        if interaction.command.name == 'delete':
+        if interaction.command.name == 'delete' or interaction.command.name == 'kick':
             if not interaction.user.guild_permissions.manage_messages:
                 options = [
                     x for x in groups if self.groups[interaction.guild_id][x].group.owner_id == interaction.user.id
