@@ -170,15 +170,14 @@ class CompositeGroup:
         return self.group.max_members
 
 
-class Groups(commands.Cog):
+@app_commands.guild_only
+class Groups(commands.GroupCog, group_name='group', group_description='Commands for managing Groups'):
     """
     A Cogs class that contains Groups commands for the bot.
 
     Attributes:
         bot (DreamBot): The Discord bot class.
     """
-
-    group_subgroup = app_commands.Group(name='group', description='Commands for managing groups', guild_only=True)
 
     def __init__(self, bot: DreamBot) -> None:
         """
@@ -222,7 +221,7 @@ class Groups(commands.Cog):
             self.groups[group_member.guild_id][group_member.group_name].members.add(group_member.member_id)
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
-    @group_subgroup.command(  # type: ignore[arg-type]
+    @app_commands.command(  # type: ignore[arg-type]
         name='create', description='Creates a new group for this guild'
     )
     @app_commands.describe(group_name="The name of the group you'd like to create")
@@ -290,7 +289,7 @@ class Groups(commands.Cog):
             self.groups[interaction.guild_id][group_name] = CompositeGroup(group)
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
-    @group_subgroup.command(  # type: ignore[arg-type]
+    @app_commands.command(  # type: ignore[arg-type]
         name='delete', description='Deletes an existing group from the guild'
     )
     @app_commands.describe(group_name="The name of the group you'd like to delete")
@@ -347,7 +346,7 @@ class Groups(commands.Cog):
                 del self.groups[interaction.guild_id][group_name]
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
-    @group_subgroup.command(  # type: ignore[arg-type]
+    @app_commands.command(  # type: ignore[arg-type]
         name='join', description='Joins an existing group'
     )
     @app_commands.describe(group_name="The name of the group you'd like to join")
@@ -401,16 +400,17 @@ class Groups(commands.Cog):
             if group.ephemeral_updates:
                 await interaction.response.send_message('Successfully joined the group.', ephemeral=True)
             else:
+                max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
                 await interaction.response.send_message(
                     f'_{interaction.user.mention} joined the group **{group_name}** '
-                    f'({group.current_members + 1}/{group.max_members if group.max_members is not None else "∞"})_',
+                    f'({group.current_members + 1:,}/{max_members_str})_',
                     allowed_mentions=discord.AllowedMentions.none()
                 )
 
             self.groups[interaction.guild_id][group_name].add_member(interaction.user.id)
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
-    @group_subgroup.command(  # type: ignore[arg-type]
+    @app_commands.command(  # type: ignore[arg-type]
         name='leave', description="Leaves a group you're an existing member of"
     )
     @app_commands.describe(group_name="The name of the group you'd like to leave")
@@ -456,15 +456,16 @@ class Groups(commands.Cog):
             if group.ephemeral_updates:
                 await interaction.response.send_message('Successfully left the group.', ephemeral=True)
             else:
+                max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
                 await interaction.response.send_message(
                     f'_{interaction.user.mention} left the group **{group_name}** '
-                    f'({group.current_members - 1}/{group.max_members if group.max_members is not None else "∞"})_',
+                    f'({group.current_members - 1:,}/{max_members_str})_',
                     allowed_mentions=discord.AllowedMentions.none()
                 )
 
             self.groups[interaction.guild_id][group_name].remove_member(interaction.user.id)
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
-    @group_subgroup.command(  # type: ignore[arg-type]
+    @app_commands.command(  # type: ignore[arg-type]
         name='view', description='Views an existing group'
     )
     @app_commands.describe(group_name="The name of the group you'd like to view")
