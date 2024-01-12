@@ -210,7 +210,6 @@ class Groups(commands.Cog):
         )
 
         for group in groups:
-            print(group)
             self.groups[group.guild_id][group.group_name] = CompositeGroup(group)
 
         group_members = await typed_retrieve_query(
@@ -402,9 +401,6 @@ class Groups(commands.Cog):
             if group.ephemeral_updates:
                 await interaction.response.send_message('Successfully joined the group.', ephemeral=True)
             else:
-                print('Join')
-                print(group)
-                print(group.group)
                 await interaction.response.send_message(
                     f'_{interaction.user.mention} joined the group **{group_name}** '
                     f'({group.current_members + 1}/{group.max_members if group.max_members is not None else "∞"})_',
@@ -412,7 +408,6 @@ class Groups(commands.Cog):
                 )
 
             self.groups[interaction.guild_id][group_name].add_member(interaction.user.id)
-            print(self.groups[interaction.guild_id][group_name])
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
@@ -461,9 +456,6 @@ class Groups(commands.Cog):
             if group.ephemeral_updates:
                 await interaction.response.send_message('Successfully left the group.', ephemeral=True)
             else:
-                print('Leave')
-                print(group)
-                print(group.group)
                 await interaction.response.send_message(
                     f'_{interaction.user.mention} left the group **{group_name}** '
                     f'({group.current_members - 1}/{group.max_members if group.max_members is not None else "∞"})_',
@@ -471,8 +463,6 @@ class Groups(commands.Cog):
                 )
 
             self.groups[interaction.guild_id][group_name].remove_member(interaction.user.id)
-            print(self.groups[interaction.guild_id][group_name])
-
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
         name='view', description='Views an existing group'
