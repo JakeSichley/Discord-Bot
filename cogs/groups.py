@@ -25,7 +25,7 @@ SOFTWARE.
 from collections import defaultdict
 from contextlib import suppress
 from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Tuple, Set
+from typing import Optional, Dict, List, Tuple, Set, Any
 
 import aiosqlite
 import discord
@@ -141,6 +141,34 @@ class CompositeGroup:
 
         return self.group.ephemeral_updates
 
+    @property
+    def current_members(self) -> int:
+        """
+        Quick access to the group's current_member property.
+
+        Parameters:
+            None.
+
+        Returns:
+            (bool).
+        """
+
+        return self.group.current_members
+
+    @property
+    def max_members(self) -> Optional[int]:
+        """
+        Quick access to the group's max_members property.
+
+        Parameters:
+            None.
+
+        Returns:
+            (bool).
+        """
+
+        return self.group.max_members
+
 
 class Groups(commands.Cog):
     """
@@ -182,6 +210,7 @@ class Groups(commands.Cog):
         )
 
         for group in groups:
+            print(group)
             self.groups[group.guild_id][group.group_name] = CompositeGroup(group)
 
         group_members = await typed_retrieve_query(
@@ -191,7 +220,7 @@ class Groups(commands.Cog):
         )
 
         for group_member in group_members:
-            self.groups[group_member.guild_id][group_member.group_name].add_member(group_member.member_id)
+            self.groups[group_member.guild_id][group_member.group_name].members.add(group_member.member_id)
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
@@ -307,7 +336,14 @@ class Groups(commands.Cog):
         except aiosqliteError:
             await interaction.response.send_message('Failed to delete the group.', ephemeral=True)
         else:
-            await interaction.response.send_message('Successfully deleted the group.', ephemeral=True)
+            if group.ephemeral_updates:
+                await interaction.response.send_message('Successfully deleted the group.', ephemeral=True)
+            else:
+                await interaction.response.send_message(
+                    f'_{interaction.user.mention} delete the group **{group_name}**_',
+                    allowed_mentions=discord.AllowedMentions.none()
+                )
+
             with suppress(KeyError):
                 del self.groups[interaction.guild_id][group_name]
 
@@ -363,8 +399,20 @@ class Groups(commands.Cog):
             else:
                 await interaction.response.send_message('Failed to join the group.', ephemeral=True)
         else:
-            await interaction.response.send_message('Successfully joined the group.', ephemeral=True)
+            if group.ephemeral_updates:
+                await interaction.response.send_message('Successfully joined the group.', ephemeral=True)
+            else:
+                print('Join')
+                print(group)
+                print(group.group)
+                await interaction.response.send_message(
+                    f'_{interaction.user.mention} joined the group **{group_name}** '
+                    f'({group.current_members + 1}/{group.max_members if group.max_members is not None else "∞"})_',
+                    allowed_mentions=discord.AllowedMentions.none()
+                )
+
             self.groups[interaction.guild_id][group_name].add_member(interaction.user.id)
+            print(self.groups[interaction.guild_id][group_name])
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
@@ -395,7 +443,9 @@ class Groups(commands.Cog):
             await interaction.response.send_message('That group does not exist!', ephemeral=True)
             return
 
-        if interaction.user.id not in self.groups[interaction.guild_id][group_name].members:
+        group = self.groups[interaction.guild_id][group_name]
+
+        if interaction.user.id not in group.members:
             await interaction.response.send_message('You are not a member of that group!', ephemeral=True)
             return
 
@@ -408,8 +458,20 @@ class Groups(commands.Cog):
         except aiosqliteError:
             await interaction.response.send_message('Failed to leave the group.', ephemeral=True)
         else:
-            await interaction.response.send_message('Successfully left the group.', ephemeral=True)
+            if group.ephemeral_updates:
+                await interaction.response.send_message('Successfully left the group.', ephemeral=True)
+            else:
+                print('Leave')
+                print(group)
+                print(group.group)
+                await interaction.response.send_message(
+                    f'_{interaction.user.mention} left the group **{group_name}** '
+                    f'({group.current_members - 1}/{group.max_members if group.max_members is not None else "∞"})_',
+                    allowed_mentions=discord.AllowedMentions.none()
+                )
+
             self.groups[interaction.guild_id][group_name].remove_member(interaction.user.id)
+            print(self.groups[interaction.guild_id][group_name])
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @group_subgroup.command(  # type: ignore[arg-type]
@@ -578,13 +640,10 @@ def calculate_member_and_joined_max_splice(group_members: List[Tuple[discord.Mem
     last_member_index = find_last_index_under_threshold([x[0].mention for x in group_members])
     last_timestamp_index = find_last_index_under_threshold([str(x[1]) for x in group_members])
 
-    last_member_index = last_member_index if last_member_index is not None else len(group_members)
-    last_timestamp_index = last_timestamp_index if last_timestamp_index is not None else len(group_members)
-
     return min(last_member_index, last_timestamp_index)
 
 
-def find_last_index_under_threshold(collection: List[str]) -> Optional[int]:
+def find_last_index_under_threshold(collection: List[str]) -> int:
     """
     Finds the last element (index) that would allow the collection to remain under the embed field limit (1024).
 
@@ -604,7 +663,7 @@ def find_last_index_under_threshold(collection: List[str]) -> Optional[int]:
         else:
             return index - 1
 
-    return None
+    return len(collection)
 
 
 async def setup(bot: DreamBot) -> None:

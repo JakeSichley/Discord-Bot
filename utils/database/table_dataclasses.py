@@ -304,6 +304,7 @@ class Group(DatabaseDataclass):
         created (int): The time this group was created.
         group_name (str): The name of this group.
         max_members (Optional[int]): The maximum number of members this group may have, if any.
+        current_members (int): The current number of members in this group.
         _ephemeral_updates (Bool): Whether updates to this group are ephemeral.
     """
 
