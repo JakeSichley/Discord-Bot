@@ -102,17 +102,17 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         name='create', description='Creates a new group for this guild'
     )
     @app_commands.describe(group_name="The name of the group you'd like to create")
-    @app_commands.describe(max_members='Optional: The maximum number of members this group can have [1, 32769]')
+    @app_commands.describe(max_members='Optional: The maximum number of members this group can have')
     @app_commands.describe(
-        ephemeral_updates='Optional: Whether updates to this group should be silent. Updates are silent by default.'
+        ephemeral_updates='Optional: Whether updates to this group should be silent. Updates are not silent by default.'
     )
     @app_commands.rename(ephemeral_updates='silent_updates')
     async def create_group(
             self,
             interaction: Interaction,
             group_name: Range[str, 1, 100],
-            max_members: Optional[Range[int, 1, None]] = None,
-            ephemeral_updates: bool = True
+            max_members: Optional[Range[int, 1, 2_500_000]] = None,
+            ephemeral_updates: bool = False
     ) -> None:
         """
         Creates a new group for the guild. Name must be unique.

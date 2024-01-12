@@ -314,7 +314,7 @@ class Group(DatabaseDataclass):
     group_name: str
     max_members: Optional[int]
     current_members: int = 0
-    _ephemeral_updates: int = 1
+    _ephemeral_updates: int = 0
 
     @property
     def is_full(self) -> bool:
