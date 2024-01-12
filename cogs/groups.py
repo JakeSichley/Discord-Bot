@@ -24,8 +24,7 @@ SOFTWARE.
 
 from collections import defaultdict
 from contextlib import suppress
-from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Tuple, Set
+from typing import Optional, Dict, List, Tuple
 
 import aiosqlite
 import discord
@@ -38,136 +37,12 @@ from discord.utils import utcnow
 from dreambot import DreamBot
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import Group, GroupMember
+from utils.intermediate_models.composite_group import CompositeGroup
 from utils.logging_formatter import bot_logger
 from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 
 # TODO: Groups v2 -> edit group, kick from group
-
-@dataclass
-class CompositeGroup:
-    """
-    A dataclass that joins Groups and the id's of Group Members.
-
-    Attributes:
-        group (Group): The raw group.
-        members (Set[int]): The ids of the members of the group.
-    """
-
-    group: Group
-    members: Set[int] = field(default_factory=set, init=False)
-
-    def add_member(self, member_id: int) -> None:
-        """
-        Adds a member to this group.
-
-        Parameters:
-            member_id (int): The id of the member.
-
-        Returns:
-            None.
-        """
-
-        self.group.current_members += 1
-        self.members.add(member_id)
-
-    def remove_member(self, member_id: int) -> None:
-        """
-        Removes a member from this group.
-
-        Parameters:
-            member_id (int): The id of the member.
-
-        Returns:
-            None.
-        """
-
-        self.group.current_members -= 1
-        self.members.discard(member_id)
-
-    @property
-    def group_name(self) -> str:
-        """
-        Quick access to the group's name.
-
-        Parameters:
-            None.
-
-        Returns:
-            (str).
-        """
-
-        return self.group.group_name
-
-    @property
-    def owner_id(self) -> int:
-        """
-        Quick access to the group's owner id.
-
-        Parameters:
-            None.
-
-        Returns:
-            (int).
-        """
-
-        return self.group.owner_id
-
-    @property
-    def is_full(self) -> bool:
-        """
-        Quick access to the group's capacity status.
-
-        Parameters:
-            None.
-
-        Returns:
-            (bool).
-        """
-
-        return self.group.is_full
-
-    @property
-    def ephemeral_updates(self) -> bool:
-        """
-        Quick access to the group's ephemeral_updates property.
-
-        Parameters:
-            None.
-
-        Returns:
-            (bool).
-        """
-
-        return self.group.ephemeral_updates
-
-    @property
-    def current_members(self) -> int:
-        """
-        Quick access to the group's current_member property.
-
-        Parameters:
-            None.
-
-        Returns:
-            (bool).
-        """
-
-        return self.group.current_members
-
-    @property
-    def max_members(self) -> Optional[int]:
-        """
-        Quick access to the group's max_members property.
-
-        Parameters:
-            None.
-
-        Returns:
-            (bool).
-        """
-
-        return self.group.max_members
 
 
 @app_commands.guild_only
