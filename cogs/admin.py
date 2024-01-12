@@ -244,6 +244,7 @@ class Admin(commands.Cog):
         """
 
         await ctx.send('Closing Event Loop.')
+        bot_logger.info('Closing event loop')
         await self.bot.close()
 
     @commands.command(name='eval', hidden=True)
