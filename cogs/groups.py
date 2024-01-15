@@ -42,7 +42,7 @@ from utils.logging_formatter import bot_logger
 from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 
-# TODO: Groups v2 -> edit group, kick from group
+# TODO: Groups v2 -> edit group
 # TODO: on_leave listener, remove from groups
 # TODO: Group owner leaves?
 
@@ -412,9 +412,74 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 )
 
             self.groups[interaction.guild_id][group_name].remove_member(interaction.user.id)
+
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @app_commands.command(  # type: ignore[arg-type]
-        name='view', description='Views an existing group'
+        name='transfer', description="Transfers group ownership to a new member"
+    )
+    @app_commands.describe(group_name="The name of you'd like to transfer ownership of")
+    @app_commands.describe(member="The member to give ownership to")
+    async def transfer_group(
+            self,
+            interaction: Interaction,
+            group_name: Range[str, 1, 100],
+            member: discord.Member,
+    ) -> None:
+        """
+        Transfers group ownership to a new member.
+        You must either own the group or be a moderator to transfer group ownership.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            group_name (str): The name of the group to transfer membership from.
+            member (discord.Member): The member to give ownership to.
+
+        Returns:
+            None.
+        """
+
+        assert isinstance(interaction.user, discord.Member)  # guild_only
+        assert interaction.guild_id is not None  # guild_only
+
+        if group_name not in self.groups[interaction.guild_id]:
+            await interaction.response.send_message('That group does not exist!', ephemeral=True)
+            return
+
+        group = self.groups[interaction.guild_id][group_name]
+        owner = interaction.guild.get_member(group.owner_id)
+
+        if member.id == group.owner_id:
+            await interaction.response.send_message('You already own that group!', ephemeral=True)
+            return
+
+        if group.owner_id != interaction.user.id and not interaction.user.guild_permissions.manage_messages:
+            await interaction.response.send_message(
+                'You do not own that group or do not have permission to manage groups.', ephemeral=True
+            )
+            return
+
+        try:
+            await execute_query(
+                self.bot.database,
+                'UPDATE GROUPS SET OWNER_ID=? WHERE GUILD_ID=? AND GROUP_NAME=?',
+                (member.id, interaction.guild_id, group_name),
+            )
+        except aiosqliteError:
+            await interaction.response.send_message('Failed to transfer group ownership.', ephemeral=True)
+        else:
+            if group.ephemeral_updates:
+                await interaction.response.send_message('Successfully transferred group ownership.', ephemeral=True)
+            else:
+                await interaction.response.send_message(
+                    f'_{interaction.user.mention} transferred ownership of group "**{group_name}**" to '
+                    f'{member.mention} from {owner.mention if owner is not None else "N/A"}_',
+                    allowed_mentions=discord.AllowedMentions(users=[member, owner] if owner is not None else [member])
+                )
+
+            self.groups[interaction.guild_id][group_name].group.owner_id = member.id
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
+    @app_commands.command(  # type: ignore[arg-type]
+        name='view', description='View an existing group'
     )
     @app_commands.describe(group_name="The name of the group you'd like to view")
     async def view_group(
@@ -501,6 +566,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @leave_group.autocomplete('group_name')
     @view_group.autocomplete('group_name')
     @kick_from_group.autocomplete('group_name')
+    @transfer_group.autocomplete('group_name')
     async def existing_group_name_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
         """
         Autocompletes group names for the current guild.
@@ -525,7 +591,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         """
         Autocomplete Logic:
             Create -> None
-            Delete ~
+            Delete/Kick/Transfer ~
                 is_moderator -> All
                 not_moderator -> User is owner
             Join -> Not full and user not already joined
@@ -533,7 +599,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             View -> All
         """
 
-        if interaction.command.name == 'delete' or interaction.command.name == 'kick':
+        if interaction.command.name in {'delete', 'kick', 'transfer'}:
             if not interaction.user.guild_permissions.manage_messages:
                 options = [
                     x for x in groups if self.groups[interaction.guild_id][x].group.owner_id == interaction.user.id
