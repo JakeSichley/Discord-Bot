@@ -14,6 +14,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.14.0
+### Features
+* `Groups` Cog v2
+  - Added `ephemeral` group updates
+  - Added `kick` and `transfer` commands
+  - Added support for member `on_join` and `on_leave`
+### Internal
+* Confirmation for mutating SQL statements in PROD
+* Expand list of core updates that prevent automatic reloading
+### Issues
+* Handle `TimeoutError` in fetch tasks
+
 ## 2.13.0
 ### Features
 * Add `Groups` Cog

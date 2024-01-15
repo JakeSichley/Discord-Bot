@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from asyncio import Event
+from asyncio import Event, TimeoutError
 from collections import defaultdict
 from contextlib import suppress
 from itertools import chain
@@ -51,7 +51,7 @@ from utils.utils import format_unix_dt, generate_autocomplete_choices
 FIVE_MINUTES = 300
 ONE_YEAR = 31_556_926
 MIN_ALERTS = 1
-MAX_ALERTS = 2147483647
+MAX_ALERTS = 2_147_483_647
 
 
 # TODO: Add frequently accessed item_id's (global? user?) for /runescape_item
@@ -783,7 +783,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         except TypeError as e:
             bot_logger.warning(f'OSRS RunescapeItem Init Error: {e}')
 
-        except (JSONDecodeError, UnicodeError) as e:
+        except (JSONDecodeError, UnicodeError, TimeoutError) as e:
             bot_logger.warning(f'OSRS Mapping Query Error: {type(e)} - {e}')
 
         except Exception as e:

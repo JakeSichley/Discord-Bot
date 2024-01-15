@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019-2022 Jake Sichley
+Copyright (c) 2019-2024 Jake Sichley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -244,6 +244,7 @@ class Admin(commands.Cog):
         """
 
         await ctx.send('Closing Event Loop.')
+        bot_logger.info('Closing event loop')
         await self.bot.close()
 
     @commands.command(name='eval', hidden=True)
@@ -297,15 +298,27 @@ class Admin(commands.Cog):
             None.
         """
 
-        try:
-            if (query.upper()).startswith('SELECT'):
+
+        if (query.upper()).startswith('SELECT'):
+            try:
                 result = await retrieve_query(self.bot.database, query)
                 await ctx.safe_send(str(result))
-            else:
-                affected = await execute_query(self.bot.database, query)
-                await ctx.send(f'Executed. {affected} rows affected.')
+            except aiosqliteError as e:
+                await ctx.send(f'Error: {e}')
+            finally:
+                return
+
+
+        if self.bot.environment == 'PROD':
+            if not await ctx.confirmation_prompt('Confirm potentially mutating statement?'):
+                await ctx.send('Discarding.')
+                return
+
+        try:
+            affected = await execute_query(self.bot.database, query)
+            await ctx.send(f'Executed. {affected} rows affected.')
         except aiosqliteError as e:
-            await ctx.send(f'Error: {e}')
+            await ctx.safe_send(f'Error: {type(e)} - {e}\n{e.__traceback__}')
 
     @commands.command(name='refresh', hidden=True)
     async def reload_prefixes(self, ctx: Context) -> None:
@@ -510,7 +523,7 @@ class Admin(commands.Cog):
                 embed.add_field(name=field, value='\n'.join(value))
         embed.set_footer(text='Please report any issues to my owner!')
 
-        if core or 'context.py' in changes:
+        if core or 'context.py' in changes or 'table_dataclasses.py' in changes or '.sql' in changes:
             embed.description = 'Core files were modified. No reloads will be performed.' \
                                 '\nPlease perform a full restart to apply changes.'
             await ctx.send(embed=embed)

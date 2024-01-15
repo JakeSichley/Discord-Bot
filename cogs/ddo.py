@@ -485,7 +485,7 @@ class DDO(commands.Cog):
         except ClientError:
             await backoff(server)
 
-        except (JSONDecodeError, UnicodeError) as e:
+        except (JSONDecodeError, UnicodeError, TimeoutError) as e:
             bot_logger.warning(f'DDOAudit Query[{server}] Error: {type(e)} - {e}')
             await backoff(server)
 
