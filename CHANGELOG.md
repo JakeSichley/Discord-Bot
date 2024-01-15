@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Added support for member `on_join` and `on_leave`
 ### Internal
 * Confirmation for mutating SQL statements in PROD
+* Expand list of core updates that prevent automatic reloading
 ### Issues
 * Handle `TimeoutError` in fetch tasks
 

@@ -523,7 +523,7 @@ class Admin(commands.Cog):
                 embed.add_field(name=field, value='\n'.join(value))
         embed.set_footer(text='Please report any issues to my owner!')
 
-        if core or 'context.py' in changes:
+        if core or 'context.py' in changes or 'table_dataclasses.py' in changes or '.sql' in changes:
             embed.description = 'Core files were modified. No reloads will be performed.' \
                                 '\nPlease perform a full restart to apply changes.'
             await ctx.send(embed=embed)
