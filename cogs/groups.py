@@ -32,6 +32,7 @@ from aiosqlite import Error as aiosqliteError, IntegrityError
 from discord import app_commands, Interaction
 from discord.app_commands import Choice, Range
 from discord.ext import commands
+from discord.ext import tasks
 from discord.utils import utcnow
 
 from dreambot import DreamBot
@@ -41,11 +42,12 @@ from utils.intermediate_models.composite_group import CompositeGroup
 from utils.logging_formatter import bot_logger
 from utils.utils import format_unix_dt, generate_autocomplete_choices
 
-from discord.ext import tasks
 
-
-# TODO: Groups v3 -> edit group; needs components for confirmation when new max_members < current_members
+# TODO: Groups v3 -> edit group (max_members); needs components for confirmation when new max_members < current_members
 # TODO: Groups v3 -> Cache member_id -> groups for leave/join event cache syncing?
+# TODO: Explore breaking common checks in each function out into decorators that raise groups_cog_error
+# TODO:   (cont.) with local listener that ignores these errors and re-raises actual errors for propagation
+# TODO: Allow kick and transfer of self with humorous message
 
 
 @app_commands.guild_only
@@ -75,7 +77,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @app_commands.command(  # type: ignore[arg-type]
-        name='create', description='Creates a new group for this guild'
+        name='create', description='Creates a new group'
     )
     @app_commands.describe(group_name="The name of the group you'd like to create")
     @app_commands.describe(max_members='Optional: The maximum number of members this group can have')
@@ -144,7 +146,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @app_commands.command(  # type: ignore[arg-type]
-        name='delete', description='Deletes an existing group from the guild'
+        name='delete', description='Deletes an existing group'
     )
     @app_commands.describe(group_name="The name of the group you'd like to delete")
     async def delete_group(
@@ -323,7 +325,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @app_commands.command(  # type: ignore[arg-type]
         name='kick', description="Removes a member from an existing group"
     )
-    @app_commands.describe(group_name="The name of you'd like to remove a member from")
+    @app_commands.describe(group_name="The name of the group you'd like to remove a member from")
     @app_commands.describe(member="The member to remove")
     async def kick_from_group(
             self,
@@ -393,7 +395,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @app_commands.command(  # type: ignore[arg-type]
         name='transfer', description="Transfers group ownership to a new member"
     )
-    @app_commands.describe(group_name="The name of you'd like to transfer ownership of")
+    @app_commands.describe(group_name="The name of the group you'd like to transfer ownership of")
     @app_commands.describe(member="The member to give ownership to")
     async def transfer_group(
             self,
@@ -416,6 +418,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
         assert isinstance(interaction.user, discord.Member)  # guild_only
         assert interaction.guild_id is not None  # guild_only
+        assert interaction.guild is not None  # guild_only
 
         if group_name not in self.groups[interaction.guild_id]:
             await interaction.response.send_message('That group does not exist!', ephemeral=True)
@@ -453,6 +456,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 )
 
             self.groups[interaction.guild_id][group_name].group.owner_id = member.id
+
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @app_commands.command(  # type: ignore[arg-type]
         name='view', description='View an existing group'
@@ -675,8 +679,6 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         Returns:
             None.
         """
-
-        print('Refreshed')
 
         groups = await typed_retrieve_query(
             self.bot.database,
