@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.14.1
+### Issues
+* Fix `Groups::kick` removing invoker from cache rather than kickee
+
 ## 2.14.0
 ### Features
 * `Groups` Cog v2
