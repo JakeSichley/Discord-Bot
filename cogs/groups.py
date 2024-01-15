@@ -42,9 +42,8 @@ from utils.logging_formatter import bot_logger
 from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 
-# TODO: Groups v2 -> edit group
-# TODO: on_leave listener, remove from groups
-# TODO: Group owner leaves?
+# TODO: Groups v3 -> edit group; needs components for confirmation when new max_members < current_members
+# TODO: Groups v3 -> Cache member_id -> groups for leave/join event cache syncing?
 
 
 @app_commands.guild_only
@@ -627,6 +626,59 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             [(x, x) for x in options],
             minimum_threshold=100
         )
+
+    """
+    MARK: - Listener Methods
+    """
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member) -> None:
+        """
+        A commands.Cog listener event that is called whenever a new user joins a guild.
+
+        Parameters:
+            member (discord.Member): The member that joined the guild.
+
+        Returns:
+            None.
+        """
+
+        # restore ownership if any groups remain unclaimed
+
+        with suppress(aiosqliteError):
+            await execute_query(
+                self.bot.database,
+                'UPDATE GROUPS SET OWNER_ID=? WHERE GUILD_ID=? AND OWNER_ID=?',
+                (member.id, member.guild.id, -member.id)
+            )
+
+    @commands.Cog.listener()
+    async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent) -> None:
+        """
+        A commands.Cog listener event that is called whenever a member is removed from the guild, regardless of
+        the state of the internal cache.
+
+        Parameters:
+            payload (discord.RawMemberRemoveEvent): The raw event payload data.
+
+        Returns:
+            None.
+        """
+
+        # set ownership to a sentinel value of -(user_id) for pseudo-tracking
+
+        with suppress(aiosqliteError):
+            await execute_query(
+                self.bot.database,
+                'UPDATE GROUPS SET OWNER_ID=? WHERE GUILD_ID=? AND OWNER_ID=?',
+                (-payload.user.id, payload.guild_id, payload.user.id)
+            )
+
+            await execute_query(
+                self.bot.database,
+                'DELETE FROM GROUP_MEMBERS WHERE GUILD_ID=? AND MEMBER_ID=?',
+                (payload.guild_id, payload.user.id)
+            )
 
 
 def calculate_member_and_joined_max_splice(group_members: List[Tuple[discord.Member, int]]) -> int:
