@@ -389,7 +389,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                     allowed_mentions=discord.AllowedMentions(users=[member])
                 )
 
-            self.groups[interaction.guild_id][group_name].remove_member(interaction.user.id)
+            self.groups[interaction.guild_id][group_name].remove_member(member.id)
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @app_commands.command(  # type: ignore[arg-type]
