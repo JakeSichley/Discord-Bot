@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased
 ### Features
 ### Internal
+* Replace license format to avoid future updates
 ### Issues
 
 ## 2.14.1
