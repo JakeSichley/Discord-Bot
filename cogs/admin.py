@@ -34,7 +34,7 @@ from io import StringIO
 from re import finditer
 from textwrap import indent
 from traceback import format_exc
-from typing import Union, Optional, List, Sequence, Annotated
+from typing import Union, Optional, List, Sequence, Annotated, Literal
 
 import discord
 import pytz
@@ -188,7 +188,7 @@ class Admin(commands.Cog):
             await ctx.send(f'Could Not Unload Module: `{module}`')
 
     @commands.command(name='sync')
-    async def sync_commands(self, ctx: Context, sync_type: Optional[str] = None) -> None:
+    async def sync_commands(self, ctx: Context, sync_type: Literal['global', 'local', 'guild', 'clear']) -> None:
         """
         Syncs application commands based on the specified sync type.
         Defaults to syncing to the local guild.
@@ -198,7 +198,7 @@ class Admin(commands.Cog):
 
         Parameters:
             ctx (Context): The invocation context.
-            sync_type (Optional[str]): The type of sync to perform.
+            sync_type (str): The type of sync to perform.
 
         Returns:
             None.
@@ -209,17 +209,23 @@ class Admin(commands.Cog):
             return
 
         if sync_type == 'global':
+            # tree to global
             synced = await ctx.bot.tree.sync()
-        elif sync_type == 'local':
+        elif sync_type == 'guild':
+            # sync guild to guild
             synced = await self.bot.tree.sync(guild=ctx.guild)
         elif sync_type == 'clear':
+            # clear guild
             ctx.bot.tree.clear_commands(guild=ctx.guild)
             await ctx.bot.tree.sync(guild=ctx.guild)
             synced = ctx.bot.tree.get_commands()
-        else:
+        elif sync_type == 'local':
+            # tree to local
             ctx.bot.tree.copy_global_to(guild=ctx.guild)
             synced = await ctx.bot.tree.sync(guild=ctx.guild)
-            sync_type = 'from global'
+        else:
+            await ctx.send('No sync type was provided.')
+            return
 
         await ctx.send(f'Synced {len(synced)} commands using sync type: `{sync_type}`.')
         bot_logger.info(f'Synced {len(synced)} commands using sync type: {sync_type}.')
