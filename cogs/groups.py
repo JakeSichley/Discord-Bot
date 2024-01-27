@@ -36,6 +36,7 @@ from discord.ext import tasks
 from discord.utils import utcnow
 
 from dreambot import DreamBot
+from utils.checks import InvocationCheckFailure
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import Group, GroupMember
 from utils.intermediate_models.composite_group import CompositeGroup
@@ -169,11 +170,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         assert isinstance(interaction.user, discord.Member)  # guild_only
         assert interaction.guild_id is not None  # guild_only
 
-        if group_name not in self.groups[interaction.guild_id]:
-            await interaction.response.send_message('That group does not exist!', ephemeral=True)
-            return
-
-        group = self.groups[interaction.guild_id][group_name]
+        group = self.get_group(interaction.guild_id, group_name)
 
         if group.owner_id != interaction.user.id and not interaction.user.guild_permissions.manage_messages:
             await interaction.response.send_message(
@@ -226,15 +223,11 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         assert isinstance(interaction.user, discord.Member)  # guild_only
         assert interaction.guild_id is not None  # guild_only
 
-        if group_name not in self.groups[interaction.guild_id]:
-            await interaction.response.send_message('That group does not exist!', ephemeral=True)
-            return
+        group = self.get_group(interaction.guild_id, group_name)
 
         if interaction.user.id in self.groups[interaction.guild_id][group_name].members:
             await interaction.response.send_message("You're already a member of this group!", ephemeral=True)
             return
-
-        group = self.groups[interaction.guild_id][group_name]
 
         if group.is_full:
             await interaction.response.send_message('That group is full!', ephemeral=True)
@@ -290,11 +283,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         assert isinstance(interaction.user, discord.Member)  # guild_only
         assert interaction.guild_id is not None  # guild_only
 
-        if group_name not in self.groups[interaction.guild_id]:
-            await interaction.response.send_message('That group does not exist!', ephemeral=True)
-            return
-
-        group = self.groups[interaction.guild_id][group_name]
+        group = self.get_group(interaction.guild_id, group_name)
 
         if interaction.user.id not in group.members:
             await interaction.response.send_message('You are not a member of that group!', ephemeral=True)
@@ -353,11 +342,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             await interaction.response.send_message("You can't kick yourself!", ephemeral=True)
             return
 
-        if group_name not in self.groups[interaction.guild_id]:
-            await interaction.response.send_message('That group does not exist!', ephemeral=True)
-            return
-
-        group = self.groups[interaction.guild_id][group_name]
+        group = self.get_group(interaction.guild_id, group_name)
 
         if group.owner_id != interaction.user.id and not interaction.user.guild_permissions.manage_messages:
             await interaction.response.send_message(
@@ -420,11 +405,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         assert interaction.guild_id is not None  # guild_only
         assert interaction.guild is not None  # guild_only
 
-        if group_name not in self.groups[interaction.guild_id]:
-            await interaction.response.send_message('That group does not exist!', ephemeral=True)
-            return
-
-        group = self.groups[interaction.guild_id][group_name]
+        group = self.get_group(interaction.guild_id, group_name)
         owner = interaction.guild.get_member(group.owner_id)
 
         if member.id == group.owner_id:
@@ -481,12 +462,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         assert interaction.guild is not None  # guild_only
         assert interaction.guild_id is not None  # guild_only
 
-        if group_name not in self.groups[interaction.guild_id]:
-            await interaction.response.send_message('That group does not exist!', ephemeral=True)
-            return
-
-        group = self.groups[interaction.guild_id][group_name].group
-
+        group = self.get_group(interaction.guild_id, group_name).group
         owner = interaction.guild.get_member(group.owner_id)
         max_members_str = f'{group.max_members:,}' if group.max_members is not None else "None"
 
@@ -697,6 +673,30 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
         for group_member in group_members:
             self.groups[group_member.guild_id][group_member.group_name].members.add(group_member.member_id)
+
+    """
+    MARK: - Checks
+    """
+
+    def get_group(self, guild_id: int, group_name: str) -> CompositeGroup:
+        """
+        Returns the relevant group for the interaction or raises a CheckError.
+
+        Parameters:
+            guild_id (int): The id of the guild.
+            group_name (str): The name of the group.
+
+        Raises:
+            (InvocationCheckFailure): The group was not found.
+
+        Returns:
+            (CompositeGroup): The relevant group for the invocation context.
+        """
+
+        if group_name not in self.groups[guild_id]:
+            raise InvocationCheckFailure('That group does not exist!')
+
+        return self.groups[guild_id][group_name]
 
     async def cog_unload(self) -> None:
         """
