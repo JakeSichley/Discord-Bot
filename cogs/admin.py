@@ -212,7 +212,7 @@ class Admin(commands.Cog):
             # tree to global
             synced = await ctx.bot.tree.sync()
         elif sync_type == 'guild':
-            # sync guild to guild
+            # sync guild to guild (guild-specific commands)
             synced = await self.bot.tree.sync(guild=ctx.guild)
         elif sync_type == 'clear':
             # clear guild
