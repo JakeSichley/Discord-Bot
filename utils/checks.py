@@ -22,12 +22,37 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Callable, Union, List
+from typing import Callable, Union, List, Tuple, Any
 
+from discord.app_commands.errors import CheckFailure
 from discord.ext import commands
 
 from utils.context import Context
 from utils.cooldowns import cooldown_predicate
+
+
+class InvocationCheckFailure(CheckFailure):
+    """
+    A special exception that inherits from commands.CheckFailure.
+    This check isn't run as a pre-condition, but rather is an exception raised during the execution of the command.
+
+    Intended to allow for reusable Cog-contextual checks that ensures some condition or aborts execution.
+    """
+
+    def __init__(self, message: str, *args: Tuple[Any]) -> None:
+        """
+        The constructor for the GroupPreconditionCheck class.
+
+        Parameters:
+            message (str): The exception's error message. This will be displayed to the user.
+            args (Tuple[Any]): Additional arguments to construct superclasses with.
+
+        Returns:
+            None.
+        """
+
+        self.message = message
+        super(CheckFailure, self).__init__(message, *args)
 
 
 def dynamic_cooldown() -> Callable:
