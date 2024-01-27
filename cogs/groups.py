@@ -46,8 +46,6 @@ from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 # TODO: Groups v3 -> edit group (max_members); needs components for confirmation when new max_members < current_members
 # TODO: Groups v3 -> Cache member_id -> groups for leave/join event cache syncing?
-# TODO: Explore breaking common checks in each function out into decorators that raise groups_cog_error
-# TODO:   (cont.) with local listener that ignores these errors and re-raises actual errors for propagation
 # TODO: Allow kick and transfer of self with humorous message
 
 
@@ -109,8 +107,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         assert interaction.guild_id is not None  # guild_only
 
         if group_name in self.groups[interaction.guild_id]:
-            await interaction.response.send_message('A group with that name already exists.', ephemeral=True)
-            return
+            raise InvocationCheckFailure('A group with that name already exists.')
 
         group = Group(
             interaction.guild_id,
@@ -222,12 +219,10 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         group = self.get_group(interaction.guild_id, group_name)
 
         if interaction.user.id in self.groups[interaction.guild_id][group_name].members:
-            await interaction.response.send_message("You're already a member of this group!", ephemeral=True)
-            return
+            raise InvocationCheckFailure("You're already a member of this group!")
 
         if group.is_full:
-            await interaction.response.send_message('That group is full!', ephemeral=True)
-            return
+            raise InvocationCheckFailure('That group is full!')
 
         try:
             await execute_query(
@@ -282,8 +277,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         group = self.get_group(interaction.guild_id, group_name)
 
         if interaction.user.id not in group.members:
-            await interaction.response.send_message('You are not a member of that group!', ephemeral=True)
-            return
+            raise InvocationCheckFailure('You are not a member of that group!')
 
         try:
             await execute_query(
@@ -335,16 +329,14 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         assert interaction.guild_id is not None  # guild_only
 
         if interaction.user.id == member.id:
-            await interaction.response.send_message("You can't kick yourself!", ephemeral=True)
-            return
+            raise InvocationCheckFailure("You can't kick yourself!")
 
         group = self.get_group(interaction.guild_id, group_name)
 
         self.privileged_action_check(interaction.user, group.owner_id)
 
         if member.id not in group.members:
-            await interaction.response.send_message('That member does not belong to that group!', ephemeral=True)
-            return
+            raise InvocationCheckFailure('That member does not belong to that group!')
 
         try:
             await execute_query(
@@ -401,8 +393,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         owner = interaction.guild.get_member(group.owner_id)
 
         if member.id == group.owner_id:
-            await interaction.response.send_message('You already own that group!', ephemeral=True)
-            return
+            raise InvocationCheckFailure('You already own that group!')
 
         self.privileged_action_check(interaction.user, group.owner_id)
 
@@ -692,7 +683,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         Checks whether the member owns the group or has elevated permissions in the guild.
 
         Parameters:
-            member (member): The member that invoked the command.
+            member (discord.Member): The member that invoked the command.
             group_owner_id (int): The id of the group owner.
 
         Raises:
