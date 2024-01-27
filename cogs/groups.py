@@ -172,11 +172,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
         group = self.get_group(interaction.guild_id, group_name)
 
-        if group.owner_id != interaction.user.id and not interaction.user.guild_permissions.manage_messages:
-            await interaction.response.send_message(
-                'You do not own that group or do not have permission to manage groups.', ephemeral=True
-            )
-            return
+        self.privileged_action_check(interaction.user, group.owner_id)
 
         try:
             await execute_query(
@@ -344,11 +340,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
         group = self.get_group(interaction.guild_id, group_name)
 
-        if group.owner_id != interaction.user.id and not interaction.user.guild_permissions.manage_messages:
-            await interaction.response.send_message(
-                'You do not own that group or do not have permission to manage groups.', ephemeral=True
-            )
-            return
+        self.privileged_action_check(interaction.user, group.owner_id)
 
         if member.id not in group.members:
             await interaction.response.send_message('That member does not belong to that group!', ephemeral=True)
@@ -412,11 +404,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             await interaction.response.send_message('You already own that group!', ephemeral=True)
             return
 
-        if group.owner_id != interaction.user.id and not interaction.user.guild_permissions.manage_messages:
-            await interaction.response.send_message(
-                'You do not own that group or do not have permission to manage groups.', ephemeral=True
-            )
-            return
+        self.privileged_action_check(interaction.user, group.owner_id)
 
         try:
             await execute_query(
@@ -680,7 +668,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
     def get_group(self, guild_id: int, group_name: str) -> CompositeGroup:
         """
-        Returns the relevant group for the interaction or raises a CheckError.
+        Returns the relevant group for the interaction.
 
         Parameters:
             guild_id (int): The id of the guild.
@@ -697,6 +685,29 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             raise InvocationCheckFailure('That group does not exist!')
 
         return self.groups[guild_id][group_name]
+
+    # noinspection PyMethodMayBeStatic
+    def privileged_action_check(self, member: discord.Member, group_owner_id: int) -> None:
+        """
+        Checks whether the member owns the group or has elevated permissions in the guild.
+
+        Parameters:
+            member (member): The member that invoked the command.
+            group_owner_id (int): The id of the group owner.
+
+        Raises:
+            (InvocationCheckFailure): The member lacks permissions to perform this action.
+
+        Returns:
+            None.
+        """
+
+        if group_owner_id != member.id and not member.guild_permissions.manage_messages:
+            raise InvocationCheckFailure('You do not own that group or do not have permission to manage groups.')
+
+    """
+    MARK: - Task Cleanup
+    """
 
     async def cog_unload(self) -> None:
         """
