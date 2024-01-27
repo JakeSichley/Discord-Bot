@@ -24,6 +24,7 @@ SOFTWARE.
 
 from collections import defaultdict
 from contextlib import suppress
+from random import choice as random_choice
 from typing import Optional, Dict, List, Tuple
 
 import aiosqlite
@@ -46,8 +47,6 @@ from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 # TODO: Groups v3 -> edit group (max_members); needs components for confirmation when new max_members < current_members
 # TODO: Groups v3 -> Cache member_id -> groups for leave/join event cache syncing?
-# TODO: Allow kick and transfer of self with humorous message
-
 
 @app_commands.guild_only
 class Groups(commands.GroupCog, group_name='group', group_description='Commands for managing Groups'):
@@ -329,7 +328,13 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         assert interaction.guild_id is not None  # guild_only
 
         if interaction.user.id == member.id:
-            raise InvocationCheckFailure("You can't kick yourself!")
+            responses = [
+                "You'll have to try and enter the high-stakes world of self-banishment somewhere else!",
+                "My, my, such drastic measures are not necessary here!",
+                "Are you staging a coup on yourself? Sounds like a power struggle for the ages... ",
+                "Whoa there, do you have a ticket for the self-eviction express?"
+            ]
+            raise InvocationCheckFailure(random_choice(responses))
 
         group = self.get_group(interaction.guild_id, group_name)
 
@@ -393,7 +398,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         owner = interaction.guild.get_member(group.owner_id)
 
         if member.id == group.owner_id:
-            raise InvocationCheckFailure('You already own that group!')
+            raise InvocationCheckFailure("Ah, yes, the ol' self-transferoo. Bold move, Cotton.")
 
         self.privileged_action_check(interaction.user, group.owner_id)
 
