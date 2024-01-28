@@ -33,7 +33,6 @@ from aiosqlite import Error as aiosqliteError, IntegrityError
 from discord import app_commands, Interaction
 from discord.app_commands import Choice, Range
 from discord.ext import commands
-from discord.ext import tasks
 from discord.utils import utcnow
 
 from dreambot import DreamBot
@@ -46,7 +45,6 @@ from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 
 # TODO: Groups v3 -> edit group (max_members); needs components for confirmation when new max_members < current_members
-# TODO: Groups v3 -> Cache member_id -> groups for leave/join event cache syncing?
 
 @app_commands.guild_only
 class Groups(commands.GroupCog, group_name='group', group_description='Commands for managing Groups'):
@@ -71,7 +69,6 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         self.bot = bot
         # [guild_id: [group_name: CompositeGroup]]
         self.groups: Dict[int, Dict[str, CompositeGroup]] = defaultdict(dict)
-        self.group_data_refresh.start()
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @app_commands.command(  # type: ignore[arg-type]
@@ -655,43 +652,6 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 self.groups[payload.guild_id][group_name].remove_member(payload.user.id)
 
     """
-    MARK: - Tasks
-    """
-
-    @tasks.loop(seconds=GROUPS_REFRESH_INTERVAL)
-    async def group_data_refresh(self) -> None:
-        """
-        A discord.ext.tasks loop that refreshes group data.
-        Executes every {GROUPS_REFRESH_INTERVAL} seconds.
-
-        TODO: Remove when member -> group mapping is implemented; move back to cog_load
-
-        Parameters:
-            None.
-
-        Returns:
-            None.
-        """
-
-        groups = await typed_retrieve_query(
-            self.bot.database,
-            Group,
-            'SELECT * FROM GROUPS'
-        )
-
-        for group in groups:
-            self.groups[group.guild_id][group.group_name] = CompositeGroup(group)
-
-        group_members = await typed_retrieve_query(
-            self.bot.database,
-            GroupMember,
-            'SELECT * FROM GROUP_MEMBERS'
-        )
-
-        for group_member in group_members:
-            self.groups[group_member.guild_id][group_member.group_name].members.add(group_member.member_id)
-
-    """
     MARK: - Checks
     """
 
@@ -733,26 +693,6 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
         if group_owner_id != member.id and not member.guild_permissions.manage_messages:
             raise InvocationCheckFailure('You do not own that group or do not have permission to manage groups.')
-
-    """
-    MARK: - Task Cleanup
-    """
-
-    async def cog_unload(self) -> None:
-        """
-        A method detailing custom extension unloading procedures.
-        Clears internal caches and immediately and forcefully exits any discord.ext.tasks.
-
-        Parameters:
-            None.
-
-        Returns:
-            None.
-        """
-
-        self.group_data_refresh.cancel()
-
-        bot_logger.info('Completed Unload for Cog: Groups')
 
 
 def calculate_member_and_joined_max_splice(group_members: List[Tuple[discord.Member, int]]) -> int:
