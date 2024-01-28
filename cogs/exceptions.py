@@ -56,7 +56,7 @@ class Exceptions(commands.Cog):
         """
 
         self.bot = bot
-        bot.tree.on_error = self.on_app_command_error
+        bot.tree.on_error = self.on_app_command_error  # type: ignore[method-assign]
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx: Context, error: commands.CommandError) -> None:

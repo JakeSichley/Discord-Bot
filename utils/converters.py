@@ -26,7 +26,7 @@ import re
 from typing import Optional, Union, Any, Callable
 
 import discord
-import parsedatetime  # type: ignore[import]
+import parsedatetime  # type: ignore[import-untyped]
 from discord.ext import commands
 
 from dreambot import DreamBot

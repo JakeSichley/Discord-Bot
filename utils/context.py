@@ -145,7 +145,7 @@ class Context(commands.Context):
         for emoji in confirmation_emojis:
             await prompt.add_reaction(emoji)
 
-        def reaction_check(pl: discord.RawReactionActionEvent):
+        def reaction_check(pl: discord.RawReactionActionEvent) -> bool:
             """
             Our check criteria for determining the result of the prompt.
 
