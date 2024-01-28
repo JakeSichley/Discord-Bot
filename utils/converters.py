@@ -246,7 +246,7 @@ class StringConverter(commands.Converter):
     """
 
     def __init__(
-            self, *, mutator: Optional[Callable[[str], str]] = None, constraint: Optional[Callable[[str], bool]] = None
+        self, *, mutator: Optional[Callable[[str], str]] = None, constraint: Optional[Callable[[str], bool]] = None
     ) -> None:
         """
         The constructor for the StringConverter class.

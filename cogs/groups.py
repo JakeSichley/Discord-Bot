@@ -593,6 +593,16 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 (member.id, member.guild.id, -member.id)
             )
 
+            updated_group_names = await typed_retrieve_query(
+                self.bot.database,
+                str,
+                'SELECT GROUP_NAME FROM GROUPS WHERE OWNER_ID=? AND GUILD_ID=?',
+                (member.id, member.guild.id)
+            )
+
+            for group_name in updated_group_names:
+                self.groups[member.guild.id][group_name].group.owner_id = member.id
+
     @commands.Cog.listener()
     async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent) -> None:
         """
@@ -608,6 +618,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
         # set ownership to a sentinel value of -(user_id) for pseudo-tracking
 
+        # group ownership
         with suppress(aiosqliteError):
             await execute_query(
                 self.bot.database,
@@ -615,11 +626,33 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 (-payload.user.id, payload.guild_id, payload.user.id)
             )
 
+            updated_group_names = await typed_retrieve_query(
+                self.bot.database,
+                str,
+                'SELECT GROUP_NAME FROM GROUPS WHERE OWNER_ID=? AND GUILD_ID=?',
+                (-payload.user.id, payload.guild_id)
+            )
+
+            for group_name in updated_group_names:
+                self.groups[payload.guild_id][group_name].group.owner_id = -payload.user.id
+
+        # group membership
+        with suppress(aiosqliteError):
+            updated_group_names = await typed_retrieve_query(
+                self.bot.database,
+                str,
+                'SELECT GROUP_NAME FROM GROUP_MEMBERS WHERE GUILD_ID=? AND MEMBER_ID=?',
+                (payload.guild_id, payload.user.id)
+            )
+
             await execute_query(
                 self.bot.database,
                 'DELETE FROM GROUP_MEMBERS WHERE GUILD_ID=? AND MEMBER_ID=?',
                 (payload.guild_id, payload.user.id)
             )
+
+            for group_name in updated_group_names:
+                self.groups[payload.guild_id][group_name].remove_member(payload.user.id)
 
     """
     MARK: - Tasks
