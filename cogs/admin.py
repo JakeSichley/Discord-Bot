@@ -34,7 +34,7 @@ from io import StringIO
 from re import finditer
 from textwrap import indent
 from traceback import format_exc
-from typing import Union, List, Sequence, Annotated, Literal
+from typing import Union, List, Sequence, Annotated, Literal, Any
 
 import discord
 import pytz
@@ -211,7 +211,7 @@ class Admin(commands.Cog):
 
         if sync_type == 'global':
             # tree to global
-            synced = await ctx.bot.tree.sync()
+            synced: List[Any] = await ctx.bot.tree.sync()
         elif sync_type == 'guild':
             # sync guild to guild (guild-specific commands)
             synced = await self.bot.tree.sync(guild=ctx.guild)

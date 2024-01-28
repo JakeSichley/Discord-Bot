@@ -73,7 +73,7 @@ class DefaultMemberConverter(commands.MemberConverter):
             return argument
 
 
-class AggressiveDefaultMemberConverter(commands.IDConverter):
+class AggressiveDefaultMemberConverter(commands.IDConverter[Union[discord.Member, str]]):
     """
     Converts an argument to a discord.Member object.
 
@@ -237,7 +237,7 @@ class AggressiveDefaultMemberConverter(commands.IDConverter):
         return result if isinstance(result, discord.Member) else argument
 
 
-class StringConverter(commands.Converter):
+class StringConverter(commands.Converter[str]):
     """
     Converts an argument to a string and applies the specified mutation.
 
