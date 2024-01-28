@@ -23,9 +23,10 @@ SOFTWARE.
 """
 
 from enum import IntEnum
+from typing import List
+
 from discord import AllowedMentions
 from discord.app_commands import Choice
-from typing import List
 
 
 class AllowedMentionsProxy(IntEnum):
@@ -43,7 +44,7 @@ class AllowedMentionsProxy(IntEnum):
     ALL = 7
 
     @staticmethod
-    def app_command_choices() -> List[Choice]:
+    def app_command_choices() -> List[Choice[int]]:
         """
         Returns a list of choices representing proxy options.
 

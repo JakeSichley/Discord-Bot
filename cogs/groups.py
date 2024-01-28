@@ -465,7 +465,9 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @view_group.autocomplete('group_name')
     @kick_from_group.autocomplete('group_name')
     @transfer_group.autocomplete('group_name')
-    async def existing_group_name_autocomplete(self, interaction: Interaction[DreamBot], current: str) -> List[Choice]:
+    async def existing_group_name_autocomplete(
+            self, interaction: Interaction[DreamBot], current: str
+    ) -> List[Choice[str]]:
         """
         Autocompletes group names for the current guild.
 

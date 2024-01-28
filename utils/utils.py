@@ -253,7 +253,7 @@ class AutocompleteModel(Generic[ChoiceT]):
 
         self.ratio = partial_ratio + set_ratio
 
-    def to_choice(self) -> Choice:
+    def to_choice(self) -> Choice[ChoiceT]:
         """
         Returns this model as an `app_commands.Choice` model.
 
@@ -299,7 +299,7 @@ def generate_autocomplete_choices(
         *,
         limit: int = 25,
         minimum_threshold: int = 0
-) -> List[Choice]:
+) -> List[Choice[ChoiceT]]:
     """
     Generator that yields pairs of items in a sequence
 
