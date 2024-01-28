@@ -68,9 +68,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         self.groups: Dict[int, Dict[str, CompositeGroup]] = defaultdict(dict)
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
-    @app_commands.command(
-        name='create', description='Creates a new group'
-    )
+    @app_commands.command(name='create', description='Creates a new group')
     @app_commands.describe(group_name="The name of the group you'd like to create")
     @app_commands.describe(max_members='Optional: The maximum number of members this group can have')
     @app_commands.describe(
@@ -136,15 +134,9 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             self.groups[interaction.guild_id][group_name] = CompositeGroup(group)
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
-    @app_commands.command(
-        name='delete', description='Deletes an existing group'
-    )
+    @app_commands.command(name='delete', description='Deletes an existing group')
     @app_commands.describe(group_name="The name of the group you'd like to delete")
-    async def delete_group(
-            self,
-            interaction: Interaction,
-            group_name: Range[str, 1, 100],
-    ) -> None:
+    async def delete_group(self, interaction: Interaction, group_name: Range[str, 1, 100]) -> None:
         """
         Deletes an existing group from the guild.
         You can only delete your own groups unless you are a moderator (`manage_messages`).
@@ -187,11 +179,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
     @app_commands.command(name='join', description='Joins an existing group')
     @app_commands.describe(group_name="The name of the group you'd like to join")
-    async def join_group(
-            self,
-            interaction: Interaction,
-            group_name: Range[str, 1, 100],
-    ) -> None:
+    async def join_group(self, interaction: Interaction, group_name: Range[str, 1, 100]) -> None:
         """
         Joins an existing group.
         Must not already be a member of the group and the group must not be at maximum capacity.
@@ -243,11 +231,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
     @app_commands.command(name='leave', description="Leaves a group you're an existing member of")
     @app_commands.describe(group_name="The name of the group you'd like to leave")
-    async def leave_group(
-            self,
-            interaction: Interaction,
-            group_name: Range[str, 1, 100],
-    ) -> None:
+    async def leave_group(self, interaction: Interaction, group_name: Range[str, 1, 100]) -> None:
         """
         Leaves an existing group.
         Must already be a member of the group.
@@ -294,10 +278,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @app_commands.describe(group_name="The name of the group you'd like to remove a member from")
     @app_commands.describe(member="The member to remove")
     async def kick_from_group(
-            self,
-            interaction: Interaction,
-            group_name: Range[str, 1, 100],
-            member: discord.Member,
+            self, interaction: Interaction, group_name: Range[str, 1, 100], member: discord.Member,
     ) -> None:
         """
         Kicks a member from a group.
@@ -358,10 +339,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @app_commands.describe(group_name="The name of the group you'd like to transfer ownership of")
     @app_commands.describe(member="The member to give ownership to")
     async def transfer_group(
-            self,
-            interaction: Interaction,
-            group_name: Range[str, 1, 100],
-            member: discord.Member,
+            self, interaction: Interaction, group_name: Range[str, 1, 100], member: discord.Member
     ) -> None:
         """
         Transfers group ownership to a new member.
@@ -411,11 +389,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
     @app_commands.command(name='view', description='View an existing group')
     @app_commands.describe(group_name="The name of the group you'd like to view")
-    async def view_group(
-            self,
-            interaction: Interaction,
-            group_name: Range[str, 1, 100],
-    ) -> None:
+    async def view_group(self, interaction: Interaction, group_name: Range[str, 1, 100]) -> None:
         """
         Views an existing group.
 
