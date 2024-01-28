@@ -34,7 +34,7 @@ from io import StringIO
 from re import finditer
 from textwrap import indent
 from traceback import format_exc
-from typing import Union, Optional, List, Sequence, Annotated, Literal
+from typing import Union, List, Sequence, Annotated, Literal
 
 import discord
 import pytz
@@ -49,8 +49,9 @@ from utils.checks import ensure_git_credentials
 from utils.context import Context
 from utils.converters import StringConverter
 from utils.database.helpers import execute_query, retrieve_query
+from utils.enums.network_return_type import NetworkReturnType
 from utils.logging_formatter import bot_logger
-from utils.network_utils import network_request, NetworkReturnType, Headers
+from utils.network_utils import network_request, Headers
 from utils.utils import pairs, run_in_subprocess, generate_activity
 
 ExtensionName = StringConverter(

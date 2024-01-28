@@ -37,8 +37,9 @@ from discord.ext import commands, tasks
 
 from dreambot import DreamBot
 from utils.context import Context
+from utils.enums.network_return_type import NetworkReturnType
 from utils.logging_formatter import bot_logger
-from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
+from utils.network_utils import network_request, ExponentialBackoff
 
 
 class DDO(commands.Cog):

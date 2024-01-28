@@ -42,8 +42,9 @@ from humanfriendly import format_timespan
 from dreambot import DreamBot
 from utils.database.helpers import execute_query, typed_retrieve_query, typed_retrieve_one_query
 from utils.database.table_dataclasses import RunescapeAlert
+from utils.enums.network_return_type import NetworkReturnType
 from utils.logging_formatter import bot_logger
-from utils.network_utils import network_request, NetworkReturnType, ExponentialBackoff
+from utils.network_utils import network_request, ExponentialBackoff
 from utils.runescape_data_classes import RunescapeItem, ItemMarketData, AlertEmbedFragment
 from utils.transformers import RunescapeNumberTransformer, HumanDatetimeDuration, SentinelRange
 from utils.utils import format_unix_dt, generate_autocomplete_choices
