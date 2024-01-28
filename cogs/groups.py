@@ -53,10 +53,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
     Attributes:
         bot (DreamBot): The Discord bot class.
-        GROUPS_REFRESH_INTERVAL (int): How frequently group data should be refreshed from the database.
     """
-
-    GROUPS_REFRESH_INTERVAL = 60 * 15  # 15 minutes
 
     def __init__(self, bot: DreamBot) -> None:
         """
