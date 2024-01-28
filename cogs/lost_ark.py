@@ -47,9 +47,7 @@ class LostArk(commands.Cog):
 
         self.bot = bot
 
-    @app_commands.command(  # type: ignore[arg-type]
-        name='split', description='Calculates the maximum worthwhile bid amount for an auction item'
-    )
+    @app_commands.command(name='split', description='Calculates the maximum worthwhile bid amount for an auction item')
     @app_commands.describe(market_price='The market price of the item')
     @app_commands.describe(party_size='The size of your party, including you')
     async def loot_auction_split(

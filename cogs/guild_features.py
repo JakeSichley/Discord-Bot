@@ -64,9 +64,7 @@ class GuildFeatures(commands.Cog):
     MARK: - App Commands
     """
 
-    @feature_subgroup.command(  # type: ignore[arg-type]
-        name='status', description='Checks feature statuses for the current guild'
-    )
+    @feature_subgroup.command(name='status', description='Checks feature statuses for the current guild')
     async def check_guild_features(self, interaction: Interaction) -> None:
         """
         Retrieves feature statuses for the current guild.
@@ -98,9 +96,7 @@ class GuildFeatures(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
-    @feature_subgroup.command(  # type: ignore[arg-type]
-        name='modify', description='Modify feature statuses for the current guild'
-    )
+    @feature_subgroup.command(name='modify', description='Modify feature statuses for the current guild')
     @app_commands.describe(
         direct_tag_invoke='Optional: Whether to send tags automatically without needing the tag command',
     )

@@ -100,8 +100,8 @@ async def main() -> None:
         aiohttp.ClientSession(headers=headers) as session
     ):
         # mypy seems to lose context during multiple async with
-        bot.session = session  # type: ignore[attr-defined]
-        await bot.start(token)  # type: ignore[attr-defined]
+        bot.session = session
+        await bot.start(token)
 
 
 # Run the bot

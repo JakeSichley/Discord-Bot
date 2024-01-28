@@ -67,8 +67,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         # [guild_id: [group_name: CompositeGroup]]
         self.groups: Dict[int, Dict[str, CompositeGroup]] = defaultdict(dict)
 
-    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
+    @app_commands.command(
         name='create', description='Creates a new group'
     )
     @app_commands.describe(group_name="The name of the group you'd like to create")
@@ -135,8 +135,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 )
             self.groups[interaction.guild_id][group_name] = CompositeGroup(group)
 
-    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
-    @app_commands.command(  # type: ignore[arg-type]
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
+    @app_commands.command(
         name='delete', description='Deletes an existing group'
     )
     @app_commands.describe(group_name="The name of the group you'd like to delete")
@@ -184,10 +184,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             with suppress(KeyError):
                 del self.groups[interaction.guild_id][group_name]
 
-    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
-    @app_commands.command(  # type: ignore[arg-type]
-        name='join', description='Joins an existing group'
-    )
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
+    @app_commands.command(name='join', description='Joins an existing group')
     @app_commands.describe(group_name="The name of the group you'd like to join")
     async def join_group(
             self,
@@ -242,10 +240,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
             self.groups[interaction.guild_id][group_name].add_member(interaction.user.id)
 
-    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
-    @app_commands.command(  # type: ignore[arg-type]
-        name='leave', description="Leaves a group you're an existing member of"
-    )
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
+    @app_commands.command(name='leave', description="Leaves a group you're an existing member of")
     @app_commands.describe(group_name="The name of the group you'd like to leave")
     async def leave_group(
             self,
@@ -293,10 +289,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
             self.groups[interaction.guild_id][group_name].remove_member(interaction.user.id)
 
-    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
-    @app_commands.command(  # type: ignore[arg-type]
-        name='kick', description="Removes a member from an existing group"
-    )
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
+    @app_commands.command(name='kick', description="Removes a member from an existing group")
     @app_commands.describe(group_name="The name of the group you'd like to remove a member from")
     @app_commands.describe(member="The member to remove")
     async def kick_from_group(
@@ -359,10 +353,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
             self.groups[interaction.guild_id][group_name].remove_member(member.id)
 
-    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
-    @app_commands.command(  # type: ignore[arg-type]
-        name='transfer', description="Transfers group ownership to a new member"
-    )
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
+    @app_commands.command(name='transfer', description="Transfers group ownership to a new member")
     @app_commands.describe(group_name="The name of the group you'd like to transfer ownership of")
     @app_commands.describe(member="The member to give ownership to")
     async def transfer_group(
@@ -416,10 +408,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
             self.groups[interaction.guild_id][group_name].group.owner_id = member.id
 
-    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
-    @app_commands.command(  # type: ignore[arg-type]
-        name='view', description='View an existing group'
-    )
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
+    @app_commands.command(name='view', description='View an existing group')
     @app_commands.describe(group_name="The name of the group you'd like to view")
     async def view_group(
             self,

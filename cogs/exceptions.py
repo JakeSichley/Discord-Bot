@@ -56,7 +56,7 @@ class Exceptions(commands.Cog):
         """
 
         self.bot = bot
-        bot.tree.on_error = self.on_app_command_error  # type: ignore[assignment]
+        bot.tree.on_error = self.on_app_command_error
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx: Context, error: commands.CommandError) -> None:
@@ -244,7 +244,7 @@ class Exceptions(commands.Cog):
 
         potential_tag = ctx.message.content.removeprefix(ctx.prefix or self.bot.default_prefix)
 
-        await ctx.invoke(tag_cog.get_tag, tag_name=potential_tag)  # type: ignore[arg-type]
+        await ctx.invoke(tag_cog.get_tag, tag_name=potential_tag)
 
 
 async def setup(bot: DreamBot) -> None:

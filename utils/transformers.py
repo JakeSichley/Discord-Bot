@@ -28,7 +28,7 @@ from math import ceil
 from typing import Optional, Union, Any
 
 import discord
-import parsedatetime  # type: ignore[import]
+import parsedatetime
 from discord import app_commands, Interaction
 from pytz import utc
 
