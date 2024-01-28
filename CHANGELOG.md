@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased
 ### Features
 ### Internal
+* `Groups`
+  - Checks
+    - Refactor common checks into reusable functions
+    - Switch to `InvocationCheckFailure` where appropriate
+  - Implement immediate group updates during listeners; remove synchronization task
 * Replace license format to avoid future updates
 ### Issues
 
