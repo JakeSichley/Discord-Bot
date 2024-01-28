@@ -52,7 +52,7 @@ class LostArk(commands.Cog):
     @app_commands.describe(party_size='The size of your party, including you')
     async def loot_auction_split(
             self,
-            interaction: Interaction,
+            interaction: Interaction[DreamBot],
             market_price: app_commands.Range[int, 1, None],
             party_size: app_commands.Range[int, 1, None]
     ) -> None:

@@ -178,7 +178,9 @@ class Exceptions(commands.Cog):
             )
             await ctx.send(f'```py\n{formatted_error}```')
 
-    async def on_app_command_error(self, interaction: Interaction, error: app_commands.AppCommandError) -> None:
+    async def on_app_command_error(
+            self, interaction: Interaction[DreamBot], error: app_commands.AppCommandError
+    ) -> None:
         """
         A listener method that is called whenever an app command encounters an error.
 
@@ -244,6 +246,7 @@ class Exceptions(commands.Cog):
 
         potential_tag = ctx.message.content.removeprefix(ctx.prefix or self.bot.default_prefix)
 
+        # noinspection PyUnresolvedReferences
         await ctx.invoke(tag_cog.get_tag, tag_name=potential_tag)
 
 

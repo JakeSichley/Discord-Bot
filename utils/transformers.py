@@ -27,10 +27,11 @@ from datetime import datetime
 from math import ceil
 from typing import Optional, Union, Any
 
-import discord
 import parsedatetime  # type: ignore[import-untyped]
 from discord import app_commands, Interaction
 from pytz import utc
+
+from dreambot import DreamBot
 
 
 # noinspection PyAbstractClass
@@ -49,7 +50,7 @@ class SentinelTransformer(app_commands.Transformer):
 
         self.sentinel_value = sentinel_value
 
-    async def transform(self, interaction: Interaction, value: Any, /) -> Any:
+    async def transform(self, interaction: Interaction[DreamBot], value: Any, /) -> Any:
         """
         Transforms the converted option value into another value.
 
@@ -75,7 +76,7 @@ class RunescapeNumberTransformer(SentinelTransformer):
         100m -> 100_000_000
     """
 
-    async def transform(self, interaction: discord.Interaction, value: str, /) -> int:
+    async def transform(self, interaction: Interaction[DreamBot], value: str, /) -> int:
         """
         Attempts to transform the input to the desired type.
 
@@ -154,7 +155,7 @@ class HumanDatetimeDuration(SentinelTransformer):
         self.minimum_seconds = minimum_seconds
         self.maximum_seconds = maximum_seconds
 
-    async def transform(self, interaction: discord.Interaction, value: str, /) -> int:
+    async def transform(self, interaction: Interaction[DreamBot], value: str, /) -> int:
         """
         Attempts to transform the input to the desired type.
 
@@ -242,7 +243,7 @@ class SentinelRange(SentinelTransformer):
         self.minimum = minimum
         self.maximum = maximum
 
-    async def transform(self, interaction: discord.Interaction, value: str, /) -> int:
+    async def transform(self, interaction: Interaction[DreamBot], value: str, /) -> int:
         """
         Attempts to transform the input to the desired type.
 

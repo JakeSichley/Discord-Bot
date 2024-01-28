@@ -126,7 +126,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     @app_commands.command(name='item', description='Returns basic data and market information for a given item')
     @app_commands.describe(item_id='The item to retrieve data for')
     @app_commands.rename(item_id='item')
-    async def runescape_item(self, interaction: Interaction, item_id: int) -> None:
+    async def runescape_item(self, interaction: Interaction[DreamBot], item_id: int) -> None:
         """
         Retrieves market and basic data about an Old School Runescape item.
 
@@ -176,7 +176,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     @app_commands.rename(item_id='item')
     async def add_alert(
             self,
-            interaction: Interaction,
+            interaction: Interaction[DreamBot],
             item_id: int,
             low_price: Optional[Transform[int, RunescapeNumberTransformer]] = None,
             high_price: Optional[Transform[int, RunescapeNumberTransformer]] = None,
@@ -251,7 +251,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     @app_commands.rename(item_id='item')
     async def edit_alert(
             self,
-            interaction: Interaction,
+            interaction: Interaction[DreamBot],
             item_id: int,
             low_price: Optional[Transform[int, RunescapeNumberTransformer(sentinel_value=-1)]] = None,
             high_price: Optional[Transform[int, RunescapeNumberTransformer(sentinel_value=-1)]] = None,
@@ -336,7 +336,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     @alert_subgroup.command(name='view', description='Views an existing item alert.')
     @app_commands.describe(item_id='The item to view an alert for')
     @app_commands.rename(item_id='item')
-    async def view_alert(self, interaction: Interaction, item_id: int) -> None:
+    async def view_alert(self, interaction: Interaction[DreamBot], item_id: int) -> None:
         """
         Views an existing market alert for a Runescape item.
 
@@ -385,7 +385,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     @alert_subgroup.command(name='delete', description='Deletes an existing item alert.')
     @app_commands.describe(item_id='The item to delete alerts for')
     @app_commands.rename(item_id='item')
-    async def delete_alert(self, interaction: Interaction, item_id: int) -> None:
+    async def delete_alert(self, interaction: Interaction[DreamBot], item_id: int) -> None:
         """
         Deletes an existing market alert for a Runescape item.
 
@@ -422,7 +422,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     @edit_alert.autocomplete('item_id')
     @view_alert.autocomplete('item_id')
     @delete_alert.autocomplete('item_id')
-    async def existing_alert_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def existing_alert_item_autocomplete(self, interaction: Interaction[DreamBot], current: str) -> List[Choice]:
         """
         Autocompletes item names to item id's for alert commands from a subset of item's with existing alerts.
 
@@ -452,7 +452,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     # noinspection PyUnusedLocal
     @runescape_item.autocomplete('item_id')
     @add_alert.autocomplete('item_id')
-    async def item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def item_autocomplete(self, interaction: Interaction[DreamBot], current: str) -> List[Choice]:
         """
         Autocompletes item names to item id's for the alert.add and item commands.
 
@@ -473,7 +473,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         )
 
     @add_alert.autocomplete('low_price')
-    async def add_item_market_low_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def add_item_market_low_price_autocomplete(
+            self, interaction: Interaction[DreamBot], current: str
+    ) -> List[Choice]:
         """
         Autocompletes item market prices for price parameters.
 
@@ -501,7 +503,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         return choices
 
     @add_alert.autocomplete('high_price')
-    async def add_item_market_high_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def add_item_market_high_price_autocomplete(
+            self, interaction: Interaction[DreamBot], current: str
+    ) -> List[Choice]:
         """
         Autocompletes item market prices for price parameters.
 
@@ -529,7 +533,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         return choices
 
     @add_alert.autocomplete('alert_frequency')
-    async def add_item_alert_frequency_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def add_item_alert_frequency_autocomplete(
+            self, interaction: Interaction[DreamBot], current: str
+    ) -> List[Choice]:
         """
         Autocompletes parameters for the edit command, which also allows for sentinel values.
 
@@ -552,7 +558,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         return choices
 
     @add_alert.autocomplete('maximum_alerts')
-    async def add_item_maximum_alerts_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def add_item_maximum_alerts_autocomplete(
+            self, interaction: Interaction[DreamBot], current: str
+    ) -> List[Choice]:
         """
         Autocompletes parameters for the edit command, which also allows for sentinel values.
 
@@ -575,7 +583,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         return choices
 
     @edit_alert.autocomplete('low_price')
-    async def edit_item_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def edit_item_autocomplete(self, interaction: Interaction[DreamBot], current: str) -> List[Choice]:
         """
         Autocompletes parameters for the edit command, which also allows for sentinel values.
 
@@ -609,7 +617,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         return choices
 
     @edit_alert.autocomplete('high_price')
-    async def edit_item_high_price_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def edit_item_high_price_autocomplete(self, interaction: Interaction[DreamBot], current: str) -> List[Choice]:
         """
         Autocompletes parameters for the edit command, which also allows for sentinel values.
 
@@ -643,7 +651,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         return choices
 
     @edit_alert.autocomplete('alert_frequency')
-    async def edit_item_alert_frequency_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def edit_item_alert_frequency_autocomplete(
+            self, interaction: Interaction[DreamBot], current: str
+    ) -> List[Choice]:
         """
         Autocompletes parameters for the edit command, which also allows for sentinel values.
 
@@ -674,7 +684,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         return choices
 
     @edit_alert.autocomplete('maximum_alerts')
-    async def edit_item_maximum_alerts_autocomplete(self, interaction: Interaction, current: str) -> List[Choice]:
+    async def edit_item_maximum_alerts_autocomplete(
+            self, interaction: Interaction[DreamBot], current: str
+    ) -> List[Choice]:
         """
         Autocompletes parameters for the edit command, which also allows for sentinel values.
 

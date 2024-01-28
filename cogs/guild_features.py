@@ -65,7 +65,7 @@ class GuildFeatures(commands.Cog):
     """
 
     @feature_subgroup.command(name='status', description='Checks feature statuses for the current guild')
-    async def check_guild_features(self, interaction: Interaction) -> None:
+    async def check_guild_features(self, interaction: Interaction[DreamBot]) -> None:
         """
         Retrieves feature statuses for the current guild.
 
@@ -102,7 +102,7 @@ class GuildFeatures(commands.Cog):
     )
     async def modify_guild_features(
             self,
-            interaction: Interaction,
+            interaction: Interaction[DreamBot],
             direct_tag_invoke: Optional[bool] = None,
     ) -> None:
         """
