@@ -33,6 +33,7 @@ from discord.ext import commands
 from discord.utils import format_dt
 
 from dreambot import DreamBot
+from utils.checks import InvocationCheckFailure
 from utils.context import Context
 from utils.enums.guild_feature import GuildFeature
 from utils.logging_formatter import bot_logger
@@ -191,6 +192,13 @@ class Exceptions(commands.Cog):
 
         assert interaction.command is not None
 
+        if isinstance(error, app_commands.CommandInvokeError):
+            error = error.__cause__  # type: ignore[assignment]
+
+        if isinstance(error, InvocationCheckFailure):
+            await interaction.response.send_message(error, ephemeral=True)
+            return
+
         if isinstance(error, app_commands.TransformerError):
             await interaction.response.send_message(f'{error}', ephemeral=True)
             return
@@ -201,7 +209,8 @@ class Exceptions(commands.Cog):
 
         bot_logger.warning(
             f'Encountered AppCommandError in command {interaction.command.qualified_name}. '
-            f'User: `{interaction.user}` Guild: `{interaction.guild.id if interaction.guild is not None else "None"}`\n'
+            f'User: `{interaction.user} ({interaction.user.id})` '
+            f'Guild: `{interaction.guild.id if interaction.guild is not None else "None"}`'
         )
         print_exception(type(error), error, error.__traceback__, file=stderr)
 

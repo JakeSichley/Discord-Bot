@@ -24,6 +24,7 @@ SOFTWARE.
 
 from collections import defaultdict
 from contextlib import suppress
+from random import choice as random_choice
 from typing import Optional, Dict, List, Tuple
 
 import aiosqlite
@@ -32,10 +33,10 @@ from aiosqlite import Error as aiosqliteError, IntegrityError
 from discord import app_commands, Interaction
 from discord.app_commands import Choice, Range
 from discord.ext import commands
-from discord.ext import tasks
 from discord.utils import utcnow
 
 from dreambot import DreamBot
+from utils.checks import InvocationCheckFailure
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import Group, GroupMember
 from utils.intermediate_models.composite_group import CompositeGroup
@@ -44,11 +45,6 @@ from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 
 # TODO: Groups v3 -> edit group (max_members); needs components for confirmation when new max_members < current_members
-# TODO: Groups v3 -> Cache member_id -> groups for leave/join event cache syncing?
-# TODO: Explore breaking common checks in each function out into decorators that raise groups_cog_error
-# TODO:   (cont.) with local listener that ignores these errors and re-raises actual errors for propagation
-# TODO: Allow kick and transfer of self with humorous message
-
 
 @app_commands.guild_only
 class Groups(commands.GroupCog, group_name='group', group_description='Commands for managing Groups'):
@@ -57,10 +53,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
     Attributes:
         bot (DreamBot): The Discord bot class.
-        GROUPS_REFRESH_INTERVAL (int): How frequently group data should be refreshed from the database.
     """
-
-    GROUPS_REFRESH_INTERVAL = 60 * 15  # 15 minutes
 
     def __init__(self, bot: DreamBot) -> None:
         """
@@ -73,7 +66,6 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         self.bot = bot
         # [guild_id: [group_name: CompositeGroup]]
         self.groups: Dict[int, Dict[str, CompositeGroup]] = defaultdict(dict)
-        self.group_data_refresh.start()
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # type: ignore[arg-type]
     @app_commands.command(  # type: ignore[arg-type]
@@ -108,8 +100,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         assert interaction.guild_id is not None  # guild_only
 
         if group_name in self.groups[interaction.guild_id]:
-            await interaction.response.send_message('A group with that name already exists.', ephemeral=True)
-            return
+            raise InvocationCheckFailure('A group with that name already exists.')
 
         group = Group(
             interaction.guild_id,
@@ -169,17 +160,9 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         assert isinstance(interaction.user, discord.Member)  # guild_only
         assert interaction.guild_id is not None  # guild_only
 
-        if group_name not in self.groups[interaction.guild_id]:
-            await interaction.response.send_message('That group does not exist!', ephemeral=True)
-            return
+        group = self.get_group(interaction.guild_id, group_name)
 
-        group = self.groups[interaction.guild_id][group_name]
-
-        if group.owner_id != interaction.user.id and not interaction.user.guild_permissions.manage_messages:
-            await interaction.response.send_message(
-                'You do not own that group or do not have permission to manage groups.', ephemeral=True
-            )
-            return
+        self.privileged_action_check(interaction.user, group.owner_id)
 
         try:
             await execute_query(
@@ -226,19 +209,13 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         assert isinstance(interaction.user, discord.Member)  # guild_only
         assert interaction.guild_id is not None  # guild_only
 
-        if group_name not in self.groups[interaction.guild_id]:
-            await interaction.response.send_message('That group does not exist!', ephemeral=True)
-            return
+        group = self.get_group(interaction.guild_id, group_name)
 
         if interaction.user.id in self.groups[interaction.guild_id][group_name].members:
-            await interaction.response.send_message("You're already a member of this group!", ephemeral=True)
-            return
-
-        group = self.groups[interaction.guild_id][group_name]
+            raise InvocationCheckFailure("You're already a member of this group!")
 
         if group.is_full:
-            await interaction.response.send_message('That group is full!', ephemeral=True)
-            return
+            raise InvocationCheckFailure('That group is full!')
 
         try:
             await execute_query(
@@ -290,15 +267,10 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         assert isinstance(interaction.user, discord.Member)  # guild_only
         assert interaction.guild_id is not None  # guild_only
 
-        if group_name not in self.groups[interaction.guild_id]:
-            await interaction.response.send_message('That group does not exist!', ephemeral=True)
-            return
-
-        group = self.groups[interaction.guild_id][group_name]
+        group = self.get_group(interaction.guild_id, group_name)
 
         if interaction.user.id not in group.members:
-            await interaction.response.send_message('You are not a member of that group!', ephemeral=True)
-            return
+            raise InvocationCheckFailure('You are not a member of that group!')
 
         try:
             await execute_query(
@@ -350,24 +322,20 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         assert interaction.guild_id is not None  # guild_only
 
         if interaction.user.id == member.id:
-            await interaction.response.send_message("You can't kick yourself!", ephemeral=True)
-            return
+            responses = [
+                "You'll have to try and enter the high-stakes world of self-banishment somewhere else!",
+                "My, my, such drastic measures are not necessary here!",
+                "Are you staging a coup on yourself? Sounds like a power struggle for the ages... ",
+                "Whoa there, do you have a ticket for the self-eviction express?"
+            ]
+            raise InvocationCheckFailure(random_choice(responses))
 
-        if group_name not in self.groups[interaction.guild_id]:
-            await interaction.response.send_message('That group does not exist!', ephemeral=True)
-            return
+        group = self.get_group(interaction.guild_id, group_name)
 
-        group = self.groups[interaction.guild_id][group_name]
-
-        if group.owner_id != interaction.user.id and not interaction.user.guild_permissions.manage_messages:
-            await interaction.response.send_message(
-                'You do not own that group or do not have permission to manage groups.', ephemeral=True
-            )
-            return
+        self.privileged_action_check(interaction.user, group.owner_id)
 
         if member.id not in group.members:
-            await interaction.response.send_message('That member does not belong to that group!', ephemeral=True)
-            return
+            raise InvocationCheckFailure('That member does not belong to that group!')
 
         try:
             await execute_query(
@@ -420,22 +388,13 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         assert interaction.guild_id is not None  # guild_only
         assert interaction.guild is not None  # guild_only
 
-        if group_name not in self.groups[interaction.guild_id]:
-            await interaction.response.send_message('That group does not exist!', ephemeral=True)
-            return
-
-        group = self.groups[interaction.guild_id][group_name]
+        group = self.get_group(interaction.guild_id, group_name)
         owner = interaction.guild.get_member(group.owner_id)
 
         if member.id == group.owner_id:
-            await interaction.response.send_message('You already own that group!', ephemeral=True)
-            return
+            raise InvocationCheckFailure("Ah, yes, the ol' self-transferoo. Bold move, Cotton.")
 
-        if group.owner_id != interaction.user.id and not interaction.user.guild_permissions.manage_messages:
-            await interaction.response.send_message(
-                'You do not own that group or do not have permission to manage groups.', ephemeral=True
-            )
-            return
+        self.privileged_action_check(interaction.user, group.owner_id)
 
         try:
             await execute_query(
@@ -481,12 +440,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         assert interaction.guild is not None  # guild_only
         assert interaction.guild_id is not None  # guild_only
 
-        if group_name not in self.groups[interaction.guild_id]:
-            await interaction.response.send_message('That group does not exist!', ephemeral=True)
-            return
-
-        group = self.groups[interaction.guild_id][group_name].group
-
+        group = self.get_group(interaction.guild_id, group_name).group
         owner = interaction.guild.get_member(group.owner_id)
         max_members_str = f'{group.max_members:,}' if group.max_members is not None else "None"
 
@@ -633,6 +587,16 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 (member.id, member.guild.id, -member.id)
             )
 
+            updated_group_names = await typed_retrieve_query(
+                self.bot.database,
+                str,
+                'SELECT GROUP_NAME FROM GROUPS WHERE OWNER_ID=? AND GUILD_ID=?',
+                (member.id, member.guild.id)
+            )
+
+            for group_name in updated_group_names:
+                self.groups[member.guild.id][group_name].group.owner_id = member.id
+
     @commands.Cog.listener()
     async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent) -> None:
         """
@@ -648,11 +612,31 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
         # set ownership to a sentinel value of -(user_id) for pseudo-tracking
 
+        # group ownership
         with suppress(aiosqliteError):
             await execute_query(
                 self.bot.database,
                 'UPDATE GROUPS SET OWNER_ID=? WHERE GUILD_ID=? AND OWNER_ID=?',
                 (-payload.user.id, payload.guild_id, payload.user.id)
+            )
+
+            updated_group_names = await typed_retrieve_query(
+                self.bot.database,
+                str,
+                'SELECT GROUP_NAME FROM GROUPS WHERE OWNER_ID=? AND GUILD_ID=?',
+                (-payload.user.id, payload.guild_id)
+            )
+
+            for group_name in updated_group_names:
+                self.groups[payload.guild_id][group_name].group.owner_id = -payload.user.id
+
+        # group membership
+        with suppress(aiosqliteError):
+            updated_group_names = await typed_retrieve_query(
+                self.bot.database,
+                str,
+                'SELECT GROUP_NAME FROM GROUP_MEMBERS WHERE GUILD_ID=? AND MEMBER_ID=?',
+                (payload.guild_id, payload.user.id)
             )
 
             await execute_query(
@@ -661,58 +645,51 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 (payload.guild_id, payload.user.id)
             )
 
+            for group_name in updated_group_names:
+                self.groups[payload.guild_id][group_name].remove_member(payload.user.id)
+
     """
-    MARK: - Tasks
+    MARK: - Checks
     """
 
-    @tasks.loop(seconds=GROUPS_REFRESH_INTERVAL)
-    async def group_data_refresh(self) -> None:
+    def get_group(self, guild_id: int, group_name: str) -> CompositeGroup:
         """
-        A discord.ext.tasks loop that refreshes group data.
-        Executes every {GROUPS_REFRESH_INTERVAL} seconds.
-
-        TODO: Remove when member -> group mapping is implemented; move back to cog_load
+        Returns the relevant group for the interaction.
 
         Parameters:
-            None.
+            guild_id (int): The id of the guild.
+            group_name (str): The name of the group.
+
+        Raises:
+            (InvocationCheckFailure): The group was not found.
+
+        Returns:
+            (CompositeGroup): The relevant group for the invocation context.
+        """
+
+        if group_name not in self.groups[guild_id]:
+            raise InvocationCheckFailure('That group does not exist!')
+
+        return self.groups[guild_id][group_name]
+
+    # noinspection PyMethodMayBeStatic
+    def privileged_action_check(self, member: discord.Member, group_owner_id: int) -> None:
+        """
+        Checks whether the member owns the group or has elevated permissions in the guild.
+
+        Parameters:
+            member (discord.Member): The member that invoked the command.
+            group_owner_id (int): The id of the group owner.
+
+        Raises:
+            (InvocationCheckFailure): The member lacks permissions to perform this action.
 
         Returns:
             None.
         """
 
-        groups = await typed_retrieve_query(
-            self.bot.database,
-            Group,
-            'SELECT * FROM GROUPS'
-        )
-
-        for group in groups:
-            self.groups[group.guild_id][group.group_name] = CompositeGroup(group)
-
-        group_members = await typed_retrieve_query(
-            self.bot.database,
-            GroupMember,
-            'SELECT * FROM GROUP_MEMBERS'
-        )
-
-        for group_member in group_members:
-            self.groups[group_member.guild_id][group_member.group_name].members.add(group_member.member_id)
-
-    async def cog_unload(self) -> None:
-        """
-        A method detailing custom extension unloading procedures.
-        Clears internal caches and immediately and forcefully exits any discord.ext.tasks.
-
-        Parameters:
-            None.
-
-        Returns:
-            None.
-        """
-
-        self.group_data_refresh.cancel()
-
-        bot_logger.info('Completed Unload for Cog: Groups')
+        if group_owner_id != member.id and not member.guild_permissions.manage_messages:
+            raise InvocationCheckFailure('You do not own that group or do not have permission to manage groups.')
 
 
 def calculate_member_and_joined_max_splice(group_members: List[Tuple[discord.Member, int]]) -> int:

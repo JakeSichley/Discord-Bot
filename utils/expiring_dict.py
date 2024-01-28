@@ -154,7 +154,7 @@ class ExpiringDict(MutableMapping[_KT, _VT]):
             None.
 
         Returns:
-            (Iterator[_KT]) The an iterator of the mapping's keys.
+            (Iterator[_KT]) An iterator of the mapping's keys.
         """
 
         return iter(self.__mapping)
