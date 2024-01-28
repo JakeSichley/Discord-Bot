@@ -43,6 +43,7 @@ from utils.logging_formatter import bot_logger
 VERSION = '2.14.1'
 
 ChoiceT = TypeVar('ChoiceT', str, int, float, Union[str, int, float])
+T = TypeVar('T')
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.abc.Messageable) -> None:
@@ -109,7 +110,7 @@ def readable_flags(flags: discord.PublicUserFlags) -> str:
         return 'None'
 
 
-def run_in_executor(func: Callable) -> Callable:
+def run_in_executor(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
     """
     A decorator that runs a blocking method in an executor.
 
@@ -121,7 +122,7 @@ def run_in_executor(func: Callable) -> Callable:
     """
 
     @functools.wraps(func)
-    def inner(*args: Any, **kwargs: Any) -> Awaitable:
+    def inner(*args: Any, **kwargs: Any) -> Awaitable[Any]:
         """
         A decorator that runs a blocking method in an executor.
 

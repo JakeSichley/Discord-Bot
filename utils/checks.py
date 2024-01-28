@@ -33,6 +33,8 @@ from utils.cooldowns import cooldown_predicate
 ForbiddenCharacters = set('*_~#/\`><@')
 
 
+# Checks are missing type specialization -> discord.ext.commands._types not exported
+
 def contains_forbidden_characters(string: str) -> bool:
     """
     Checks if the provided string contains any of the forbidden characters.
@@ -71,7 +73,7 @@ class InvocationCheckFailure(CheckFailure):
         super(CheckFailure, self).__init__(message, *args)
 
 
-def dynamic_cooldown() -> Callable:
+def dynamic_cooldown() -> Callable[[Any], Any]:
     """
     Dynamic Cooldown Check.
 
@@ -85,7 +87,7 @@ def dynamic_cooldown() -> Callable:
     return commands.check(cooldown_predicate)
 
 
-def check_memecoin_channel() -> Callable:
+def check_memecoin_channel() -> Callable[[Any], Any]:
     """
     Memecoin Channel Check.
 
@@ -112,7 +114,7 @@ def check_memecoin_channel() -> Callable:
     return commands.check(predicate)
 
 
-def ensure_git_credentials() -> Callable:
+def ensure_git_credentials() -> Callable[[Any], Any]:
     """
     Admin.Git Group Check.
 
@@ -139,7 +141,7 @@ def ensure_git_credentials() -> Callable:
     return commands.check(predicate)
 
 
-def guild_only(guild_id: Union[int, List[int]]) -> Callable:
+def guild_only(guild_id: Union[int, List[int]]) -> Callable[[Any], Any]:
     """
     Only allows command execution for the specified guild.
 

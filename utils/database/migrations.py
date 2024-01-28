@@ -118,7 +118,7 @@ class Migration:
 
         version, name = file.split('-', 1)
 
-        async with aiofiles.open(os.path.join(path, file), mode='r') as f:
+        async with aiofiles.open(os.path.join(path, file)) as f:
             script = await f.read()
 
         return cls(script, version, name)
