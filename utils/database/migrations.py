@@ -166,7 +166,7 @@ class Migrator:
 
         return self
 
-    async def __aexit__(self, exc_type: Type, exc_val: Exception, exc_tb: TracebackType) -> None:
+    async def __aexit__(self, exc_type: Type[Exception], exc_val: Exception, exc_tb: TracebackType) -> None:
         """
         Asynchronous exit point logic.
 
