@@ -266,7 +266,7 @@ class AutocompleteModel(Generic[ChoiceT]):
 
         return Choice(name=self.name, value=self.value)
 
-    def __lt__(self, other: 'AutocompleteModel') -> bool:
+    def __lt__(self, other: 'AutocompleteModel[ChoiceT]') -> bool:
         """
         Returns whether this model is less-than (<) another model.
 
@@ -279,7 +279,7 @@ class AutocompleteModel(Generic[ChoiceT]):
 
         return self.ratio < other.ratio
 
-    def __le__(self, other: 'AutocompleteModel') -> bool:
+    def __le__(self, other: 'AutocompleteModel[ChoiceT]') -> bool:
         """
         Returns whether this model is less-than-or-equal-to (<=) another model.
 
