@@ -53,7 +53,7 @@ class DefaultMemberConverter(commands.MemberConverter):
     rather than the command failing.
     """
 
-    async def convert(self, ctx: Context, argument: Any) -> Union[discord.Member, str]:  # type: ignore[override]
+    async def convert(self, ctx: Context, argument: str) -> Union[discord.Member, str]:  # type: ignore[override]
         """
         Attempts to convert the argument into a discord.Member object.
 
