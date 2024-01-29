@@ -197,7 +197,7 @@ class AggressiveDefaultMemberConverter(commands.IDConverter[Union[discord.Member
             return None
         return members[0]
 
-    async def convert(self, ctx: Context, argument: Any) -> Union[discord.Member, str]:  # type: ignore[override]
+    async def convert(self, ctx: Context, argument: str) -> Union[discord.Member, str]:  # type: ignore[override]
         """
         Attempts to aggressively convert the argument into a discord.Member object.
 
@@ -210,7 +210,7 @@ class AggressiveDefaultMemberConverter(commands.IDConverter[Union[discord.Member
         """
 
         bot = ctx.bot
-        match = self._get_id_match(argument) or re.match(r'<@!?([0-9]+)>$', argument)
+        match = self._get_id_match(argument) or re.match(r'<@!?([0-9]+)>$', argument)  # type: ignore[no-untyped-call]
         guild = ctx.guild
         result: Optional[Union[discord.Member, discord.User]] = None
         user_id = None
