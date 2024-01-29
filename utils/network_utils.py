@@ -29,6 +29,7 @@ import aiohttp
 
 from utils.enums.network_return_type import NetworkReturnType
 from utils.logging_formatter import bot_logger
+from utils.utils import AggregateTyping
 
 Headers = TypedDict(
     'Headers',
@@ -156,7 +157,8 @@ class ExponentialBackoff:
             (int): The total amount of time this backoff lasts for.
         """
 
-        return min(2 ** (5 + self._count // 2), self._max_backoff_time)
+        _min: AggregateTyping = min
+        return _min(2 ** (5 + self._count // 2), self._max_backoff_time)
 
     @property
     def backoff_count(self) -> int:
