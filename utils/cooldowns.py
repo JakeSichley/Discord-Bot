@@ -28,7 +28,6 @@ from typing import Optional
 from discord.ext import commands
 
 from utils.context import Context
-from utils.utils import AggregateTyping
 
 
 class CooldownMapping:
@@ -85,8 +84,7 @@ class CooldownMapping:
             (float).
         """
 
-        _min: AggregateTyping = min
-        return _min(2 ** (5 + self.__count), self.__max_cooldown)
+        return min(2 ** (5 + self.__count), self.__max_cooldown)  # type: ignore[no-any-return]
 
     @property
     def remaining_cooldown(self) -> Optional[commands.Cooldown]:
