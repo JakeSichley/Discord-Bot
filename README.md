@@ -4,7 +4,7 @@ A Python-based bot for Discord utilizing [Rapptz's Discord Wrapper](https://gith
 #### Versions
 **Python**: 3.9.2
 
-**discord.py**: 2.1.0
+**discord.py**: 2.3.1
 
 # Overview
 I created this bot as a way to learn how to use Python. Since then, Willump Bot (formerly DreamBot) has evolved from a 
@@ -20,9 +20,6 @@ Each cog contains specialized methods the bot can perform.
 The `Admin` cog contains administration functions that directly impact the execution of the bot. Allows for 
 hot-reloading of any cog, SQL statement execution, and Python code-block execution.
 
-## Audit
-The `Audit` cog contains methods for logging specified server events.
-
 ## DDO
 The `DDO` cog contains methods specifically related to Dungeons & Dragons Online. Functionality includes simulated die 
 rolling and item information fetching from the DDOWiki.
@@ -32,8 +29,20 @@ Thanks to [DDO Audit](https://www.playeraudit.com/), LFM data is also available!
 ## Exceptions
 The `Exceptions` cog provides centralized handling for errors during the bot's execution.
 
+## Groups
+The `Groups` cog provides an interface for managing, well, groups.
+
+## Guild Features
+The `Guild Features` cog provides an interface for managing special behaviors at the guild level.
+
+## Howrse
+The `Howrse` cog provides specific user-requested commands that represent a lack of capability in the current tag system.
+
 ## Images
 The `Images` cog implements several image manipulation commands supported by Pillow.
+
+## Lost Ark
+The `Lost Ark` cog implements a quick-reference item auction calculator.
 
 ## Moderation
 The `Moderation` cog contains methods related to the moderation of a Discord server. Supports advanced logging, such as 
@@ -42,6 +51,10 @@ message edit and deletion events.
 ## Reactions
 The `Reactions` cog implements the concept of 'Reaction Roles.' Users can react to specified messages to receive 
 corresponding roles within the guild.
+
+## Runescape
+The (Old School) `Runescape` cog implements commands related to fetching item market data and creating alerts for item 
+price thresholds. 
 
 ## Tags
 The `Tags` cog allows you to save content under a tag name and retrieve it later.
@@ -77,6 +90,10 @@ implementation.
 The `Twitch` cog builds a Twitch chatbot into the main Discord bot and allows for executing Twitch commands from 
 Discord.
 
+## Audit
+#### Deprecated: Audits needs a total overhaul and should be rewritten with the use Discord Components in mind.
+The `Audit` cog contains methods for logging specified server events.
+
 # Note
 The addition of [mypy](http://mypy-lang.org/) for static type checking has introduced numerous `assert` statements into 
 the codebase. Functionally, these asserts are used to narrow or influence types that are narrowed elsewhere, generally 
@@ -84,3 +101,5 @@ in areas that are more difficult to connect. A prime example is the `@guild_only
 `ctx.guild` is never `None`, even if mypy can't detect that. While `assert` does have certain performance implications, 
 since we're only asserting statements that should _always_ be true, these can be optimized away in production with the 
 `-O` compiler flag.
+
+mypy should be invoked with the following flags: `--explicit-package-bases --strict`
