@@ -26,7 +26,7 @@ from datetime import datetime, timedelta
 from sys import stderr
 from traceback import print_exception, format_exception
 
-from aiohttp import ClientResponseError
+from aiohttp import ClientResponseError, ServerConnectionError
 from discord import HTTPException, Interaction
 from discord import app_commands
 from discord.ext import commands
@@ -87,7 +87,7 @@ class Exceptions(commands.Cog):
 
         not_logged = (
             commands.CommandNotFound, commands.UserInputError, commands.CheckFailure, ClientResponseError,
-            commands.CommandOnCooldown, commands.DisabledCommand
+            commands.CommandOnCooldown, commands.DisabledCommand, ServerConnectionError
         )
 
         if not isinstance(error, not_logged):

@@ -278,7 +278,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @app_commands.describe(group_name="The name of the group you'd like to remove a member from")
     @app_commands.describe(member="The member to remove")
     async def kick_from_group(
-            self, interaction: Interaction[DreamBot], group_name: Range[str, 1, 100], member: discord.Member,
+            self, interaction: Interaction[DreamBot], group_name: Range[str, 1, 100], member: discord.Member
     ) -> None:
         """
         Kicks a member from a group.

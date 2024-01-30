@@ -99,7 +99,6 @@ async def main() -> None:
         DreamBot(prefix, owner, environment, database, options=options) as bot,
         aiohttp.ClientSession(headers=headers) as session
     ):
-        # mypy seems to lose context during multiple async with
         bot.session = session
         await bot.start(token)
 
