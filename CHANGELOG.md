@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 ### Features
+* Remove `Audit` cog
 ### Internal
 * `Groups`
   - Checks
@@ -165,7 +166,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Internal
 * Insert logging line break at the start of every day
-* Bump discord.py version to 2.1.0
+* Bump discord.py version to `2.1.0`
 
 ### Issues
 * Fix `avatar_url` -> `avatar.url` in Utility::UserInfo
@@ -180,7 +181,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## 2.3.0
 ### Features
-* Convert LostArk::Split to AppCommand
+* Convert `LostArk::Split` to AppCommand
 
 ## 2.2.2
 ### Issues
@@ -201,15 +202,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## 2.0.1
 ### Issues
-* Fix Admin -> Git Pull not utilizing `safe_send`
+* Fix `Admin::git_pull` not utilizing `safe_send`
 
 ## 2.0.0
 ### Internal
 * Utilize SQL migrations for database management
 * Utilize context managers for aiohttp sessions and aiosqlite connections
-* Bump Python version to 3.9.2
+* Bump Python version to `3.9.2`
 * Separate discord.py and bot logging
-* Bump discord.py version to 2.0.1
+* Bump discord.py version to `2.0.1`
 
 ## 1.0.0
 * Base `discord.ext.commands` Bot
