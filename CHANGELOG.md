@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
     - Refactor common checks into reusable functions
     - Switch to `InvocationCheckFailure` where appropriate
   - Implement immediate group updates during listeners; remove synchronization task
+* mypy
+  - Bump version to `1.8.0`
+  - Support `--strict` type checking
 * Replace license format to avoid future updates
 ### Issues
 

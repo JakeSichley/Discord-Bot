@@ -118,7 +118,7 @@ class Migration:
 
         version, name = file.split('-', 1)
 
-        async with aiofiles.open(os.path.join(path, file), mode='r') as f:
+        async with aiofiles.open(os.path.join(path, file)) as f:
             script = await f.read()
 
         return cls(script, version, name)
@@ -166,7 +166,7 @@ class Migrator:
 
         return self
 
-    async def __aexit__(self, exc_type: Type, exc_val: Exception, exc_tb: TracebackType) -> None:
+    async def __aexit__(self, exc_type: Type[Exception], exc_val: Exception, exc_tb: TracebackType) -> None:
         """
         Asynchronous exit point logic.
 

@@ -30,10 +30,11 @@ from uuid import uuid4
 import discord
 from discord.ext import commands
 
+from dreambot import DreamBot
 from utils.logging_formatter import bot_logger
 
 
-class Context(commands.Context):
+class Context(commands.Context[DreamBot]):
     """
     A Custom commands.Context class.
 
@@ -145,7 +146,7 @@ class Context(commands.Context):
         for emoji in confirmation_emojis:
             await prompt.add_reaction(emoji)
 
-        def reaction_check(pl: discord.RawReactionActionEvent):
+        def reaction_check(pl: discord.RawReactionActionEvent) -> bool:
             """
             Our check criteria for determining the result of the prompt.
 

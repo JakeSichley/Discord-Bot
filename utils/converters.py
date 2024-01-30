@@ -26,7 +26,7 @@ import re
 from typing import Optional, Union, Any, Callable
 
 import discord
-import parsedatetime  # type: ignore[import]
+import parsedatetime  # type: ignore[import-untyped]
 from discord.ext import commands
 
 from dreambot import DreamBot
@@ -53,7 +53,7 @@ class DefaultMemberConverter(commands.MemberConverter):
     rather than the command failing.
     """
 
-    async def convert(self, ctx: Context, argument: Any) -> Union[discord.Member, str]:  # type: ignore[override]
+    async def convert(self, ctx: Context, argument: str) -> Union[discord.Member, str]:  # type: ignore[override]
         """
         Attempts to convert the argument into a discord.Member object.
 
@@ -73,7 +73,7 @@ class DefaultMemberConverter(commands.MemberConverter):
             return argument
 
 
-class AggressiveDefaultMemberConverter(commands.IDConverter):
+class AggressiveDefaultMemberConverter(commands.IDConverter[Union[discord.Member, str]]):
     """
     Converts an argument to a discord.Member object.
 
@@ -197,7 +197,7 @@ class AggressiveDefaultMemberConverter(commands.IDConverter):
             return None
         return members[0]
 
-    async def convert(self, ctx: Context, argument: Any) -> Union[discord.Member, str]:  # type: ignore[override]
+    async def convert(self, ctx: Context, argument: str) -> Union[discord.Member, str]:  # type: ignore[override]
         """
         Attempts to aggressively convert the argument into a discord.Member object.
 
@@ -210,7 +210,7 @@ class AggressiveDefaultMemberConverter(commands.IDConverter):
         """
 
         bot = ctx.bot
-        match = self._get_id_match(argument) or re.match(r'<@!?([0-9]+)>$', argument)
+        match = self._get_id_match(argument) or re.match(r'<@!?([0-9]+)>$', argument)  # type: ignore[no-untyped-call]
         guild = ctx.guild
         result: Optional[Union[discord.Member, discord.User]] = None
         user_id = None
@@ -237,7 +237,7 @@ class AggressiveDefaultMemberConverter(commands.IDConverter):
         return result if isinstance(result, discord.Member) else argument
 
 
-class StringConverter(commands.Converter):
+class StringConverter(commands.Converter[str]):
     """
     Converts an argument to a string and applies the specified mutation.
 

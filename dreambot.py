@@ -264,7 +264,7 @@ class DreamBot(Bot):
         await self.wait_until_ready()
 
     async def get_context(  # type: ignore[override]
-            self, origin: Union[discord.Message, discord.Interaction], /, *, cls: Type[Context] = Context
+            self, origin: Union[discord.Message, discord.Interaction['DreamBot']], /, *, cls: Type[Context] = Context
     ) -> Context:
         """
         Creates a Context instance for the current command invocation.

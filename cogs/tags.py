@@ -89,7 +89,7 @@ class Tags(commands.Cog):
 
         if ctx.invoked_subcommand is None and tag_name:
             # noinspection PyTypeChecker
-            await ctx.invoke(self.get_tag, tag_name=tag_name)  # type: ignore[arg-type]
+            await ctx.invoke(self.get_tag, tag_name=tag_name)
         elif ctx.invoked_subcommand is None:
             await ctx.send_help('tag')
 

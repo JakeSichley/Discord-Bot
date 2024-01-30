@@ -26,7 +26,7 @@ from datetime import datetime, timedelta
 from sys import stderr
 from traceback import print_exception, format_exception
 
-from aiohttp import ClientResponseError
+from aiohttp import ClientResponseError, ServerConnectionError
 from discord import HTTPException, Interaction
 from discord import app_commands
 from discord.ext import commands
@@ -56,7 +56,7 @@ class Exceptions(commands.Cog):
         """
 
         self.bot = bot
-        bot.tree.on_error = self.on_app_command_error  # type: ignore[assignment]
+        bot.tree.on_error = self.on_app_command_error  # type: ignore[method-assign]
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx: Context, error: commands.CommandError) -> None:
@@ -87,7 +87,7 @@ class Exceptions(commands.Cog):
 
         not_logged = (
             commands.CommandNotFound, commands.UserInputError, commands.CheckFailure, ClientResponseError,
-            commands.CommandOnCooldown, commands.DisabledCommand
+            commands.CommandOnCooldown, commands.DisabledCommand, ServerConnectionError
         )
 
         if not isinstance(error, not_logged):
@@ -138,7 +138,7 @@ class Exceptions(commands.Cog):
             return
 
         # External network error
-        elif isinstance(error, ClientResponseError):
+        elif isinstance(error, (ClientResponseError, ServerConnectionError)):
             await ctx.send(
                 f'`{ctx.command}` encountered a network error: '
                 f'`{error.message} ({error.status})`'  # type: ignore[attr-defined]
@@ -178,7 +178,9 @@ class Exceptions(commands.Cog):
             )
             await ctx.send(f'```py\n{formatted_error}```')
 
-    async def on_app_command_error(self, interaction: Interaction, error: app_commands.AppCommandError) -> None:
+    async def on_app_command_error(
+            self, interaction: Interaction[DreamBot], error: app_commands.AppCommandError
+    ) -> None:
         """
         A listener method that is called whenever an app command encounters an error.
 
@@ -244,7 +246,8 @@ class Exceptions(commands.Cog):
 
         potential_tag = ctx.message.content.removeprefix(ctx.prefix or self.bot.default_prefix)
 
-        await ctx.invoke(tag_cog.get_tag, tag_name=potential_tag)  # type: ignore[arg-type]
+        # noinspection PyUnresolvedReferences
+        await ctx.invoke(tag_cog.get_tag, tag_name=potential_tag)
 
 
 async def setup(bot: DreamBot) -> None:

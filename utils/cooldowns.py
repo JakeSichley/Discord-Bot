@@ -84,7 +84,7 @@ class CooldownMapping:
             (float).
         """
 
-        return min(2 ** (5 + self.__count), self.__max_cooldown)
+        return min(2 ** (5 + self.__count), self.__max_cooldown)  # type: ignore[no-any-return]
 
     @property
     def remaining_cooldown(self) -> Optional[commands.Cooldown]:

@@ -43,6 +43,7 @@ from utils.logging_formatter import bot_logger
 VERSION = '2.14.1'
 
 ChoiceT = TypeVar('ChoiceT', str, int, float, Union[str, int, float])
+T = TypeVar('T')
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.abc.Messageable) -> None:
@@ -109,7 +110,7 @@ def readable_flags(flags: discord.PublicUserFlags) -> str:
         return 'None'
 
 
-def run_in_executor(func: Callable) -> Callable:
+def run_in_executor(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
     """
     A decorator that runs a blocking method in an executor.
 
@@ -121,7 +122,7 @@ def run_in_executor(func: Callable) -> Callable:
     """
 
     @functools.wraps(func)
-    def inner(*args: Any, **kwargs: Any) -> Awaitable:
+    def inner(*args: Any, **kwargs: Any) -> Awaitable[Any]:
         """
         A decorator that runs a blocking method in an executor.
 
@@ -252,7 +253,7 @@ class AutocompleteModel(Generic[ChoiceT]):
 
         self.ratio = partial_ratio + set_ratio
 
-    def to_choice(self) -> Choice:
+    def to_choice(self) -> Choice[ChoiceT]:
         """
         Returns this model as an `app_commands.Choice` model.
 
@@ -265,7 +266,7 @@ class AutocompleteModel(Generic[ChoiceT]):
 
         return Choice(name=self.name, value=self.value)
 
-    def __lt__(self, other: 'AutocompleteModel') -> bool:
+    def __lt__(self, other: 'AutocompleteModel[ChoiceT]') -> bool:
         """
         Returns whether this model is less-than (<) another model.
 
@@ -278,7 +279,7 @@ class AutocompleteModel(Generic[ChoiceT]):
 
         return self.ratio < other.ratio
 
-    def __le__(self, other: 'AutocompleteModel') -> bool:
+    def __le__(self, other: 'AutocompleteModel[ChoiceT]') -> bool:
         """
         Returns whether this model is less-than-or-equal-to (<=) another model.
 
@@ -298,7 +299,7 @@ def generate_autocomplete_choices(
         *,
         limit: int = 25,
         minimum_threshold: int = 0
-) -> List[Choice]:
+) -> List[Choice[ChoiceT]]:
     """
     Generator that yields pairs of items in a sequence
 

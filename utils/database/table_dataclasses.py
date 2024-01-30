@@ -23,12 +23,14 @@ SOFTWARE.
 """
 
 import dataclasses
-from typing import Tuple, Optional, Union, Type, Any, get_args, get_origin
+from typing import Tuple, Optional, Union, Type, Any, get_args, get_origin, TypeVar
 
 from utils.enums.allowed_mentions_proxy import AllowedMentionsProxy
 
+T = TypeVar('T')
 
-def expand_optional_types(field_type: Type) -> Union[Type, Tuple[Type, ...]]:
+
+def expand_optional_types(field_type: Type[T]) -> Union[Type[T], Tuple[Type[T], ...]]:
     """
     Expands Optional types to their Union form for `isinstance` checks. Ex: Optional[int] -> Union[int, None].
 

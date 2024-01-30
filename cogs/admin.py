@@ -34,7 +34,7 @@ from io import StringIO
 from re import finditer
 from textwrap import indent
 from traceback import format_exc
-from typing import Union, Optional, List, Sequence, Annotated, Literal
+from typing import Union, List, Sequence, Annotated, Literal, Any
 
 import discord
 import pytz
@@ -49,8 +49,9 @@ from utils.checks import ensure_git_credentials
 from utils.context import Context
 from utils.converters import StringConverter
 from utils.database.helpers import execute_query, retrieve_query
+from utils.enums.network_return_type import NetworkReturnType
 from utils.logging_formatter import bot_logger
-from utils.network_utils import network_request, NetworkReturnType, Headers
+from utils.network_utils import network_request, Headers
 from utils.utils import pairs, run_in_subprocess, generate_activity
 
 ExtensionName = StringConverter(
@@ -210,7 +211,7 @@ class Admin(commands.Cog):
 
         if sync_type == 'global':
             # tree to global
-            synced = await ctx.bot.tree.sync()
+            synced: List[Any] = await ctx.bot.tree.sync()
         elif sync_type == 'guild':
             # sync guild to guild (guild-specific commands)
             synced = await self.bot.tree.sync(guild=ctx.guild)
@@ -456,7 +457,7 @@ class Admin(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send_help('git')
 
-    @git.command(name='pull', aliases=['p'], hidden=True)
+    @git.command(name='pull', aliases=['p'], hidden=True)  # type: ignore[misc]
     async def git_pull(self, ctx: Context) -> None:
         """
         Pulls the latest changes from master.
@@ -600,7 +601,7 @@ class Admin(commands.Cog):
             )
         await ctx.safe_send(output)
 
-    @git.command(name='dry_run', aliases=['dry', 'd'], hidden=True)
+    @git.command(name='dry_run', aliases=['dry', 'd'], hidden=True)  # type: ignore[misc]
     async def dry_run(self, ctx: Context) -> None:
         """
         Performs a dry run of git pull. Equivalent to git fetch && git diff --stat HEAD origin/master.
@@ -622,7 +623,7 @@ class Admin(commands.Cog):
         output = '\n'.join(x.decode() for x in actual_result)
         await ctx.send(f'**The following files would be updated:**\n```\n{output}```')
 
-    @git.command(name='branches', aliases=['branch', 'b'], hidden=True)
+    @git.command(name='branches', aliases=['branch', 'b'], hidden=True)  # type: ignore[misc]
     async def git_branches(self, ctx: Context) -> None:
         """
         Fetches a list of branches from the bot's repository.

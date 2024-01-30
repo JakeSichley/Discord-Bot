@@ -156,7 +156,7 @@ class ExponentialBackoff:
             (int): The total amount of time this backoff lasts for.
         """
 
-        return min(2 ** (5 + self._count // 2), self._max_backoff_time)
+        return min(2 ** (5 + self._count // 2), self._max_backoff_time)  # type: ignore[no-any-return]
 
     @property
     def backoff_count(self) -> int:
