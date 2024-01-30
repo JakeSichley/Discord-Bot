@@ -138,7 +138,7 @@ class Exceptions(commands.Cog):
             return
 
         # External network error
-        elif isinstance(error, ClientResponseError):
+        elif isinstance(error, (ClientResponseError, ServerConnectionError)):
             await ctx.send(
                 f'`{ctx.command}` encountered a network error: '
                 f'`{error.message} ({error.status})`'  # type: ignore[attr-defined]
