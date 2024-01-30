@@ -101,3 +101,5 @@ in areas that are more difficult to connect. A prime example is the `@guild_only
 `ctx.guild` is never `None`, even if mypy can't detect that. While `assert` does have certain performance implications, 
 since we're only asserting statements that should _always_ be true, these can be optimized away in production with the 
 `-O` compiler flag.
+
+mypy should be invoked with the following flags: `--explicit-package-bases --strict`
