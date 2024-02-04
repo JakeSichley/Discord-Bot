@@ -158,6 +158,18 @@ class StreamLoggingFormatter(logging.Formatter):
             (str): The formatted record.
         """
 
+        print("---")
+        print(record)
+        try:
+
+            if record.name == 'discord.client':
+                print(type(record.exc_info[-1]))
+                print(record.exc_info[-1])
+                record.exc_info = None
+        except Exception:
+            pass
+        print("---")
+
         log_format = self.formats.get(record.levelno, self.basic_format)
         formatter = logging.Formatter(log_format, datefmt=self.datefmt)
         return formatter.format(record)
