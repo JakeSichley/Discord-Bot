@@ -158,6 +158,10 @@ class StreamLoggingFormatter(logging.Formatter):
             (str): The formatted record.
         """
 
+        # remove traceback stack from discord.Client reconnect errors
+        if record.name == 'discord.client':
+            record.exc_info = None
+
         log_format = self.formats.get(record.levelno, self.basic_format)
         formatter = logging.Formatter(log_format, datefmt=self.datefmt)
         return formatter.format(record)
