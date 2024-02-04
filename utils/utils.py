@@ -40,10 +40,9 @@ from fuzzywuzzy import fuzz  # type: ignore
 
 from utils.logging_formatter import bot_logger
 
-VERSION = '2.14.1'
+VERSION = '2.15.0'
 
 ChoiceT = TypeVar('ChoiceT', str, int, float, Union[str, int, float])
-T = TypeVar('T')
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.abc.Messageable) -> None:

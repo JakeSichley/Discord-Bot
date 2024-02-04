@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 ### Features
+### Internal
+### Issues
+
+## 2.15.0
+### Features
 * Remove `Audit` cog
 ### Internal
 * `Groups`
@@ -23,7 +28,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Support `--strict` type checking
 * Replace license format to avoid future updates
 * Remove tracebacks from reconnect errors from stream logging handlers
-### Issues
 
 ## 2.14.1
 ### Issues
