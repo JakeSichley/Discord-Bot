@@ -23,8 +23,7 @@ SOFTWARE.
 """
 
 from datetime import datetime, timedelta
-from sys import stderr
-from traceback import print_exception, format_exception
+from traceback import format_exception
 
 from aiohttp import ClientResponseError, ServerConnectionError
 from discord import HTTPException, Interaction
@@ -92,7 +91,7 @@ class Exceptions(commands.Cog):
 
         if not isinstance(error, not_logged):
             bot_logger.warning(
-                f"Ignoring exception in command '{ctx.command}'",
+                f"Encountered exception in command '{ctx.command.qualified_name}'",
                 exc_info=(type(error), error, error.__traceback__),
                 extra={'context': ctx.dump()}
             )
@@ -213,11 +212,13 @@ class Exceptions(commands.Cog):
             return
 
         bot_logger.warning(
-            f'Encountered AppCommandError in command {interaction.command.qualified_name}. '
-            f'User: `{interaction.user} ({interaction.user.id})` '
-            f'Guild: `{interaction.guild.id if interaction.guild is not None else "None"}`'
+            f"Encountered exception in slash command '{interaction.command.qualified_name}'. "
+            f"User: `{interaction.user} ({interaction.user.id})` "
+            f"Guild: `{interaction.guild.id if interaction.guild is not None else "None"}`",
+            exc_info=(type(error), error, error.__traceback__)
         )
-        print_exception(type(error), error, error.__traceback__, file=stderr)
+
+        # TODO: dump interaction fully
 
         await self.bot.report_exception(error)
 
