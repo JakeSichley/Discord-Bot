@@ -200,3 +200,61 @@ class Context(commands.Context['dreambot.DreamBot']):
             return await self.send(file=discord.File(fp, filename='content.txt'), **kwargs)
         else:
             return await self.send(content)
+
+    def dump(self) -> str:
+        """
+        Creates a 'pretty-printed' version of this context for logging.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str): This context instance formatted for logging.
+        """
+
+        indent = '  '
+        title = 'Context Dump:\n'
+
+        guild_context = ''
+        if self.guild is not None:
+            guild_context += f'{indent}Guild\n'
+            guild_context += f'{indent * 2}ID: {self.guild.id}\n'
+            guild_context += f'{indent * 2}Name: {self.guild.name}\n'
+
+        category_context = ''
+        if self.message.channel.category is not None:
+            category_context += f'{indent}Category\n'
+            category_context += f'{indent * 2}ID: {self.channel.category.id}\n'
+            category_context += f'{indent * 2}Name: {self.channel.category.name}\n'
+
+        channel_context = f'{indent}Channel\n'
+        channel_context += f'{indent * 2}ID: {self.channel.id}\n'
+        channel_context += f'{indent * 2}Name: {self.channel.name}\n'
+
+        message_context = f'{indent}Message\n'
+        message_context += f'{indent * 2}ID: {self.message.id}\n'
+        message_context += f'{indent * 2}Flags: {self.message.flags}\n'
+        message_context += f'{indent * 2}Type: {self.message.type}\n'
+
+        author_context = f'{indent}Author\n'
+        author_context += f'{indent * 2}ID: {self.author.id}\n'
+        author_context += f'{indent * 2}Global Name: {self.author.global_name}\n'
+        author_context += f'{indent * 2}Display Name: {self.author.display_name}\n'
+        author_context += f'{indent * 2}Permissions: {self.author.guild_permissions}\n'
+
+        args_context = ''
+        if self.args:
+            args_context += f'{indent}Args\n'
+            for index, arg in enumerate(self.args):
+                args_context += f'{indent * 2}[{index}]: {arg}\n'
+
+        kwargs_context = ''
+        if self.kwargs:
+            kwargs_context += f'{indent}Kwargs\n'
+            for key, value in self.kwargs.items():
+                kwargs_context += f'{indent * 2}{key}: {value}\n'
+
+        return (
+                title + guild_context + category_context + channel_context + message_context + author_context
+                + args_context + kwargs_context
+        )
