@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## 2.15.1
 ### Internal
-* Include additional context dumps during file logging
+* Dump context information during file logging
 ### Issues
 * Include traceback information during file logging
 
