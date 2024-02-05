@@ -214,7 +214,7 @@ class Exceptions(commands.Cog):
         bot_logger.warning(
             f"Encountered exception in slash command '{interaction.command.qualified_name}'. "
             f"User: `{interaction.user} ({interaction.user.id})` "
-            f"Guild: `{interaction.guild.id if interaction.guild is not None else "None"}`",
+            f"Guild: `{interaction.guild.id if interaction.guild is not None else 'None'}`",
             exc_info=(type(error), error, error.__traceback__)
         )
 
