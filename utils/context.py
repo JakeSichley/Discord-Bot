@@ -222,14 +222,15 @@ class Context(commands.Context['dreambot.DreamBot']):
             guild_context += f'{indent * 2}Name: {self.guild.name}\n'
 
         category_context = ''
-        if self.message.channel.category is not None:
+        if hasattr(self.channel, 'category') and self.channel.category is not None:
             category_context += f'{indent}Category\n'
             category_context += f'{indent * 2}ID: {self.channel.category.id}\n'
             category_context += f'{indent * 2}Name: {self.channel.category.name}\n'
 
         channel_context = f'{indent}Channel\n'
         channel_context += f'{indent * 2}ID: {self.channel.id}\n'
-        channel_context += f'{indent * 2}Name: {self.channel.name}\n'
+        if hasattr(self.channel, 'name'):
+            channel_context += f'{indent * 2}Name: {self.channel.name}\n'
 
         message_context = f'{indent}Message\n'
         message_context += f'{indent * 2}ID: {self.message.id}\n'
@@ -240,7 +241,8 @@ class Context(commands.Context['dreambot.DreamBot']):
         author_context += f'{indent * 2}ID: {self.author.id}\n'
         author_context += f'{indent * 2}Global Name: {self.author.global_name}\n'
         author_context += f'{indent * 2}Display Name: {self.author.display_name}\n'
-        author_context += f'{indent * 2}Permissions: {self.author.guild_permissions}\n'
+        if isinstance(self.author, discord.Member):
+            author_context += f'{indent * 2}Permissions: {self.author.guild_permissions}\n'
 
         args_context = ''
         if self.args:
