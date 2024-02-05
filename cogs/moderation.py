@@ -75,9 +75,11 @@ class Moderation(commands.Cog):
         return ctx.guild is not None
 
     @commands.has_permissions(manage_messages=True)
-    @commands.bot_has_permissions(manage_messages=True, read_message_history=True)
-    @commands.command(name='purge', help='Purges n+1 messages from the current channel. Specify `all` to completely '
-                                         'clear the channel.')
+    @commands.bot_has_permissions(manage_messages=True, read_message_history=True, manage_channels=True)
+    @commands.command(
+        name='purge',
+        help='Purges n+1 messages from the current channel. Specify `all` to completely clear the channel.'
+    )
     async def purge(self, ctx: Context, limit: Union[int, Literal['all']] = 0) -> None:
         """
         A method to purge messages from a channel.
@@ -99,7 +101,7 @@ class Moderation(commands.Cog):
         if not isinstance(ctx.channel, PURGEABLE_INSTANCES):
             return
 
-        confirmation = ctx.confirmation_prompt(f'Are you sure you want to delete up to {limit} messages?')
+        confirmation = ctx.confirmation_prompt(f'Are you sure you want to delete {limit} message(s)?')
         if (limit == 'all' or limit >= 10) and not await confirmation:
             return
 

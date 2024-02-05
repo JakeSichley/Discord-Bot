@@ -214,6 +214,11 @@ class FileLoggingFormatter(logging.Formatter):
         """
 
         log_format = self.formats.get(record.levelno, self.basic_format)
+
+        # inject context dump
+        if hasattr(record, 'context'):
+            log_format += '\n%(context)s'
+
         formatter = logging.Formatter(log_format, datefmt=self.datefmt)
         return formatter.format(record)
 
