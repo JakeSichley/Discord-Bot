@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import io
 from asyncio import TimeoutError
+from contextlib import suppress
 from typing import Any, Union, Optional
 from uuid import uuid4
 
@@ -180,7 +181,8 @@ class Context(commands.Context['dreambot.DreamBot']):
             result = str(payload.emoji) == '✅'
         finally:
             if ephemeral:
-                await prompt.delete()
+                with suppress(discord.HTTPException):
+                    await prompt.delete()
             return result
 
     async def safe_send(self, content: Optional[str] = None, **kwargs: Any) -> discord.Message:
