@@ -91,8 +91,11 @@ class Exceptions(commands.Cog):
         )
 
         if not isinstance(error, not_logged):
-            bot_logger.warning(f'Ignoring exception in command {ctx.command}:')
-            print_exception(type(error), error, error.__traceback__, file=stderr)
+            bot_logger.warning(
+                f"Ignoring exception in command '{ctx.command}'",
+                exc_info=(type(error), error, error.__traceback__),
+                extra={'context': ctx.dump()}
+            )
 
             await self.bot.report_exception(error)
 
