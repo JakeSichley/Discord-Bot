@@ -25,7 +25,7 @@ SOFTWARE.
 from collections import defaultdict
 from contextlib import suppress
 from random import choice as random_choice
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, Set
 
 import aiosqlite
 import discord
@@ -66,6 +66,37 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         self.bot = bot
         # [guild_id: [group_name: CompositeGroup]]
         self.groups: Dict[int, Dict[str, CompositeGroup]] = defaultdict(dict)
+        # [guild_id: [group_name]]
+        self.group_names: Dict[int, Set[str]] = defaultdict(set)
+
+    async def cog_load(self) -> None:
+        """
+        A special method that acts as a cog local post-invoke hook.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
+        groups = await typed_retrieve_query(
+            self.bot.database,
+            Group,
+            'SELECT * FROM GROUPS'
+        )
+
+        for group in groups:
+            self.groups[group.guild_id][group.group_name] = CompositeGroup(group)
+
+        group_members = await typed_retrieve_query(
+            self.bot.database,
+            GroupMember,
+            'SELECT * FROM GROUP_MEMBERS'
+        )
+
+        for group_member in group_members:
+            self.groups[group_member.guild_id][group_member.group_name].members.add(group_member.member_id)
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
     @app_commands.command(name='create', description='Creates a new group')
