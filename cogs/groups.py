@@ -25,7 +25,7 @@ SOFTWARE.
 from collections import defaultdict
 from contextlib import suppress
 from random import choice as random_choice
-from typing import Optional, Dict, List, Tuple, Set
+from typing import Optional, Dict, List, Tuple
 
 import aiosqlite
 import discord
@@ -66,8 +66,6 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         self.bot = bot
         # [guild_id: [group_name: CompositeGroup]]
         self.groups: Dict[int, Dict[str, CompositeGroup]] = defaultdict(dict)
-        # [guild_id: [group_name]]
-        self.group_names: Dict[int, Set[str]] = defaultdict(set)
 
     async def cog_load(self) -> None:
         """
