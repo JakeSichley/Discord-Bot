@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.15.3
+### Internal
+* Adjust `FileLoggingFormatter` to strip unwanted information post-format
+
 ## 2.15.2
 ### Issues
 * Restore `cog_load` for `Groups`
