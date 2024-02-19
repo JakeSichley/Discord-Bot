@@ -144,12 +144,14 @@ class RunescapeHerb:
 
     Attributes:
         name (str): The name of the herb.
+        emoji (str): The string representation of this herb's emoji.
         seed_id (int): The seed's internal id.
         clean_weed_id (int): The clean weed's internal id.
         grimy_weed_id (int): The grimy weed's internal id.
     """
 
     name: str
+    emoji: str
     seed_id: int
     clean_weed_id: int
     grimy_weed_id: int
@@ -162,12 +164,14 @@ class RunescapeHerbComparison:
 
     Attributes:
         name (str): The name of the herb.
+        emoji (str): The string representation of this herb's emoji.
         cost (float): The cost of growing this herb.
         clean_profit (float): The profit from a harvesting this herb (clean).
         grimy_profit (float): The profit from a harvesting this herb (grimy).
     """
 
     name: str
+    emoji: str
     cost: float
     clean_profit: float
     grimy_profit: float

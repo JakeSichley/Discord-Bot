@@ -27,17 +27,20 @@ from typing import Optional, List, Dict
 from utils.runescape.runescape_data_classes import RunescapeHerb, RunescapeHerbComparison, RunescapeItem
 
 ALL_HERBS = [
-    RunescapeHerb('Toadflax', 5296, 2998, 3049),
-    RunescapeHerb('Kwuarm', 5299, 263, 213),
-    RunescapeHerb('Avantoe', 5298, 261, 211),
-    RunescapeHerb('Ranarr', 5295, 265, 207),
-    RunescapeHerb('Cadantine', 5301, 3000, 215),
-    RunescapeHerb('Snapdragon', 5300, 269, 3051),
-    RunescapeHerb('Torstol', 5304, 267, 219),
-    RunescapeHerb('Dwarf weed', 5303, 2481, 217),
-    RunescapeHerb('Lantadyme', 5302, 255, 2485),
-    RunescapeHerb('Irit', 5297, 253, 209),
-    RunescapeHerb('Harralander', 5294, 251, 205),
+    RunescapeHerb('Avantoe', '<:avantoe:1208996504107487272>', 5298, 261, 211),
+    RunescapeHerb('Cadantine', '<:cadantine:1208996505126445106>', 5301, 265, 215),
+    RunescapeHerb('Dwarf weed', '<:dwarf_weed:1208996506271752302>', 5303, 267, 217),
+    RunescapeHerb('Guam', '<:guam:1208996507357806682>', 5291, 249, 199),
+    RunescapeHerb('Harralander', '<:harralander:1208996508297334794>', 5294, 255, 205),
+    RunescapeHerb('Irit', '<:irit:1208996509379469332>', 5297, 259, 209),
+    RunescapeHerb('Kwuarm', '<:kwuarm:1208996546285150232>', 5299, 263, 213),
+    RunescapeHerb('Lantadyme', '<:lantadyme:1208996547639902259>', 5302, 2481, 2485),
+    RunescapeHerb('Marrentill', '<:marrentill:1208996549154046033>', 5292, 251, 201),
+    RunescapeHerb('Ranarr', '<:ranarr:1208996550336974919>', 5295, 257, 207),
+    RunescapeHerb('Snapdragon', '<:snapdragon:1208996582515548171>', 5300, 3000, 3051),
+    RunescapeHerb('Tarromin', '<:tarromin:1208996583841206312>', 5293, 253, 203),
+    RunescapeHerb('Toadflax', '<:toadflax:1208996584591986750>', 5296, 2998, 3049),
+    RunescapeHerb('Torstol', '<:torstol:1208996586366050315>', 5304, 269, 219),
 ]
 
 ULTRACOMPOST_ID = 21483
@@ -58,12 +61,13 @@ def generate_herb_comparison(
         (List[RunescapeHerbComparison]).
     """
 
-    compost_cost = item_data[21483].high or 0
+    compost_cost = item_data[ULTRACOMPOST_ID].high or 0
 
     return [
         profitability for herb in ALL_HERBS
         if (profitability := calculate_profitability(
             herb.name,
+            herb.emoji,
             compost_cost,
             item_data[herb.seed_id].high,
             item_data[herb.clean_weed_id].low,
@@ -76,6 +80,7 @@ def generate_herb_comparison(
 
 def calculate_profitability(
         name: str,
+        emoji: str,
         compost_cost: float,
         seed_cost: Optional[float],
         clean_cost: Optional[float],
@@ -88,6 +93,7 @@ def calculate_profitability(
 
     Parameters:
         name (str): The name of the herb.
+        emoji (str): The
         compost_cost (float): The cost of compost.
         seed_cost (Optional[float]): The cost of the seed.
         clean_cost (Optional[float]): The cost of the clean herb.
@@ -106,4 +112,4 @@ def calculate_profitability(
     clean_profit = (grimy_cost * average_herbs * patches) - cost
     grimy_profit = (clean_cost * average_herbs * patches) - cost
 
-    return RunescapeHerbComparison(name, cost, clean_profit, grimy_profit)
+    return RunescapeHerbComparison(name, emoji, cost, clean_profit, grimy_profit)
