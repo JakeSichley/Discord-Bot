@@ -27,7 +27,7 @@ from collections import defaultdict
 from contextlib import suppress
 from itertools import chain
 from json.decoder import JSONDecodeError
-from typing import List, Optional, Dict, Literal, Tuple
+from typing import List, Optional, Dict, Literal
 
 import aiosqlite
 import discord
