@@ -45,7 +45,10 @@ from utils.database.table_dataclasses import RunescapeAlert
 from utils.enums.network_return_type import NetworkReturnType
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, ExponentialBackoff
-from utils.runescape_data_classes import RunescapeItem, ItemMarketData, AlertEmbedFragment
+from utils.runescape.runescape_data_classes import (
+    RunescapeItem, ItemMarketData, AlertEmbedFragment, RunescapeHerbComparison
+)
+from utils.runescape.runescape_herbs import generate_herb_comparison
 from utils.transformers import RunescapeNumberTransformer, HumanDatetimeDuration, SentinelRange
 from utils.utils import format_unix_dt, generate_autocomplete_choices
 
@@ -164,6 +167,55 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         embed.set_footer(text='Please report any issues to my owner!')
 
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name='herb_comparison', description='Compares profitability for herb farming')
+    @app_commands.describe(patches='The number of herb patches (Default: 9)')
+    @app_commands.describe(average_herbs='The average number of herbs harvested per patch (Default: 8)')
+    async def runescape_herb_comparison(
+            self,
+            interaction: Interaction[DreamBot],
+            patches: Range[int, 1, 9] = 9,
+            average_herbs: Range[int, 1, 50] = 8
+    ) -> None:
+        """
+        Generates an embed detailing the profitability of each herb based on current market data.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            patches (int): The number of herb patches to use in the calculation.
+            average_herbs (int): The average number of herbs harvested per patch.
+
+        Returns:
+            None.
+        """
+
+        herb_comparisons: List[RunescapeHerbComparison] = generate_herb_comparison(
+            self.item_data,
+            patches,
+            average_herbs
+        )
+        herb_comparisons.sort(reverse=True, key=lambda x: x.max)
+
+        patches_pluralized = 'patch' if patches == 1 else 'patches'
+
+        embed = discord.Embed(
+            title="Old School Runescape Herb Profitability Comparison",
+            description=f"**{patches} {patches_pluralized}** with an average of **{average_herbs} herbs** per patch "
+                        f"based on current market data",
+            color=0x971212
+        )
+        embed.set_thumbnail(url="https://oldschool.runescape.wiki/images/Herblore_icon_%28detail%29.png")
+        embed.set_footer(text="Please report any issues to my owner!")
+
+        embed.add_field(name='Herb', value='\n'.join(f'{x.emoji} {x.name}' for x in herb_comparisons))
+        embed.add_field(name='Profit (Clean)', value='\n'.join(x.clean_profit_display for x in herb_comparisons))
+        embed.add_field(name='Profit (Grimy)', value='\n'.join(x.grimy_profit_display for x in herb_comparisons))
+
+        await interaction.response.send_message(embed=embed)
+
+    """
+    MARK: - Alerts
+    """
 
     @alert_subgroup.command(name='add', description='Registers an item for market alerts')
     @app_commands.describe(
