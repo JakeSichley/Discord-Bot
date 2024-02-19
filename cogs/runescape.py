@@ -169,13 +169,13 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name='herb_comparison', description='Compares profitability for various herbs')
-    @app_commands.describe(patches='The number of herb patches')
-    @app_commands.describe(average_herbs='The average number of herbs harvested per patch')
+    @app_commands.describe(patches='The number of herb patches (Default: 9)')
+    @app_commands.describe(average_herbs='The average number of herbs harvested per patch (Default: 8)')
     async def runescape_herb_comparison(
             self,
             interaction: Interaction[DreamBot],
-            patches: Optional[Range[int, 1, 9]] = 9,
-            average_herbs: Optional[Range[int, 1, 50]] = 8
+            patches: Range[int, 1, 9] = 9,
+            average_herbs: Range[int, 1, 50] = 8
     ) -> None:
         """
         Generates an embed detailing the profitability of each herb based on current market data.
