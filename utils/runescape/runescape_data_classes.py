@@ -160,7 +160,7 @@ class RunescapeHerb:
 @dataclass
 class RunescapeHerbComparison:
     """
-    A dataclass that contains information about a runescape herb (seed, grimy weed, clean weed).
+    A dataclass that contains profit information related to farming runescape herbs.
 
     Attributes:
         name (str): The name of the herb.

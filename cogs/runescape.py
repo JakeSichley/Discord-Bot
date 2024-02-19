@@ -168,7 +168,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name='herb_comparison', description='Compares profitability for various herbs')
+    @app_commands.command(name='herb_comparison', description='Compares profitability for herb farming')
     @app_commands.describe(patches='The number of herb patches (Default: 9)')
     @app_commands.describe(average_herbs='The average number of herbs harvested per patch (Default: 8)')
     async def runescape_herb_comparison(
@@ -208,12 +208,8 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         embed.set_footer(text="Please report any issues to my owner!")
 
         embed.add_field(name='Herb', value='\n'.join(f'{x.emoji} {x.name}' for x in herb_comparisons))
-        embed.add_field(
-            name='Profit (Clean)', value='\n'.join(x.clean_profit_display for x in herb_comparisons)
-        )
-        embed.add_field(
-            name='Profit (Grimy)', value='\n'.join(x.grimy_profit_display for x in herb_comparisons)
-        )
+        embed.add_field(name='Profit (Clean)', value='\n'.join(x.clean_profit_display for x in herb_comparisons))
+        embed.add_field(name='Profit (Grimy)', value='\n'.join(x.grimy_profit_display for x in herb_comparisons))
 
         await interaction.response.send_message(embed=embed)
 
