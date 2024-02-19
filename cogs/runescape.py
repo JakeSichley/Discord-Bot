@@ -207,10 +207,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         embed.set_thumbnail(url="https://oldschool.runescape.wiki/images/Herblore_icon_%28detail%29.png")
         embed.set_footer(text="Please report any issues to my owner!")
 
-        # only take top 8 most profitability herbs
-        # embeds have a field limit of 25 -> 3 fields/herb -> 24/25 fields
-
-        embed.add_field(name='Herb', value='\n'.join(f'{x.name} :eyes:' for x in herb_comparisons))
+        embed.add_field(name='Herb', value='\n'.join(f'{x.emoji} {x.name}' for x in herb_comparisons))
         embed.add_field(
             name='Profit (Clean)', value='\n'.join(f'{x.clean_profit:,}' for x in herb_comparisons)
         )
