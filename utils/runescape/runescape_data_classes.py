@@ -165,19 +165,19 @@ class RunescapeHerbComparison:
     Attributes:
         name (str): The name of the herb.
         emoji (str): The string representation of this herb's emoji.
-        cost (float): The cost of growing this herb.
-        clean_profit (float): The profit from a harvesting this herb (clean).
-        grimy_profit (float): The profit from a harvesting this herb (grimy).
+        cost (int): The cost of growing this herb.
+        clean_profit (int): The profit from a harvesting this herb (clean).
+        grimy_profit (int): The profit from a harvesting this herb (grimy).
     """
 
     name: str
     emoji: str
-    cost: float
-    clean_profit: float
-    grimy_profit: float
+    cost: int
+    clean_profit: int
+    grimy_profit: int
 
     @property
-    def min(self) -> float:
+    def min(self) -> int:
         """
         Returns the smallest profitable amount (between grimy and clean).
 
@@ -191,7 +191,7 @@ class RunescapeHerbComparison:
         return min(self.grimy_profit, self.grimy_profit)
 
     @property
-    def max(self) -> float:
+    def max(self) -> int:
         """
         Returns the largest profitable amount (between grimy and clean).
 
@@ -216,3 +216,37 @@ class RunescapeHerbComparison:
         """
 
         return self.min < other.min
+
+    @property
+    def clean_profit_display(self) -> str:
+        """
+        Formats the clean_profit amount for display.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str).
+        """
+
+        if self.clean_profit > self.grimy_profit and self.clean_profit > 0:
+            return f'**{self.clean_profit:,}** coins'
+        else:
+            return f'{self.clean_profit:,} coins'
+
+    @property
+    def grimy_profit_display(self) -> str:
+        """
+        Formats the grimy_profit amount for display.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str).
+        """
+
+        if self.grimy_profit > self.clean_profit and self.grimy_profit > 0:
+            return f'**{self.grimy_profit:,}** coins'
+        else:
+            return f'{self.grimy_profit:,} coins'
