@@ -27,7 +27,7 @@ from collections import defaultdict
 from contextlib import suppress
 from itertools import chain
 from json.decoder import JSONDecodeError
-from typing import List, Optional, Dict, Literal
+from typing import List, Optional, Dict, Literal, Tuple
 
 import aiosqlite
 import discord
@@ -45,7 +45,10 @@ from utils.database.table_dataclasses import RunescapeAlert
 from utils.enums.network_return_type import NetworkReturnType
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, ExponentialBackoff
-from utils.runescape_data_classes import RunescapeItem, ItemMarketData, AlertEmbedFragment
+from utils.runescape.runescape_data_classes import (
+    RunescapeItem, ItemMarketData, AlertEmbedFragment, RunescapeHerbComparison
+)
+from utils.runescape.runescape_herbs import generate_herb_comparison
 from utils.transformers import RunescapeNumberTransformer, HumanDatetimeDuration, SentinelRange
 from utils.utils import format_unix_dt, generate_autocomplete_choices
 
@@ -164,6 +167,67 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         embed.set_footer(text='Please report any issues to my owner!')
 
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name='herb_comparison', description='Compares profitability for various herbs')
+    @app_commands.describe(patches='The number of herb patches to use in the calculation')
+    @app_commands.describe(average_herbs='The average number of herbs harvested per patch')
+    async def runescape_herb_comparison(
+            self,
+            interaction: Interaction[DreamBot],
+            patches: Optional[Range[int, 1, 9]] = 9,
+            average_herbs: Optional[Range[int, 1, 50]] = 8
+    ) -> None:
+        """
+        Generates an embed detailing the profitability of each herb based on current market data.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+            patches (int): The number of herb patches to use in the calculation.
+            average_herbs (int): The average number of herbs harvested per patch.
+
+        Returns:
+            None.
+        """
+
+        herb_comparisons: List[RunescapeHerbComparison] = generate_herb_comparison(
+            self.item_data,
+            patches,
+            average_herbs
+        )
+        herb_comparisons.sort(reverse=True, key=lambda x: x.max)
+
+        patches_pluralized = 'patch' if patches == 1 else 'patches'
+
+        embed = discord.Embed(
+            title="Old School Runescape Herb Profitability Comparison",
+            description=f"**{patches} {patches_pluralized}** with **{average_herbs} herbs** per patch based on "
+                        f"current market data.",
+            color=0x971212
+        )
+        embed.set_thumbnail(url="https://oldschool.runescape.wiki/images/Herblore_icon_%28detail%29.png")
+        embed.set_footer(text="Please report any issues to my owner!")
+
+        # only take top 8 most profitability herbs
+        # embeds have a field limit of 25 -> 3 fields/herb -> 24/25 fields
+
+        embed.add_field(name='Herb', value='\n'.join(f'{x.name} :eyes:' for x in herb_comparisons))
+        embed.add_field(
+            name='Profit (Clean)', value='\n'.join(f'{x.clean_profit:,}' for x in herb_comparisons)
+        )
+        embed.add_field(
+            name='Profit (Grimy)', value='\n'.join(f'**{x.grimy_profit:,}**' for x in herb_comparisons)
+        )
+
+        # for comparison in herb_comparisons[:8]:
+        #     embed.add_field(name=f'{comparison.name} Cost', value=f'{comparison.cost:,}')
+        #     embed.add_field(name=f'{comparison.name} Profit (Clean)', value=)
+        #     embed.add_field(name=f'{comparison.name} Profit (Grimy)', value=f'{comparison.grimy_profit:,}')
+
+        await interaction.response.send_message(embed=embed)
+
+    """
+    MARK: - Alerts
+    """
 
     @alert_subgroup.command(name='add', description='Registers an item for market alerts')
     @app_commands.describe(
