@@ -108,8 +108,8 @@ def calculate_profitability(
     if not seed_cost or not clean_cost or not grimy_cost:
         return None
 
-    cost = (seed_cost + compost_cost / 2) * patches
-    clean_profit = (grimy_cost * average_herbs * patches) - cost
-    grimy_profit = (clean_cost * average_herbs * patches) - cost
+    cost = int((seed_cost + compost_cost / 2) * patches)
+    clean_profit = int((grimy_cost * average_herbs * patches) - cost)
+    grimy_profit = int((clean_cost * average_herbs * patches) - cost)
 
     return RunescapeHerbComparison(name, emoji, cost, clean_profit, grimy_profit)
