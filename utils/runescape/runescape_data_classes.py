@@ -143,25 +143,27 @@ class RunescapeHerb:
     A dataclass that contains information about a runescape herb (seed, grimy weed, clean weed).
 
     Attributes:
+        name (str): The name of the herb.
         seed_id (int): The seed's internal id.
         clean_weed_id (int): The clean weed's internal id.
         grimy_weed_id (int): The grimy weed's internal id.
     """
 
+    name: str
     seed_id: int
     clean_weed_id: int
     grimy_weed_id: int
 
 ALL_HERBS = [
-    RunescapeHerb(5296, 2998, 3049),
-    RunescapeHerb(5299, 263, 213),
-    RunescapeHerb(5298, 261, 211),
-    RunescapeHerb(5295, 265, 207),
-    RunescapeHerb(5301, 3000, 215),
-    RunescapeHerb(5300, 269, 3051),
-    RunescapeHerb(5304, 267, 219),
-    RunescapeHerb(5303, 2481, 217),
-    RunescapeHerb(5302, 255, 2485),
-    RunescapeHerb(5297, 253, 209),
-    RunescapeHerb(5294, 251, 205),
+    RunescapeHerb('Toadflax', 5296, 2998, 3049),
+    RunescapeHerb('Kwuarm', 5299, 263, 213),
+    RunescapeHerb('Avantoe', 5298, 261, 211),
+    RunescapeHerb('Ranarr', 5295, 265, 207),
+    RunescapeHerb('Cadantine', 5301, 3000, 215),
+    RunescapeHerb('Snapdragon', 5300, 269, 3051),
+    RunescapeHerb('Torstol', 5304, 267, 219),
+    RunescapeHerb('Dwarf weed', 5303, 2481, 217),
+    RunescapeHerb('Lantadyme', 5302, 255, 2485),
+    RunescapeHerb('Irit', 5297, 253, 209),
+    RunescapeHerb('Harralander', 5294, 251, 205),
 ]
