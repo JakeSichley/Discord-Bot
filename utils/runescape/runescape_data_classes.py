@@ -154,16 +154,61 @@ class RunescapeHerb:
     clean_weed_id: int
     grimy_weed_id: int
 
-ALL_HERBS = [
-    RunescapeHerb('Toadflax', 5296, 2998, 3049),
-    RunescapeHerb('Kwuarm', 5299, 263, 213),
-    RunescapeHerb('Avantoe', 5298, 261, 211),
-    RunescapeHerb('Ranarr', 5295, 265, 207),
-    RunescapeHerb('Cadantine', 5301, 3000, 215),
-    RunescapeHerb('Snapdragon', 5300, 269, 3051),
-    RunescapeHerb('Torstol', 5304, 267, 219),
-    RunescapeHerb('Dwarf weed', 5303, 2481, 217),
-    RunescapeHerb('Lantadyme', 5302, 255, 2485),
-    RunescapeHerb('Irit', 5297, 253, 209),
-    RunescapeHerb('Harralander', 5294, 251, 205),
-]
+
+@dataclass
+class RunescapeHerbComparison:
+    """
+    A dataclass that contains information about a runescape herb (seed, grimy weed, clean weed).
+
+    Attributes:
+        name (str): The name of the herb.
+        cost (float): The cost of growing this herb.
+        clean_profit (float): The profit from a harvesting this herb (clean).
+        grimy_profit (float): The profit from a harvesting this herb (grimy).
+    """
+
+    name: str
+    cost: float
+    clean_profit: float
+    grimy_profit: float
+
+    @property
+    def min(self) -> float:
+        """
+        Returns the smallest profitable amount (between grimy and clean).
+
+        Parameters:
+            None.
+
+        Returns:
+            (float).
+        """
+
+        return min(self.grimy_profit, self.grimy_profit)
+
+    @property
+    def max(self) -> float:
+        """
+        Returns the largest profitable amount (between grimy and clean).
+
+        Parameters:
+            None.
+
+        Returns:
+            (float).
+        """
+
+        return max(self.grimy_profit, self.grimy_profit)
+
+    def __lt__(self, other: 'RunescapeHerbComparison') -> bool:
+        """
+        Less-than comparison operator.
+
+        Parameters:
+            other (RunescapeHerbComparison): The other object to compare to.
+
+        Returns:
+            (bool).
+        """
+
+        return self.min < other.min
