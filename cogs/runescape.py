@@ -169,7 +169,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name='herb_comparison', description='Compares profitability for various herbs')
-    @app_commands.describe(patches='The number of herb patches to use in the calculation')
+    @app_commands.describe(patches='The number of herb patches')
     @app_commands.describe(average_herbs='The average number of herbs harvested per patch')
     async def runescape_herb_comparison(
             self,
@@ -200,8 +200,8 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         embed = discord.Embed(
             title="Old School Runescape Herb Profitability Comparison",
-            description=f"**{patches} {patches_pluralized}** with **{average_herbs} herbs** per patch based on "
-                        f"current market data.",
+            description=f"**{patches} {patches_pluralized}** with an average of **{average_herbs} herbs** per patch "
+                        f"based on current market data",
             color=0x971212
         )
         embed.set_thumbnail(url="https://oldschool.runescape.wiki/images/Herblore_icon_%28detail%29.png")
@@ -209,16 +209,11 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         embed.add_field(name='Herb', value='\n'.join(f'{x.emoji} {x.name}' for x in herb_comparisons))
         embed.add_field(
-            name='Profit (Clean)', value='\n'.join(f'{x.clean_profit:,}' for x in herb_comparisons)
+            name='Profit (Clean)', value='\n'.join(x.clean_profit_display for x in herb_comparisons)
         )
         embed.add_field(
-            name='Profit (Grimy)', value='\n'.join(f'**{x.grimy_profit:,}**' for x in herb_comparisons)
+            name='Profit (Grimy)', value='\n'.join(x.grimy_profit_display for x in herb_comparisons)
         )
-
-        # for comparison in herb_comparisons[:8]:
-        #     embed.add_field(name=f'{comparison.name} Cost', value=f'{comparison.cost:,}')
-        #     embed.add_field(name=f'{comparison.name} Profit (Clean)', value=)
-        #     embed.add_field(name=f'{comparison.name} Profit (Grimy)', value=f'{comparison.grimy_profit:,}')
 
         await interaction.response.send_message(embed=embed)
 
