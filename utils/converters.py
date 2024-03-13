@@ -32,6 +32,8 @@ from discord.ext import commands
 from dreambot import DreamBot
 from utils.context import Context
 
+from utils.checks import check_for_forbidden_characters
+
 
 class DefaultMemberConverter(commands.MemberConverter):
     """
@@ -273,6 +275,8 @@ class StringConverter(commands.Converter[str]):
 
         try:
             result = self.mutator(str(argument)) if self.mutator else str(argument)
+
+            check_for_forbidden_characters(result)
 
             if not self.constraint or (self.constraint is not None and self.constraint(result)):
                 return result

@@ -46,7 +46,6 @@ from utils.utils import cleanup, valid_content
 ReservedTags = (
     'tag', 'create', 'add', 'get', 'fetch', 'edit', 'alias', 'random',
     'delete', 'del', 'remove', 'info', 'search', 'list',
-    'r', 'g', 'a', 'e', 'i', 'f', 's', 'l', 'd'
 )
 
 TagName = StringConverter(

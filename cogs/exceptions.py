@@ -32,7 +32,7 @@ from discord.ext import commands
 from discord.utils import format_dt
 
 from dreambot import DreamBot
-from utils.checks import InvocationCheckFailure
+from utils.checks import InvocationCheckFailure, ForbiddenCharacters
 from utils.context import Context
 from utils.enums.guild_feature import GuildFeature
 from utils.logging_formatter import bot_logger
@@ -86,7 +86,7 @@ class Exceptions(commands.Cog):
 
         not_logged = (
             commands.CommandNotFound, commands.UserInputError, commands.CheckFailure, ClientResponseError,
-            commands.CommandOnCooldown, commands.DisabledCommand, ServerConnectionError
+            commands.CommandOnCooldown, commands.DisabledCommand, ServerConnectionError, ForbiddenCharacters
         )
 
         if not isinstance(error, not_logged):
@@ -137,6 +137,11 @@ class Exceptions(commands.Cog):
                         f'{str(ctx.author)} ({ctx.author.id}) triggered a cooldown in command '
                         f'`{ctx.command.qualified_name}` longer than 6 hours ({retry_after}).'
                     )
+            return
+
+        # Otherwise unexplained failure
+        elif isinstance(error, ForbiddenCharacters):
+            await ctx.send(f'{error}')
             return
 
         # External network error
