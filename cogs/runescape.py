@@ -174,7 +174,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     async def runescape_herb_comparison(
             self,
             interaction: Interaction[DreamBot],
-            patches: Range[int, 1, 9] = 9,
+            patches: Range[int, 1, 100] = 10,
             average_herbs: Range[int, 1, 50] = 8
     ) -> None:
         """
