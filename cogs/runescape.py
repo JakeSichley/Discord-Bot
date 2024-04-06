@@ -169,7 +169,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name='herb_comparison', description='Compares profitability for herb farming')
-    @app_commands.describe(patches='The number of herb patches (Default: 9)')
+    @app_commands.describe(patches='The number of herb patches (Default: 10)')
     @app_commands.describe(average_herbs='The average number of herbs harvested per patch (Default: 8)')
     async def runescape_herb_comparison(
             self,
