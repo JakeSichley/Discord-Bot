@@ -16,7 +16,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## 2.16.2
 ### Issues
-- Prevent edge case where `Moderation::Purge` would create a coroutine and never use it
+- `Moderation::Purge`
+  - Prevent edge case where a confirmation prompt coroutine was created and never used
+  - Prevent zero or negative limit values
 
 ## 2.16.1
 ### Features
