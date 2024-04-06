@@ -101,8 +101,8 @@ class Moderation(commands.Cog):
         if not isinstance(ctx.channel, PURGEABLE_INSTANCES):
             return
 
-        confirmation = ctx.confirmation_prompt(f'Are you sure you want to delete {limit} message(s)?')
-        if (limit == 'all' or limit >= 10) and not await confirmation:
+        prompt = f'Are you sure you want to delete {limit} message(s)?'
+        if (limit == 'all' or limit >= 10) and not await ctx.confirmation_prompt(prompt):
             return
 
         if isinstance(limit, int):
