@@ -80,7 +80,7 @@ class Moderation(commands.Cog):
         name='purge',
         help='Purges n+1 messages from the current channel. Specify `all` to completely clear the channel.'
     )
-    async def purge(self, ctx: Context, limit: Union[int, Literal['all']] = 0) -> None:
+    async def purge(self, ctx: Context, limit: Union[int, Literal['all']]) -> None:
         """
         A method to purge messages from a channel.
         Should a user ID be supplied, any messages from that user in the last (limit) messages will be deleted.
@@ -92,13 +92,16 @@ class Moderation(commands.Cog):
 
         Parameters:
             ctx (Context): The invocation context.
-            limit (Union[int, Literal['all']]): The number of messages to purge. Default: 0.
+            limit (Union[int, Literal['all']]): The number of messages to purge.
 
         Returns:
             None.
         """
 
         if not isinstance(ctx.channel, PURGEABLE_INSTANCES):
+            return
+
+        if isinstance(limit, int) and limit <= 0:
             return
 
         prompt = f'Are you sure you want to delete {limit} message(s)?'
