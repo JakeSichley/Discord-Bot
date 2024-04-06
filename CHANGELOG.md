@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.16.2
+### Issues
+- Prevent edge case where `Moderation::Purge` would create a coroutine and never use it
+
 ## 2.16.1
 ### Features
 * `Runescape`
