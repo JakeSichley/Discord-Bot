@@ -52,7 +52,7 @@ from utils.database.helpers import execute_query, retrieve_query
 from utils.enums.network_return_type import NetworkReturnType
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, Headers
-from utils.utils import pairs, run_in_subprocess, generate_activity
+from utils.utils import pairs, run_in_subprocess, generate_activity, VERSION
 
 ExtensionName = StringConverter(
     mutator=lambda x: x.strip().lower()
@@ -305,7 +305,6 @@ class Admin(commands.Cog):
             None.
         """
 
-
         if (query.upper()).startswith('SELECT'):
             try:
                 result = await retrieve_query(self.bot.database, query)
@@ -314,7 +313,6 @@ class Admin(commands.Cog):
                 await ctx.send(f'Error: {e}')
             finally:
                 return
-
 
         if self.bot.environment == 'PROD':
             if not await ctx.confirmation_prompt('Confirm potentially mutating statement?'):
@@ -531,6 +529,7 @@ class Admin(commands.Cog):
         embed.set_footer(text='Please report any issues to my owner!')
 
         if core or 'context.py' in changes or 'table_dataclasses.py' in changes or '.sql' in changes:
+            bot_logger.warning(f'Git Pull modified core files. Files not reloaded - current version is v{VERSION}.')
             embed.description = 'Core files were modified. No reloads will be performed.' \
                                 '\nPlease perform a full restart to apply changes.'
             await ctx.send(embed=embed)
@@ -595,6 +594,7 @@ class Admin(commands.Cog):
         output += '\n```'
 
         # -- finalize --
+        bot_logger.critical(f'Git Pull completed - bot is now running v{VERSION}.')
         if self.bot._status_text is not None and self.bot._status_type is not None:
             await self.bot.change_presence(
                 activity=await generate_activity(self.bot._status_text, self.bot._status_type)
