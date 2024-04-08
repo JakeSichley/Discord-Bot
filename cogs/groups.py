@@ -64,7 +64,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         """
 
         self.bot = bot
-        # [guild_id: [group_name: CompositeGroup]]
+        # [guild_id: [name: CompositeGroup]]
         self.groups: Dict[int, Dict[str, CompositeGroup]] = defaultdict(dict)
 
     async def cog_load(self) -> None:
@@ -85,7 +85,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         )
 
         for group in groups:
-            self.groups[group.guild_id][group.group_name] = CompositeGroup(group)
+            self.groups[group.guild_id][group.name] = CompositeGroup(group)
 
         group_members = await typed_retrieve_query(
             self.bot.database,
@@ -468,7 +468,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 positions_field = '\n'.join(str(x) for x in range(1, max_elements + 1))
                 joined_field = '\n'.join(format_unix_dt(x[1], 'R') for x in member_list[:max_elements])
 
-            embed = discord.Embed(title=f'{group.group_name} Members', color=0x64d1ff)
+            embed = discord.Embed(title=f'{group.name} Members', color=0x64d1ff)
             embed.set_thumbnail(
                 url='https://cdn.discordapp.com/attachments/634530033754570762/1194039472514408479/group_icon.png'
             )
@@ -488,12 +488,12 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     MARK: - Autocomplete Methods
     """
 
-    @delete_group.autocomplete('group_name')
-    @join_group.autocomplete('group_name')
-    @leave_group.autocomplete('group_name')
-    @view_group.autocomplete('group_name')
-    @kick_from_group.autocomplete('group_name')
-    @transfer_group.autocomplete('group_name')
+    @delete_group.autocomplete('name')
+    @join_group.autocomplete('name')
+    @leave_group.autocomplete('name')
+    @view_group.autocomplete('name')
+    @kick_from_group.autocomplete('name')
+    @transfer_group.autocomplete('name')
     async def existing_group_name_autocomplete(
             self, interaction: Interaction[DreamBot], current: str
     ) -> List[Choice[str]]:
