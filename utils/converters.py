@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 import re
-from typing import Optional, Union, Any, Callable
+from typing import Optional, Union, Callable
 
 import discord
 import parsedatetime  # type: ignore[import-untyped]
@@ -32,7 +32,30 @@ from discord.ext import commands
 from dreambot import DreamBot
 from utils.context import Context
 
-from utils.checks import check_for_forbidden_characters
+ForbiddenCharacterSet = set('_~#/\`><@*')
+
+
+class ForbiddenCharacters(commands.BadArgument):
+    def __init__(self) -> None:
+        super().__init__(f'Input contained one or more Forbidden Characters: {", ".join(ForbiddenCharacterSet)}')
+
+
+def check_for_forbidden_characters(string: str) -> None:
+    """
+    Checks if the provided string contains any of the forbidden characters.
+
+    Parameters:
+        string (str): The string to check for forbidden characters.
+
+    Raises:
+        ForbiddenCharacters: Whether the string contains any of the forbidden characters.
+
+    Returns:
+        None.
+    """
+
+    if set(string).intersection(ForbiddenCharacterSet):
+        raise ForbiddenCharacters
 
 
 class DefaultMemberConverter(commands.MemberConverter):

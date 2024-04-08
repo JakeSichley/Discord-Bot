@@ -32,8 +32,9 @@ from discord.ext import commands
 from discord.utils import format_dt
 
 from dreambot import DreamBot
-from utils.checks import InvocationCheckFailure, ForbiddenCharacters
+from utils.checks import InvocationCheckFailure
 from utils.context import Context
+from utils.converters import ForbiddenCharacters
 from utils.enums.guild_feature import GuildFeature
 from utils.logging_formatter import bot_logger
 
