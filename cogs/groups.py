@@ -488,12 +488,12 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     MARK: - Autocomplete Methods
     """
 
-    @delete_group.autocomplete('name')
-    @join_group.autocomplete('name')
-    @leave_group.autocomplete('name')
-    @view_group.autocomplete('name')
-    @kick_from_group.autocomplete('name')
-    @transfer_group.autocomplete('name')
+    @delete_group.autocomplete('group_name')
+    @join_group.autocomplete('group_name')
+    @leave_group.autocomplete('group_name')
+    @view_group.autocomplete('group_name')
+    @kick_from_group.autocomplete('group_name')
+    @transfer_group.autocomplete('group_name')
     async def existing_group_name_autocomplete(
             self, interaction: Interaction[DreamBot], current: str
     ) -> List[Choice[str]]:
