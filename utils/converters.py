@@ -271,7 +271,11 @@ class StringConverter(commands.Converter[str]):
     """
 
     def __init__(
-            self, *, mutator: Optional[Callable[[str], str]] = None, constraint: Optional[Callable[[str], bool]] = None
+            self,
+            *,
+            mutator: Optional[Callable[[str], str]] = None,
+            constraint: Optional[Callable[[str], bool]] = None,
+            allow_forbidden_characters: bool = False
     ) -> None:
         """
         The constructor for the StringConverter class.
@@ -279,10 +283,12 @@ class StringConverter(commands.Converter[str]):
         Parameters:
             mutator (Optional[Callable[[str], str]]): The mutation to apply during conversions.
             constraint (Optional[Callable[[str], bool]]): The constraint to apply to the converted argument.
+            allow_forbidden_characters (bool): Whether `ForbiddenCharacterSet` elements are allowed in the argument.
         """
 
         self.mutator = mutator
         self.constraint = constraint
+        self.allow_forbidden_characters = allow_forbidden_characters
 
     async def convert(self, ctx: Context, argument: str) -> str:  # type: ignore[override]
         """
@@ -299,7 +305,9 @@ class StringConverter(commands.Converter[str]):
         try:
             result = self.mutator(str(argument)) if self.mutator else str(argument)
 
-            check_for_forbidden_characters(result)
+            if not self.allow_forbidden_characters:
+                # raises `ForbiddenCharacter`
+                check_for_forbidden_characters(result)
 
             if not self.constraint or (self.constraint is not None and self.constraint(result)):
                 return result
