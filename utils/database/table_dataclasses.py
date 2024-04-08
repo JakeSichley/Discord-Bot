@@ -377,3 +377,17 @@ class GroupMember(DatabaseDataclass):
     member_id: int
     joined: int
     group_name: str
+
+    @property
+    def group_key(self) -> str:
+        """
+        Returns a case-folded key for the group's name, suitable for comparisons.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str).
+        """
+
+        return self.group_name.casefold()
