@@ -47,6 +47,11 @@ from utils.utils import format_unix_dt, generate_autocomplete_choices
 # TODO: Groups v3 -> edit group (max_members); needs components for confirmation when new max_members < current_members
 # TODO: Show group owner and member count in autocomplete?
 
+"""
+Group Name (& Key)
+    Group Name should maintain creator's case. Ex: "mY GrOUP" should show up as "mY GrOUP"
+    Group Name searches should be case-insensitive. Ex: "my group" should return the group "mY GrOUP"
+"""
 GroupName = StringTransformer(
     mutator=lambda x: x.strip(),
     constraint=lambda x: x is not None and 1 <= len(x) <= 100,
