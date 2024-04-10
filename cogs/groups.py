@@ -564,8 +564,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             return [Choice(name=x, value=x) for x in options[:25]]
 
         return generate_autocomplete_choices(
-            current.casefold(),
-            [(x, x.casefold()) for x in options],
+            current,
+            [(x, x) for x in options],
             minimum_threshold=100
         )
 

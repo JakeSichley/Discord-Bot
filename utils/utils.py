@@ -244,8 +244,8 @@ class AutocompleteModel(Generic[ChoiceT]):
             None.
         """
 
-        name = self.name.lower()
-        current = self.current.lower()
+        name = self.name.casefold()
+        current = self.current.casefold()
 
         partial_ratio = fuzz.partial_ratio(name, current)
         set_ratio = fuzz.token_set_ratio(name, current)
