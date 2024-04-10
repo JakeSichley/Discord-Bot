@@ -32,7 +32,6 @@ from discord import app_commands, Interaction
 from pytz import utc
 
 from dreambot import DreamBot
-
 from utils.converters import check_for_forbidden_characters, ForbiddenCharacterSet, ForbiddenCharacters
 
 
@@ -370,4 +369,3 @@ class StringTransformer(app_commands.Transformer):
             return 'String'
         else:
             return f'String (Forbidden Characters: {", ".join(ForbiddenCharacterSet)})'
-

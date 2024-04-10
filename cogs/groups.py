@@ -31,7 +31,7 @@ import aiosqlite
 import discord
 from aiosqlite import Error as aiosqliteError, IntegrityError
 from discord import app_commands, Interaction
-from discord.app_commands import Choice, Range
+from discord.app_commands import Choice, Range, Transform
 from discord.ext import commands
 from discord.utils import utcnow
 
@@ -41,10 +41,16 @@ from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import Group, GroupMember
 from utils.intermediate_models.composite_group import CompositeGroup
 from utils.logging_formatter import bot_logger
+from utils.transformers import StringTransformer
 from utils.utils import format_unix_dt, generate_autocomplete_choices
 
-
 # TODO: Groups v3 -> edit group (max_members); needs components for confirmation when new max_members < current_members
+# TODO: Show group owner and member count in autocomplete?
+
+GroupName = StringTransformer(
+    mutator=lambda x: x.strip(),
+    constraint=lambda x: x is not None and 1 <= len(x) <= 100,
+)
 
 @app_commands.guild_only
 class Groups(commands.GroupCog, group_name='group', group_description='Commands for managing Groups'):
@@ -64,7 +70,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         """
 
         self.bot = bot
-        # [guild_id: [name: CompositeGroup]]
+        # [guild_id: [key: CompositeGroup]]
         self.groups: Dict[int, Dict[str, CompositeGroup]] = defaultdict(dict)
 
     async def cog_load(self) -> None:
@@ -85,7 +91,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         )
 
         for group in groups:
-            self.groups[group.guild_id][group.name] = CompositeGroup(group)
+            self.groups[group.guild_id][group.key] = CompositeGroup(group)
 
         group_members = await typed_retrieve_query(
             self.bot.database,
@@ -94,7 +100,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         )
 
         for group_member in group_members:
-            self.groups[group_member.guild_id][group_member.group_name].members.add(group_member.member_id)
+            self.groups[group_member.guild_id][group_member.group_key].members.add(group_member.member_id)
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
     @app_commands.command(name='create', description='Creates a new group')
@@ -107,7 +113,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     async def create_group(
             self,
             interaction: Interaction[DreamBot],
-            group_name: Range[str, 1, 100],
+            group_name: Transform[str, GroupName],
             max_members: Optional[Range[int, 1, 2_500_000]] = None,
             ephemeral_updates: bool = False
     ) -> None:
@@ -126,7 +132,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
         assert interaction.guild_id is not None  # guild_only
 
-        if group_name in self.groups[interaction.guild_id]:
+
+        if group_name.casefold() in self.groups[interaction.guild_id]:
             raise InvocationCheckFailure('A group with that name already exists.')
 
         group = Group(
@@ -157,15 +164,15 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             else:
                 max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
                 await interaction.response.send_message(
-                    f'_{interaction.user.mention} created group "**{group_name}**" ({max_members_str} max members)_',
+                    f'_{interaction.user.mention} created group "**{group.name}**" ({max_members_str} max members)_',
                     allowed_mentions=discord.AllowedMentions.none()
                 )
-            self.groups[interaction.guild_id][group_name] = CompositeGroup(group)
+            self.groups[interaction.guild_id][group.key] = CompositeGroup(group)
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
     @app_commands.command(name='delete', description='Deletes an existing group')
     @app_commands.describe(group_name="The name of the group you'd like to delete")
-    async def delete_group(self, interaction: Interaction[DreamBot], group_name: Range[str, 1, 100]) -> None:
+    async def delete_group(self, interaction: Interaction[DreamBot], group_name: Transform[str, GroupName]) -> None:
         """
         Deletes an existing group from the guild.
         You can only delete your own groups unless you are a moderator (`manage_messages`).
@@ -189,7 +196,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             await execute_query(
                 self.bot.database,
                 'DELETE FROM GROUPS WHERE GROUP_NAME=? AND GUILD_ID=?',
-                (group_name, interaction.guild_id)
+                (group.name, interaction.guild_id)
             )
         except aiosqliteError:
             await interaction.response.send_message('Failed to delete group.', ephemeral=True)
@@ -198,17 +205,17 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 await interaction.response.send_message('Successfully deleted group.', ephemeral=True)
             else:
                 await interaction.response.send_message(
-                    f'_{interaction.user.mention} delete group "**{group_name}**" ({group.current_members:,} members)_',
+                    f'_{interaction.user.mention} delete group "**{group.name}**" ({group.current_members:,} members)_',
                     allowed_mentions=discord.AllowedMentions.none()
                 )
 
             with suppress(KeyError):
-                del self.groups[interaction.guild_id][group_name]
+                del self.groups[interaction.guild_id][group.key]
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
     @app_commands.command(name='join', description='Joins an existing group')
     @app_commands.describe(group_name="The name of the group you'd like to join")
-    async def join_group(self, interaction: Interaction[DreamBot], group_name: Range[str, 1, 100]) -> None:
+    async def join_group(self, interaction: Interaction[DreamBot], group_name: Transform[str, GroupName]) -> None:
         """
         Joins an existing group.
         Must not already be a member of the group and the group must not be at maximum capacity.
@@ -226,7 +233,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
         group = self.get_group(interaction.guild_id, group_name)
 
-        if interaction.user.id in self.groups[interaction.guild_id][group_name].members:
+        if interaction.user.id in group.members:
             raise InvocationCheckFailure("You're already a member of this group!")
 
         if group.is_full:
@@ -236,7 +243,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             await execute_query(
                 self.bot.database,
                 'INSERT INTO GROUP_MEMBERS VALUES (?, ?, ?, ?)',
-                (interaction.guild_id, interaction.user.id, int(utcnow().timestamp()), group_name),
+                (interaction.guild_id, interaction.user.id, int(utcnow().timestamp()), group.name),
                 errors_to_suppress=aiosqlite.IntegrityError
             )
         except aiosqliteError as e:
@@ -250,17 +257,17 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             else:
                 max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
                 await interaction.response.send_message(
-                    f'_{interaction.user.mention} joined group "**{group_name}**" '
+                    f'_{interaction.user.mention} joined group "**{group.name}**" '
                     f'({group.current_members + 1:,}/{max_members_str} members)_',
                     allowed_mentions=discord.AllowedMentions.none()
                 )
 
-            self.groups[interaction.guild_id][group_name].add_member(interaction.user.id)
+            self.groups[interaction.guild_id][group.key].add_member(interaction.user.id)
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
     @app_commands.command(name='leave', description="Leaves a group you're an existing member of")
     @app_commands.describe(group_name="The name of the group you'd like to leave")
-    async def leave_group(self, interaction: Interaction[DreamBot], group_name: Range[str, 1, 100]) -> None:
+    async def leave_group(self, interaction: Interaction[DreamBot], group_name: Transform[str, GroupName]) -> None:
         """
         Leaves an existing group.
         Must already be a member of the group.
@@ -285,7 +292,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             await execute_query(
                 self.bot.database,
                 'DELETE FROM GROUP_MEMBERS WHERE GUILD_ID=? AND MEMBER_ID=? AND GROUP_NAME=?',
-                (interaction.guild_id, interaction.user.id, group_name),
+                (interaction.guild_id, interaction.user.id, group.name),
             )
         except aiosqliteError:
             await interaction.response.send_message('Failed to leave group.', ephemeral=True)
@@ -295,19 +302,19 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             else:
                 max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
                 await interaction.response.send_message(
-                    f'_{interaction.user.mention} left group "**{group_name}**" '
+                    f'_{interaction.user.mention} left group "**{group.name}**" '
                     f'({group.current_members - 1:,}/{max_members_str} members)_',
                     allowed_mentions=discord.AllowedMentions.none()
                 )
 
-            self.groups[interaction.guild_id][group_name].remove_member(interaction.user.id)
+            self.groups[interaction.guild_id][group.key].remove_member(interaction.user.id)
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
     @app_commands.command(name='kick', description="Removes a member from an existing group")
     @app_commands.describe(group_name="The name of the group you'd like to remove a member from")
     @app_commands.describe(member="The member to remove")
     async def kick_from_group(
-            self, interaction: Interaction[DreamBot], group_name: Range[str, 1, 100], member: discord.Member
+            self, interaction: Interaction[DreamBot], group_name: Transform[str, GroupName], member: discord.Member
     ) -> None:
         """
         Kicks a member from a group.
@@ -345,7 +352,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             await execute_query(
                 self.bot.database,
                 'DELETE FROM GROUP_MEMBERS WHERE GUILD_ID=? AND MEMBER_ID=? AND GROUP_NAME=?',
-                (interaction.guild_id, member.id, group_name),
+                (interaction.guild_id, member.id, group.name),
             )
         except aiosqliteError:
             await interaction.response.send_message('Failed to kick member from group.', ephemeral=True)
@@ -356,19 +363,19 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
 
                 await interaction.response.send_message(
-                    f'_{interaction.user.mention} removed {member.mention} from group "**{group_name}**" '
+                    f'_{interaction.user.mention} removed {member.mention} from group "**{group.name}**" '
                     f'({group.current_members - 1:,}/{max_members_str} members)_',
                     allowed_mentions=discord.AllowedMentions(users=[member])
                 )
 
-            self.groups[interaction.guild_id][group_name].remove_member(member.id)
+            self.groups[interaction.guild_id][group.key].remove_member(member.id)
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
     @app_commands.command(name='transfer', description="Transfers group ownership to a new member")
     @app_commands.describe(group_name="The name of the group you'd like to transfer ownership of")
     @app_commands.describe(member="The member to give ownership to")
     async def transfer_group(
-            self, interaction: Interaction[DreamBot], group_name: Range[str, 1, 100], member: discord.Member
+            self, interaction: Interaction[DreamBot], group_name: Transform[str, GroupName], member: discord.Member
     ) -> None:
         """
         Transfers group ownership to a new member.
@@ -399,7 +406,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             await execute_query(
                 self.bot.database,
                 'UPDATE GROUPS SET OWNER_ID=? WHERE GUILD_ID=? AND GROUP_NAME=?',
-                (member.id, interaction.guild_id, group_name),
+                (member.id, interaction.guild_id, group.name),
             )
         except aiosqliteError:
             await interaction.response.send_message('Failed to transfer group ownership.', ephemeral=True)
@@ -408,17 +415,17 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 await interaction.response.send_message('Successfully transferred group ownership.', ephemeral=True)
             else:
                 await interaction.response.send_message(
-                    f'_{interaction.user.mention} transferred ownership of group "**{group_name}**" to '
+                    f'_{interaction.user.mention} transferred ownership of group "**{group.name}**" to '
                     f'{member.mention} from {owner.mention if owner is not None else "N/A"}_',
                     allowed_mentions=discord.AllowedMentions(users=[member, owner] if owner is not None else [member])
                 )
 
-            self.groups[interaction.guild_id][group_name].group.owner_id = member.id
+            self.groups[interaction.guild_id][group.key].group.owner_id = member.id
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
     @app_commands.command(name='view', description='View an existing group')
     @app_commands.describe(group_name="The name of the group you'd like to view")
-    async def view_group(self, interaction: Interaction[DreamBot], group_name: Range[str, 1, 100]) -> None:
+    async def view_group(self, interaction: Interaction[DreamBot], group_name: Transform[str, GroupName]) -> None:
         """
         Views an existing group.
 
@@ -442,7 +449,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 self.bot.database,
                 GroupMember,
                 'SELECT * FROM GROUP_MEMBERS WHERE GUILD_ID=? AND GROUP_NAME=?',
-                (interaction.guild_id, group_name),
+                (interaction.guild_id, group.name),
             )
         except aiosqliteError:
             await interaction.response.send_message('Failed to fetch group members.', ephemeral=True)
@@ -552,8 +559,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             return [Choice(name=x, value=x) for x in options[:25]]
 
         return generate_autocomplete_choices(
-            current,
-            [(x, x) for x in options],
+            current.casefold(),
+            [(x, x.casefold()) for x in options],
             minimum_threshold=100
         )
 
@@ -590,7 +597,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             )
 
             for group_name in updated_group_names:
-                self.groups[member.guild.id][group_name].group.owner_id = member.id
+                self.groups[member.guild.id][group_name.casefold()].group.owner_id = member.id
 
     @commands.Cog.listener()
     async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent) -> None:
@@ -623,7 +630,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             )
 
             for group_name in updated_group_names:
-                self.groups[payload.guild_id][group_name].group.owner_id = -payload.user.id
+                self.groups[payload.guild_id][group_name.casefold()].group.owner_id = -payload.user.id
 
         # group membership
         with suppress(aiosqliteError):
@@ -641,7 +648,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             )
 
             for group_name in updated_group_names:
-                self.groups[payload.guild_id][group_name].remove_member(payload.user.id)
+                self.groups[payload.guild_id][group_name.casefold()].remove_member(payload.user.id)
 
     """
     MARK: - Checks
@@ -662,10 +669,12 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             (CompositeGroup): The relevant group for the invocation context.
         """
 
-        if group_name not in self.groups[guild_id]:
+        group_key = group_name.casefold()
+
+        if group_key not in self.groups[guild_id]:
             raise InvocationCheckFailure('That group does not exist!')
 
-        return self.groups[guild_id][group_name]
+        return self.groups[guild_id][group_key]
 
     # noinspection PyMethodMayBeStatic
     def privileged_action_check(self, member: discord.Member, group_owner_id: int) -> None:
