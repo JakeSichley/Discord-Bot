@@ -561,11 +561,11 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             options = []
 
         if not current:
-            return [Choice(name=x, value=x) for x in options[:25]]
+            return [Choice(name=self.groups[interaction.guild_id][x].name, value=x) for x in options[:25]]
 
         return generate_autocomplete_choices(
             current,
-            [(x, x) for x in options],
+            [(self.groups[interaction.guild_id][x].name, x) for x in options],
             minimum_threshold=100
         )
 
