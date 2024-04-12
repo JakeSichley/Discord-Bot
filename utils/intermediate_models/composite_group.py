@@ -70,7 +70,21 @@ class CompositeGroup:
         self.members.discard(member_id)
 
     @property
-    def group_name(self) -> str:
+    def key(self) -> str:
+        """
+        Quick access to the group's key.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str).
+        """
+
+        return self.group.key
+
+    @property
+    def name(self) -> str:
         """
         Quick access to the group's name.
 
@@ -81,7 +95,7 @@ class CompositeGroup:
             (str).
         """
 
-        return self.group.group_name
+        return self.group.name
 
     @property
     def owner_id(self) -> int:

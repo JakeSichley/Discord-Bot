@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 import re
-from typing import Optional, Union, Any, Callable
+from typing import Optional, Union, Callable
 
 import discord
 import parsedatetime  # type: ignore[import-untyped]
@@ -31,6 +31,31 @@ from discord.ext import commands
 
 from dreambot import DreamBot
 from utils.context import Context
+
+ForbiddenCharacterSet = set('_~#/\`><@*')
+
+
+class ForbiddenCharacters(commands.BadArgument):
+    def __init__(self) -> None:
+        super().__init__(f'Input contained one or more Forbidden Characters: {", ".join(ForbiddenCharacterSet)}')
+
+
+def check_for_forbidden_characters(string: str) -> None:
+    """
+    Checks if the provided string contains any of the forbidden characters.
+
+    Parameters:
+        string (str): The string to check for forbidden characters.
+
+    Raises:
+        ForbiddenCharacters: Whether the string contains any of the forbidden characters.
+
+    Returns:
+        None.
+    """
+
+    if set(string).intersection(ForbiddenCharacterSet):
+        raise ForbiddenCharacters
 
 
 class DefaultMemberConverter(commands.MemberConverter):
@@ -245,8 +270,23 @@ class StringConverter(commands.Converter[str]):
     groups or cogs when this behavior is desirable.
     """
 
+    # TODO: Failure Support
+    """
+    Add parameter to allow human description of constraint where applicable
+    Example:
+        TagName = StringConverter(
+            mutator=lambda x: x.strip().lower(),
+            constraint=lambda x: x is not None and 2 <= len(x) <= 100 and x not in ReservedTags,
+            description: Must be between 2 and 100 characters. Cannot be {Reserved Tag}. Cannot be {ForbiddenCharacters}
+        )
+    """
+
     def __init__(
-            self, *, mutator: Optional[Callable[[str], str]] = None, constraint: Optional[Callable[[str], bool]] = None
+            self,
+            *,
+            mutator: Optional[Callable[[str], str]] = None,
+            constraint: Optional[Callable[[str], bool]] = None,
+            allow_forbidden_characters: bool = False
     ) -> None:
         """
         The constructor for the StringConverter class.
@@ -254,10 +294,12 @@ class StringConverter(commands.Converter[str]):
         Parameters:
             mutator (Optional[Callable[[str], str]]): The mutation to apply during conversions.
             constraint (Optional[Callable[[str], bool]]): The constraint to apply to the converted argument.
+            allow_forbidden_characters (bool): Whether `ForbiddenCharacterSet` elements are allowed in the argument.
         """
 
         self.mutator = mutator
         self.constraint = constraint
+        self.allow_forbidden_characters = allow_forbidden_characters
 
     async def convert(self, ctx: Context, argument: str) -> str:  # type: ignore[override]
         """
@@ -273,6 +315,10 @@ class StringConverter(commands.Converter[str]):
 
         try:
             result = self.mutator(str(argument)) if self.mutator else str(argument)
+
+            if not self.allow_forbidden_characters:
+                # raises `ForbiddenCharacter`
+                check_for_forbidden_characters(result)
 
             if not self.constraint or (self.constraint is not None and self.constraint(result)):
                 return result

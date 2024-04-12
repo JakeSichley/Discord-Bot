@@ -140,9 +140,11 @@ class Utility(commands.Cog):
 
         assert ctx.guild is not None
 
+        alias = user.nick or user.global_name
+
         embed = discord.Embed(title=f'{str(user)}\'s User Information', color=0x1dcaff)
-        if user.nick:
-            embed.description = f'Known as **{user.nick}** round\' these parts'
+        if alias is not None:
+            embed.description = f'Known as **{alias}** round\' these parts'
         if user.avatar is not None:
             embed.set_thumbnail(url=user.avatar.url)
         embed.add_field(name='Account Created', value=format_dt(user.created_at, 'R'))

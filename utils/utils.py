@@ -40,7 +40,7 @@ from fuzzywuzzy import fuzz  # type: ignore
 
 from utils.logging_formatter import bot_logger
 
-VERSION = '2.16.2'
+VERSION = '2.17.0'
 
 ChoiceT = TypeVar('ChoiceT', str, int, float, Union[str, int, float])
 
@@ -244,8 +244,8 @@ class AutocompleteModel(Generic[ChoiceT]):
             None.
         """
 
-        name = self.name.lower()
-        current = self.current.lower()
+        name = self.name.casefold()
+        current = self.current.casefold()
 
         partial_ratio = fuzz.partial_ratio(name, current)
         set_ratio = fuzz.token_set_ratio(name, current)

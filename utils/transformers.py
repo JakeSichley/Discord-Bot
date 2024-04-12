@@ -25,13 +25,14 @@ SOFTWARE.
 import re
 from datetime import datetime
 from math import ceil
-from typing import Optional, Union, Any
+from typing import Optional, Union, Any, Callable
 
 import parsedatetime  # type: ignore[import-untyped]
 from discord import app_commands, Interaction
 from pytz import utc
 
 from dreambot import DreamBot
+from utils.converters import check_for_forbidden_characters, ForbiddenCharacterSet, ForbiddenCharacters
 
 
 # noinspection PyAbstractClass
@@ -295,3 +296,76 @@ class SentinelRange(SentinelTransformer):
         """
 
         return 'Integer'
+
+
+class StringTransformer(app_commands.Transformer):
+    """
+    Converts an argument to a string and applies the specified mutation.
+
+    While this transformer does little actual conversion, it is designed to help synchronize argument formats across
+    groups or cogs when this behavior is desirable.
+    """
+
+    def __init__(
+            self,
+            *,
+            mutator: Optional[Callable[[str], str]] = None,
+            constraint: Optional[Callable[[str], bool]] = None,
+            allow_forbidden_characters: bool = False
+    ) -> None:
+        """
+        The constructor for the StringTransformer class.
+
+        Parameters:
+            mutator (Optional[Callable[[str], str]]): The mutation to apply during transformations.
+            constraint (Optional[Callable[[str], bool]]): The constraint to apply to the transformed argument.
+            allow_forbidden_characters (bool): Whether `ForbiddenCharacterSet` elements are allowed in the argument.
+        """
+
+        self.mutator = mutator
+        self.constraint = constraint
+        self.allow_forbidden_characters = allow_forbidden_characters
+
+    async def transform(self, interaction: Interaction[DreamBot], value: Any, /) -> str:
+        """
+        Transforms the converted option value into another value.
+
+        Parameters:
+            interaction (discord.Interaction): The invocation interaction.
+            value (Any): The input value.
+
+        Returns:
+            (Any): The transformed value.
+        """
+
+        try:
+            result = self.mutator(str(value)) if self.mutator else str(value)
+
+            if not self.allow_forbidden_characters:
+                # raises `ForbiddenCharacter`
+                check_for_forbidden_characters(result)
+
+            if not self.constraint or (self.constraint is not None and self.constraint(result)):
+                return result
+            else:
+                raise app_commands.TransformerError(value, self.type, self)
+
+        except (AttributeError, ForbiddenCharacters):
+            raise app_commands.TransformerError(value, self.type, self)
+
+    @property
+    def _error_display_name(self) -> str:
+        """
+        The name to display during errors.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str): The error display name.
+        """
+
+        if self.allow_forbidden_characters:
+            return 'String'
+        else:
+            return f'String (Forbidden Characters: {", ".join(ForbiddenCharacterSet)})'

@@ -304,7 +304,7 @@ class Group(DatabaseDataclass):
         guild_id (int): The id of the guild.
         owner_id (int): The id of the owner of this group.
         created (int): The time this group was created.
-        group_name (str): The name of this group.
+        name (str): The name of this group.
         max_members (Optional[int]): The maximum number of members this group may have, if any.
         current_members (int): The current number of members in this group.
         _ephemeral_updates (Bool): Whether updates to this group are ephemeral.
@@ -313,10 +313,24 @@ class Group(DatabaseDataclass):
     guild_id: int
     owner_id: int
     created: int
-    group_name: str
+    name: str
     max_members: Optional[int]
     current_members: int = 0
     _ephemeral_updates: int = 0
+
+    @property
+    def key(self) -> str:
+        """
+        Returns a case-folded key for this group, suitable for comparisons.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str).
+        """
+
+        return self.name.casefold()
 
     @property
     def is_full(self) -> bool:
@@ -363,3 +377,17 @@ class GroupMember(DatabaseDataclass):
     member_id: int
     joined: int
     group_name: str
+
+    @property
+    def group_key(self) -> str:
+        """
+        Returns a case-folded key for the group's name, suitable for comparisons.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str).
+        """
+
+        return self.group_name.casefold()

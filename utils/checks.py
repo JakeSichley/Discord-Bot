@@ -30,24 +30,8 @@ from discord.ext import commands
 from utils.context import Context
 from utils.cooldowns import cooldown_predicate
 
-ForbiddenCharacters = set('*_~#/\`><@')
-
 
 # Checks are missing type specialization -> discord.ext.commands._types not exported
-
-def contains_forbidden_characters(string: str) -> bool:
-    """
-    Checks if the provided string contains any of the forbidden characters.
-
-    Parameters:
-        string (str): The string to check for forbidden characters.
-
-    Returns:
-        (bool): Whether the string contains any of the forbidden characters.
-    """
-
-    return bool(set(string).intersection(ForbiddenCharacters))
-
 
 class InvocationCheckFailure(CheckFailure):
     """
