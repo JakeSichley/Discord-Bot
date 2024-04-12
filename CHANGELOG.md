@@ -14,6 +14,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.17.0
+### Features
+- `Group` group names are now case-insensitive
+- `Utility::UserInfo` now considers whether the user has a global name
+### Internal
+- `Tags` and `Groups` now reject problematic (Discord) characters in their names
+- Improved logging for existing `Admin` commands
+- Autocomplete fuzzy matching now uses `casefolded` strings instead of `lowered` strings
+
 ## 2.16.2
 ### Issues
 - `Moderation::Purge`
