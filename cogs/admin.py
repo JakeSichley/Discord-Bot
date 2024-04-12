@@ -33,7 +33,7 @@ from importlib import reload
 from io import StringIO
 from re import finditer
 from textwrap import indent
-from traceback import format_exc
+from traceback import format_exc, format_exception
 from typing import Union, List, Sequence, Annotated, Literal, Any
 
 import discord
@@ -323,7 +323,8 @@ class Admin(commands.Cog):
             affected = await execute_query(self.bot.database, query)
             await ctx.send(f'Executed. {affected} rows affected.')
         except aiosqliteError as e:
-            await ctx.safe_send(f'Error: {type(e)} - {e}\n{e.__traceback__}')
+            formatted_exception = '\n'.join(format_exception(type(e), e, e.__traceback__))
+            await ctx.safe_send(f'```\n{formatted_exception}\n```')
 
     @commands.command(name='refresh', hidden=True)
     async def reload_prefixes(self, ctx: Context) -> None:

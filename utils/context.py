@@ -33,7 +33,8 @@ from uuid import uuid4
 import discord
 from discord.ext import commands
 
-import dreambot
+# noinspection PyUnresolvedReferences
+import dreambot  # keep - needed for typehint, actual usage causes circular import
 from utils.logging_formatter import bot_logger
 
 
