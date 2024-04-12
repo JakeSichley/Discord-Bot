@@ -14,6 +14,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.16.2
+### Issues
+- `Moderation::Purge`
+  - Prevent edge case where a confirmation prompt coroutine was created and never used
+  - Prevent zero or negative limit values
+
+## 2.16.1
+### Features
+* `Runescape`
+  - Increase default herb patches for Varlamore 
+  - Dramatically increase max herb patches on herb profitability calculation
+
 ## 2.16.0
 ### Features
 * Add Herb Profitability Comparison to `Runescape` Cog
