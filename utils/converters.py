@@ -270,6 +270,17 @@ class StringConverter(commands.Converter[str]):
     groups or cogs when this behavior is desirable.
     """
 
+    # TODO: Failure Support
+    """
+    Add parameter to allow human description of constraint where applicable
+    Example:
+        TagName = StringConverter(
+            mutator=lambda x: x.strip().lower(),
+            constraint=lambda x: x is not None and 2 <= len(x) <= 100 and x not in ReservedTags,
+            description: Must be between 2 and 100 characters. Cannot be {Reserved Tag}. Cannot be {ForbiddenCharacters}
+        )
+    """
+
     def __init__(
             self,
             *,

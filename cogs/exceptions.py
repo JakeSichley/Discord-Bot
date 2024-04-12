@@ -90,6 +90,8 @@ class Exceptions(commands.Cog):
             commands.CommandOnCooldown, commands.DisabledCommand, ServerConnectionError, ForbiddenCharacters
         )
 
+        # TODO: should probably be _some_ feedback for commands.BadArgument.. Ex: tag create (name > 100 char)
+
         if not isinstance(error, not_logged):
             bot_logger.warning(
                 f"Encountered exception in command '{ctx.command.qualified_name}'",
