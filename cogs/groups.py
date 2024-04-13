@@ -561,11 +561,19 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             options = []
 
         if not current:
-            return [Choice(name=self.groups[interaction.guild_id][x].name, value=x) for x in options[:25]]
+            return [
+                Choice(
+                    name=enhanced_autocomplete_description(self.groups[interaction.guild_id][x], interaction.guild),
+                    value=x
+                ) for x in options[:25]
+            ]
 
         return generate_autocomplete_choices(
             current,
-            [(self.groups[interaction.guild_id][x].name, x) for x in options],
+            [
+                (enhanced_autocomplete_description(self.groups[interaction.guild_id][x], interaction.guild), x)
+                for x in options
+            ],
             minimum_threshold=100
         )
 
@@ -742,6 +750,27 @@ def find_last_index_under_threshold(collection: List[str]) -> int:
             return index - 1
 
     return len(collection)
+
+def enhanced_autocomplete_description(group: CompositeGroup, guild: discord.Guild) -> str:
+    """
+    Adds additional context information to group name autocomplete description.
+
+    Parameters:
+        group (CompositeGroup): The group to generate an autocomplete description for.
+        guild (discord.Guild): The guild the groups belong to.
+
+    Returns:
+        (str): The autocomplete description.
+    """
+
+    descriptions: List[str] = []
+
+    if owner := guild.get_member(group.owner_id):
+        descriptions.append(f'Owner: {owner.display_name}')
+
+    max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
+    descriptions.append(f'{group.current_members:,}/{max_members_str} members')
+    formatted_description = f' ({", ".join(descriptions)})'
 
 
 async def setup(bot: DreamBot) -> None:
