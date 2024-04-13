@@ -45,7 +45,6 @@ from utils.transformers import StringTransformer
 from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 # TODO: Groups v3 -> edit group (max_members); needs components for confirmation when new max_members < current_members
-# TODO: Show group owner and member count in autocomplete?
 
 """
 Group Name (& Key)
@@ -752,7 +751,7 @@ def find_last_index_under_threshold(collection: List[str]) -> int:
     return len(collection)
 
 
-def enhanced_autocomplete_description(group: CompositeGroup, guild: discord.Guild) -> str:
+def enhanced_autocomplete_description(group: CompositeGroup, guild: Optional[discord.Guild]) -> str:
     """
     Adds additional context information to group name autocomplete descriptions.
 
@@ -763,6 +762,9 @@ def enhanced_autocomplete_description(group: CompositeGroup, guild: discord.Guil
     Returns:
         (str): The enhanced autocomplete description.
     """
+
+    if guild is None:  # should always be a resolved guild
+        return group.name
 
     descriptions: List[str] = []
 
