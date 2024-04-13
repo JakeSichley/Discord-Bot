@@ -10,5 +10,6 @@ jobs:
       with:
         python-version: "3.9"
     - run: pip install --upgrade pip
-    - run: pip install "mypy-extensions==1.0.0" "mypy==1.8.0"
+    - run: pip install -r requirements.txt --use-deprecated=legacy-resolver
+    - run: pip install types-aiofiles types-Pillow types-beautifulsoup4 types-pytz types-humanfriendly
     - run: mypy cogs utils main.py --explicit-package-bases --strict
