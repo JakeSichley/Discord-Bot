@@ -57,6 +57,7 @@ GroupName = StringTransformer(
     constraint=lambda x: x is not None and 1 <= len(x) <= 100,
 )
 
+
 @app_commands.guild_only
 class Groups(commands.GroupCog, group_name='group', group_description='Commands for managing Groups'):
     """
@@ -136,7 +137,6 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         """
 
         assert interaction.guild_id is not None  # guild_only
-
 
         if group_name.casefold() in self.groups[interaction.guild_id]:
             raise InvocationCheckFailure('A group with that name already exists.')
@@ -750,6 +750,7 @@ def find_last_index_under_threshold(collection: List[str]) -> int:
             return index - 1
 
     return len(collection)
+
 
 def enhanced_autocomplete_description(group: CompositeGroup, guild: discord.Guild) -> str:
     """
