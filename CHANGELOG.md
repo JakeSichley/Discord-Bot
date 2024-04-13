@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Features
 - Enhance `Group` autocomplete descriptions with owner name and member count
 ### Internal
+- Create `mypy` GitHub workflow
 ### Issues
 
 ## 2.17.0
