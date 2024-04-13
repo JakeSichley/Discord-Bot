@@ -2,7 +2,8 @@ name: Type Checking
 on: [pull_request]
 
 jobs:
-  build:
+  type_checking:
+    name: Type Checking
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
