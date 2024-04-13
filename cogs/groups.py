@@ -753,14 +753,14 @@ def find_last_index_under_threshold(collection: List[str]) -> int:
 
 def enhanced_autocomplete_description(group: CompositeGroup, guild: discord.Guild) -> str:
     """
-    Adds additional context information to group name autocomplete description.
+    Adds additional context information to group name autocomplete descriptions.
 
     Parameters:
         group (CompositeGroup): The group to generate an autocomplete description for.
-        guild (discord.Guild): The guild the groups belong to.
+        guild (discord.Guild): The guild the group belongs to.
 
     Returns:
-        (str): The autocomplete description.
+        (str): The enhanced autocomplete description.
     """
 
     descriptions: List[str] = []
