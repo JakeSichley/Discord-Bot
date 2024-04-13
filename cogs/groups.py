@@ -45,7 +45,6 @@ from utils.transformers import StringTransformer
 from utils.utils import format_unix_dt, generate_autocomplete_choices
 
 # TODO: Groups v3 -> edit group (max_members); needs components for confirmation when new max_members < current_members
-# TODO: Show group owner and member count in autocomplete?
 
 """
 Group Name (& Key)
@@ -56,6 +55,7 @@ GroupName = StringTransformer(
     mutator=lambda x: x.strip(),
     constraint=lambda x: x is not None and 1 <= len(x) <= 100,
 )
+
 
 @app_commands.guild_only
 class Groups(commands.GroupCog, group_name='group', group_description='Commands for managing Groups'):
@@ -136,7 +136,6 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         """
 
         assert interaction.guild_id is not None  # guild_only
-
 
         if group_name.casefold() in self.groups[interaction.guild_id]:
             raise InvocationCheckFailure('A group with that name already exists.')
@@ -561,11 +560,19 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             options = []
 
         if not current:
-            return [Choice(name=self.groups[interaction.guild_id][x].name, value=x) for x in options[:25]]
+            return [
+                Choice(
+                    name=enhanced_autocomplete_description(self.groups[interaction.guild_id][x], interaction.guild),
+                    value=x
+                ) for x in options[:25]
+            ]
 
         return generate_autocomplete_choices(
             current,
-            [(self.groups[interaction.guild_id][x].name, x) for x in options],
+            [
+                (enhanced_autocomplete_description(self.groups[interaction.guild_id][x], interaction.guild), x)
+                for x in options
+            ],
             minimum_threshold=100
         )
 
@@ -742,6 +749,37 @@ def find_last_index_under_threshold(collection: List[str]) -> int:
             return index - 1
 
     return len(collection)
+
+
+def enhanced_autocomplete_description(group: CompositeGroup, guild: Optional[discord.Guild]) -> str:
+    """
+    Adds additional context information to group name autocomplete descriptions.
+
+    Parameters:
+        group (CompositeGroup): The group to generate an autocomplete description for.
+        guild (discord.Guild): The guild the group belongs to.
+
+    Returns:
+        (str): The enhanced autocomplete description.
+    """
+
+    if guild is None:  # should always be a resolved guild
+        return group.name
+
+    descriptions: List[str] = []
+
+    if owner := guild.get_member(group.owner_id):
+        descriptions.append(f'Owner: {owner.display_name}')
+
+    max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
+    descriptions.append(f'{group.current_members:,}/{max_members_str} members')
+    formatted_description = f' ({", ".join(descriptions)})'
+
+    if len(formatted_description) + len(group.name) > 100:
+        truncated_name_length = 100 - len(formatted_description) - 3
+        return f'{group.name[:truncated_name_length]}...{formatted_description}'
+    else:
+        return f'{group.name}{formatted_description}'
 
 
 async def setup(bot: DreamBot) -> None:
