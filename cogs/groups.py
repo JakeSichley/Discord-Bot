@@ -772,6 +772,12 @@ def enhanced_autocomplete_description(group: CompositeGroup, guild: discord.Guil
     descriptions.append(f'{group.current_members:,}/{max_members_str} members')
     formatted_description = f' ({", ".join(descriptions)})'
 
+    if len(formatted_description) + len(group.name) > 100:
+        truncated_name_length = 100 - len(formatted_description) - 3
+        return f'{group.name[:truncated_name_length]}...{formatted_description}'
+    else:
+        return f'{group.name}{formatted_description}'
+
 
 async def setup(bot: DreamBot) -> None:
     """
