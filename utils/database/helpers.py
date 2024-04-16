@@ -119,8 +119,8 @@ async def typed_retrieve_query(
 
     Examples:
         There's three primary ways to use `typed_retrieve_query`:
-            (1) Primitive types,
-            (2) Named Tuples,
+            (1) Primitive types
+            (2) Named Tuples
             (3) DatabaseDataclass subclasses
 
         Primitives and NamedTuples are quick and easy ways to work with more structured data, but don't enforce
@@ -170,7 +170,7 @@ async def typed_retrieve_query(
 
     Parameters:
         database (str): The name of the bot's database.
-        data_type (T): The data type to coerce returned rows to.
+        data_type (Type[T]): The data type to coerce returned rows to.
         query (str): The statement to execute.
         values (Tuple[Any, ...]): The values to insert into the query.
 
@@ -215,7 +215,7 @@ async def typed_retrieve_one_query(
 
     Parameters:
         database (str): The name of the bot's database.
-        data_type (T): The data type to coerce returned rows to.
+        data_type (Type[T]): The data type to coerce returned rows to.
         query (str): The statement to execute.
         values (Tuple[Any, ...]): The values to insert into the query.
 

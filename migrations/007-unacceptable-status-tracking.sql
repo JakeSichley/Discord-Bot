@@ -1,0 +1,13 @@
+-- Revises: 006
+-- Creation Date: 2024-04-14 0:26:20 UTC
+-- Reason: Add Unacceptable Status Tracking
+
+CREATE TABLE IF NOT EXISTS "UNACCEPTABLE_STATUSES" (
+    "SNOWFLAKE_ID"      INTEGER NOT NULL,
+    "SNOWFLAKE_TYPE"    INTEGER NOT NULL,
+    "FAILURE_COUNT"     INTEGER NOT NULL,
+    "LAST_FAILURE"      INTEGER NOT NULL,
+    PRIMARY KEY("SNOWFLAKE_ID")
+);
+
+PRAGMA user_version = 7;
