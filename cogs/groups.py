@@ -209,7 +209,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 await interaction.response.send_message('Successfully deleted group.', ephemeral=True)
             else:
                 await interaction.response.send_message(
-                    f'_{interaction.user.mention} delete group "**{group.name}**" ({group.current_members:,} members)_',
+                    f'_{interaction.user.mention} deleted group "**{group.name}**" '
+                    f'({group.current_members:,} members)_',
                     allowed_mentions=discord.AllowedMentions.none()
                 )
 
