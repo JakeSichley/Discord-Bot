@@ -11,10 +11,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 ### Features
+### Internal
+### Issues
+
+## 2.18.0
+### Features
 - Enhance `Group` autocomplete descriptions with owner name and member count
 ### Internal
 - Create `mypy` GitHub workflow
-### Issues
+- Miscellaneous spelling fixes
 
 ## 2.17.0
 ### Features

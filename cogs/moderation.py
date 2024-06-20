@@ -388,7 +388,11 @@ async def add_default_role(bot: DreamBot, member: discord.Member, gate: bool = F
         None.
     """
 
-    if member.guild.id not in bot.cache.default_roles:
+    if (
+        member.guild.unavailable or
+        member.guild.id not in bot.cache.default_roles or
+        not member.guild.me.guild_permissions.manage_roles
+    ):
         return
 
     resolved_role = member.guild.get_role(bot.cache.default_roles[member.guild.id])
@@ -409,8 +413,6 @@ async def add_default_role(bot: DreamBot, member: discord.Member, gate: bool = F
                 await sys_channel.send(f'Failed to add the default role to `{str(member)}`.')
             except discord.HTTPException as e:
                 bot_logger.error(f'Role Addition Alert Failure. {e.status}. {e.text}')
-
-    # todo: implement `guild_unavailable` checks
 
 
 async def setup(bot: DreamBot) -> None:
