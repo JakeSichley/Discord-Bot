@@ -41,6 +41,8 @@ from utils.enums.network_return_type import NetworkReturnType
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, ExponentialBackoff
 
+from discord import app_commands
+
 
 class DDO(commands.Cog):
     """
@@ -51,6 +53,7 @@ class DDO(commands.Cog):
         ADVENTURE_TYPES (tuple): A tuple of valid adventure types for DDOAudit
         DIFFICULTIES (tuple): A tuple of valid difficulties for DDOAudit
         QUERY_INTERVAL (int): How frequently API data from DDOAudit should be queried.
+        feature_subgroup (app_commands.Group): The AppCommand Group for commands (not implicit - `roll` is top-level)
 
     Attributes:
         bot (DreamBot): The Discord bot.
@@ -64,6 +67,12 @@ class DDO(commands.Cog):
     DIFFICULTIES = ('Casual', 'Normal', 'Hard', 'Elite', 'Reaper')
     QUERY_INTERVAL = 15
 
+    feature_subgroup = app_commands.Group(
+        name='ddo',
+        description='Commands for Dungeons & Dragons Online',
+        guild_only=False
+    )
+
     def __init__(self, bot: DreamBot) -> None:
         """
         The constructor for the DDO class.
@@ -75,9 +84,9 @@ class DDO(commands.Cog):
         self.bot = bot
         self.api_data = {server: None for server in self.SERVERS}
         self.backoff = ExponentialBackoff(60 * 60 * 4)
-        self.query_ddo_audit.start()
+        # self.query_ddo_audit.start()  # disable for dev testing
 
-    @commands.command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')
+    @commands.hybrid_command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')
     async def roll(self, ctx: Context, *, pattern: str) -> None:
         """
         A method to simulate the rolling of dice.
