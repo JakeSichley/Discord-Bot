@@ -21,8 +21,9 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-
+import re
 from asyncio import sleep, wait_for, TimeoutError
+from contextlib import suppress
 from functools import reduce
 from json.decoder import JSONDecodeError
 from random import seed, shuffle, randrange
@@ -84,9 +85,10 @@ class DDO(commands.Cog):
         self.bot = bot
         self.api_data = {server: None for server in self.SERVERS}
         self.backoff = ExponentialBackoff(60 * 60 * 4)
+        self.roll_regex = re.compile('(?P<quantity>\d{0,6})d(?P<sides>\d{1,6}) ?(?P<modifier>[-+] ?\d{1,6})?')
         # self.query_ddo_audit.start()  # disable for dev testing
 
-    @commands.hybrid_command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')
+    @commands.hybrid_command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')  # type: ignore[arg-type]
     async def roll(self, ctx: Context, *, pattern: str) -> None:
         """
         A method to simulate the rolling of dice.
@@ -103,89 +105,32 @@ class DDO(commands.Cog):
             None.
         """
 
-        async def evaluate_dice(dice_pattern: str) -> List[int]:
-            """
-            Simulate rolling the specified dice.
+        match = self.roll_regex.match(pattern)
 
-            Parameters:
-                dice_pattern (str): The specified dice pattern to generate.
+        if match is None:
+            raise commands.UserInputError('Could not extract a valid dice roll pattern.')
 
-            Returns:
-                (List[int]): The result of rolling the specified pattern.
-            """
+        die_quantity = match.group('quantity')
+        die_sides = match.group('sides')
+        modifier = match.group('modifier')
 
-            die = dice_pattern.split('d')
-            # create a list of all possible roll outcomes
-            # dice = [x for x in range(int(die[0]), int(die[0]) * int(die[1]) + 1)]
-            dice = []
-            for _ in range(10):
-                seed(time())
-                dice.append([randrange(1, int(die[1]) + 1) for _ in range(int(die[0]))])
-            shuffle(dice)
-            # shuffle the list and send the first index's result
-            return dice[0]
+        # sides is required, quantity and modifier are optional
+        die_sides = parse_match(die_sides, 'Die Sides')
 
-        async def evaluate_dice_string(die_string: str) -> str:
-            """
-            Turns a die string into a computed value without exposing the string to eval.
+        try:
+            die_quantity = parse_match(die_quantity, 'Number of Dice')
+        except commands.UserInputError:
+            die_quantity = 1
 
-            Parameters:
-                die_string (str): The die string to be evaluated.
+        try:
+            modifier = parse_match(modifier, 'Modifier', negative_allowed=True)
+        except commands.UserInputError:
+            modifier = 0
 
-            Returns:
-                (str): The evaluated result.
-            """
+        seed(time())
+        die_total = sum(randrange(1, die_sides + 1) for _ in range(die_quantity)) + modifier
 
-            # avoid exposing eval() to the user -> manually parse the arithmetic expression we've generated
-            # while we have valid expressions, break them down into groups
-            while match := search(r'(\d+)([+\-])(\d+)', die_string):
-                groups = match.groups()
-
-                if groups[1] == '+':
-                    total = int(groups[0]) + int(groups[2])
-                else:
-                    total = int(groups[0]) - int(groups[2])
-
-                # replace the expression with the result and continue
-                die_string = die_string.replace(f'{"".join(groups)}', str(total), 1)
-
-            return die_string
-
-        # remove all spaces from the string, and manually add a space to the front
-        # this allows this regex pattern to find a 'd#' at the beginning
-        pattern = ' ' + pattern.replace(' ', '')
-        # build a dict of the single die in the pattern (ex: 'd20', 'd2', etc.)
-        single_die = {x[0] + x[1]: x[0] + '1' + x[1] for x in findall(r'(\D)(d\d+)', pattern)}
-        # replace all the single die with a '1d#' alternative, ensuring all dice follow the #d# format
-        for key, value in single_die.items():
-            pattern = pattern.replace(key, value.strip(), 1)
-        # with all die in the same format, extract all the requested rolls
-        die_patterns = findall(r'\d+d\d+', pattern)
-        # build a dict of results {request: result}
-        results = {die: await evaluate_dice(die) for die in die_patterns}
-        # build a result string we can present to the user
-        breakdown = f'Roll: **{pattern}**\nResult: **$**\n\nBreakdown:'
-
-        # group all the non-die rolls together, so we can append it the breakdown
-        non_die_base = reduce(lambda s, r: s.replace(r, '@', 1), die_patterns, pattern)
-        non_die = findall(r'[+|-]\d+|\d+(?=[+|-])', non_die_base)
-
-        # give the user a breakdown of each of their requested rolls
-        for key, value in results.items():
-            pattern = pattern.replace(key, str(sum(value)), 1)
-            breakdown += f'\n{key} ({sum(value)}): {value}'
-
-        # if the user supplied non-die args, add those to the breakdown
-        if non_die:
-            non_die_total = sum([int(x) for x in non_die])
-            breakdown += f'\nNon-Die ({non_die_total}): {[int(x) for x in non_die]}'
-
-        async with ctx.channel.typing():
-            try:
-                final_value = await wait_for(evaluate_dice_string(pattern), 3)
-                await ctx.send(breakdown.replace('$', final_value))
-            except TimeoutError:
-                await ctx.send('Die Evaluation Timeout Error')
+        await ctx.send(f'{die_total:,}')
 
     # noinspection GrazieInspection
     # needs cleanup
@@ -520,6 +465,34 @@ class DDO(commands.Cog):
         self.api_data = dict()
 
         bot_logger.info('Completed Unload for Cog: DDO')
+
+
+def parse_match(match: str, match_name: str, negative_allowed: bool = False) -> int:
+    """
+    Parses a match string to a valid integer value.
+
+    Parameters:
+        match (str): The match string.
+        match_name (str): The name of match being parsed.
+        negative_allowed (bool): Whether negative values are allowed.
+
+    Throws:
+        commands.UserInputError.
+
+    Returns:
+        (int).
+    """
+
+    try:
+        base_value = int(match.replace(' ', ''))
+    except (ValueError, AttributeError):
+        raise commands.UserInputError(f'Could not parse {match_name}.')
+
+    if not negative_allowed and base_value <= 0:
+        raise commands.UserInputError(f'{match_name} was out-of-bounds (negative or zero).')
+
+    return base_value
+
 
 
 async def setup(bot: DreamBot) -> None:
