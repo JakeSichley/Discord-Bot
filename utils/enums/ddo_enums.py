@@ -25,7 +25,7 @@ SOFTWARE.
 from enum import Enum
 
 
-class Servers(Enum):
+class Server(Enum):
     """
     An Enum class that represents DDO Servers.
     """
@@ -40,7 +40,7 @@ class Servers(Enum):
     Wayfinder = 'Wayfinder'
     Hardcore = 'Hardcore'
 
-class AdventureTypes(Enum):
+class AdventureType(Enum):
     """
     An Enum class that represents DDO Adventure Types.
     """
@@ -49,7 +49,7 @@ class AdventureTypes(Enum):
     Quest = 'Quest'
     Raid = 'Raid'
 
-class Difficulties(Enum):
+class Difficulty(Enum):
     """
     An Enum class that represents DDO Adventure Difficulties.
     """

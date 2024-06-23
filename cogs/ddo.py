@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from utils.enums.ddo_enums import Servers, AdventureTypes, Difficulties
+from utils.enums.ddo_enums import Server, AdventureType, Difficulty
 
 import re
 from asyncio import sleep, TimeoutError
@@ -80,7 +80,7 @@ class DDO(commands.Cog):
         """
 
         self.bot = bot
-        self.api_data: Dict[Servers, Optional[Dict[str, Any]]]  = {server: None for server in Servers}
+        self.api_data: Dict[Server, Optional[Dict[str, Any]]]  = {server: None for server in Server}
         self.backoff = ExponentialBackoff(60 * 60 * 4)
         self.roll_regex = re.compile('(?P<quantity>\d{0,6})d(?P<sides>\d{1,6}) ?(?P<modifier>[-+] ?\d{1,6})?')
         # self.query_ddo_audit.start()  # disable for dev testing
@@ -255,7 +255,7 @@ class DDO(commands.Cog):
                     f'Information is populated from \'DDO Audit\' every {QUERY_INTERVAL} seconds.'
     )
     @app_commands.describe(server='The server to fetch LFM data for')
-    async def ddo_lfms(self, interaction: Interaction, server: Servers) -> None:
+    async def ddo_lfms(self, interaction: Interaction, server: Server) -> None:
         """
         A method that outputs a list of all active groups on a server.
 
@@ -326,7 +326,7 @@ class DDO(commands.Cog):
         # attempt to parse arguments provided
         server = atype = diff = level = None
 
-        # server_data = self.api_data[Servers.Khyber]
+        # server_data = self.api_data[Server.Khyber]
         server_data: Dict[str, Any] = dict()
 
         # build sets for each of our individual filters, as well as a master set of all quests
@@ -365,7 +365,7 @@ class DDO(commands.Cog):
             None.
         """
 
-        async def backoff(current_server: Servers) -> None:
+        async def backoff(current_server: Server) -> None:
             """
             A local function for handling exponential backoff during network errors.
             Backoff behavior is desirable during any exception, though other behavior is exception-specific.
@@ -383,7 +383,7 @@ class DDO(commands.Cog):
             self.backoff.next_backoff()
 
             if self.backoff.backoff_count >= 4:
-                self.api_data = {s: None for s in Servers}
+                self.api_data = {s: None for s in Server}
                 bot_logger.warning(
                     f'DDOAudit Total Backoff Duration Will Exceed 5 Minutes. '
                     f'Clearing all LFM data and backing off for {self.backoff.str_time}.'
@@ -393,7 +393,7 @@ class DDO(commands.Cog):
 
             await sleep(self.backoff.total_backoff_seconds)
 
-        server = list(Servers)[self.query_ddo_audit.current_loop % len(Servers)]
+        server = list(Server)[self.query_ddo_audit.current_loop % len(Server)]
 
         try:
             self.api_data[server] = await network_request(
