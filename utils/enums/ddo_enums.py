@@ -24,8 +24,26 @@ SOFTWARE.
 
 from enum import Enum
 
+class PrettyPrintedEnum(Enum):
+    """
+    An Enum class that does not print the Class.Name when converted to a string.
+    """
 
-class Server(Enum):
+    def __str__(self) -> str:
+        """
+        Provides a string representation of this object.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str).
+        """
+
+        return self.value
+
+
+class Server(PrettyPrintedEnum):
     """
     An Enum class that represents DDO Servers.
     """
@@ -40,7 +58,7 @@ class Server(Enum):
     Wayfinder = 'Wayfinder'
     Hardcore = 'Hardcore'
 
-class AdventureType(Enum):
+class AdventureType(PrettyPrintedEnum):
     """
     An Enum class that represents DDO Adventure Types.
     """
@@ -49,7 +67,7 @@ class AdventureType(Enum):
     Quest = 'Quest'
     Raid = 'Raid'
 
-class Difficulty(Enum):
+class Difficulty(PrettyPrintedEnum):
     """
     An Enum class that represents DDO Adventure Difficulties.
     """

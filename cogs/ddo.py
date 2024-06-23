@@ -30,7 +30,7 @@ from json.decoder import JSONDecodeError
 from random import seed, randrange
 from re import search
 from time import time
-from typing import no_type_check, Dict, Optional, Any, Union
+from typing import no_type_check, Dict, Optional, Any, Union, List
 
 from aiohttp import ClientError
 from bs4 import BeautifulSoup
@@ -43,6 +43,8 @@ from utils.context import Context
 from utils.enums.network_return_type import NetworkReturnType
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, ExponentialBackoff
+
+from contextlib import suppress
 
 
 class DDO(commands.Cog):
@@ -65,7 +67,7 @@ class DDO(commands.Cog):
 
     QUERY_INTERVAL = 15
 
-    feature_subgroup = app_commands.Group(
+    ddo_subgroup = app_commands.Group(
         name='ddo',
         description='Commands for Dungeons & Dragons Online',
         guild_only=False
@@ -83,7 +85,7 @@ class DDO(commands.Cog):
         self.api_data: Dict[Server, Optional[Dict[str, Any]]]  = {server: None for server in Server}
         self.backoff = ExponentialBackoff(60 * 60 * 4)
         self.roll_regex = re.compile('(?P<quantity>\d{0,6})d(?P<sides>\d{1,6}) ?(?P<modifier>[-+] ?\d{1,6})?')
-        # self.query_ddo_audit.start()  # disable for dev testing
+        self.query_ddo_audit.start()
 
     @commands.hybrid_command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')
     async def roll(self, ctx: Union[Context, Interaction[DreamBot]], *, pattern: str) -> None:
@@ -249,13 +251,19 @@ class DDO(commands.Cog):
         embed.set_footer(text="Please report any formatting issues to my owner!")
         await ctx.send(embed=embed)
 
-    @app_commands.command(
+    @ddo_subgroup.command(
         name='lfms',
-        description=f'Returns a list of active LFMs for the specified server. '
-                    f'Information is populated from \'DDO Audit\' every {QUERY_INTERVAL} seconds.'
+        description=f'Returns active LFMs on the specified server. '
+                    f'Data is populated from \'DDO Audit\' every {QUERY_INTERVAL} seconds.'
     )
     @app_commands.describe(server='The server to fetch LFM data for')
-    async def ddo_lfms(self, interaction: Interaction, server: Server) -> None:
+    async def ddo_lfms(
+            self,
+            interaction: Interaction,
+            server: Server,
+            adventure_type: Optional[AdventureType],
+
+    ) -> None:
         """
         A method that outputs a list of all active groups on a server.
 
@@ -271,35 +279,35 @@ class DDO(commands.Cog):
             None.
         """
 
-        try:
-            server_data = self.api_data[server]
+        print(adventure_type)
 
-            if server_data is None:
-                raise ValueError
+        server_data = self.api_data[server]
 
-        except KeyError:
-            await ctx.send(f'No Active LFM\'s on {server}!')
-            return
-        except ValueError:
-            await ctx.send('Failed to query DDO Audit API.')
+        if server_data is None:
+            await interaction.response.send_message(f'Server data for {server} is not available.', ephemeral=True)
             return
 
         # Divide the groups into three lists: Raids, Quests, and Groups (No Listed Quest)
-        else:
-            raids = [q['Quest']['Name'] for q in server_data['Groups'] if
-                     q['Quest'] and q['Quest']['GroupSize'] == 'Raid']
-            quests = [q['Quest']['Name'] for q in server_data['Groups'] if
-                      q['Quest'] and q['Quest']['GroupSize'] != 'Raid']
-            groups = [q['Comment'] for q in server_data['Groups'] if not q['Quest'] and q['Comment']]
+        raids = [
+            q['Quest']['Name'] for q in server_data['Groups'] if q['Quest'] and q['Quest']['GroupSize'] == 'Raid'
+        ]
+        quests = [
+            q['Quest']['Name'] for q in server_data['Groups'] if q['Quest'] and q['Quest']['GroupSize'] != 'Raid'
+        ]
+        groups = [q['Comment'] for q in server_data['Groups'] if not q['Quest'] and q['Comment']]
 
-            # Should a list be empty, append 'None'
-            for li in [raids, quests, groups]:
-                if not li:
-                    li.append('None')
+        # Should a list be empty, append 'None'
+        for li in [raids, quests, groups]:
+            if not li:
+                li.append('None')
 
-            await ctx.send(f'**Current Raids on {server}:** {", ".join(raids)}\n'
-                           f'**Current Quests on {server}:** {", ".join(quests)}\n'
-                           f'**Current Groups on {server}:** {", ".join(groups)}\n')
+        # TODO: Convert to Embed
+
+        await interaction.response.send_message(
+            f'**Current Raids on {server}:** {", ".join(raids)}\n'
+            f'**Current Quests on {server}:** {", ".join(quests)}\n'
+            f'**Current Groups on {server}:** {", ".join(groups)}\n'
+        )
 
     @commands.command(name='flfms', help=f'Returns a filtered list of active LFMs for the specified server.\n'
                                          f'Optional filters include: LFM Type: (Solo, Quest, Raid), Difficulty: '
@@ -346,6 +354,7 @@ class DDO(commands.Cog):
         for filtered_set, value in [(atypes, atype), (diffs, diff), (levels, level)]:
             if value is not None:
                 all_quests.intersection_update(filtered_set)
+
 
         if not all_quests:
             await ctx.send(f'**Filtered Results on {server}:** None')
@@ -402,6 +411,11 @@ class DDO(commands.Cog):
                 return_type=NetworkReturnType.JSON, ssl=False
             )
             self.backoff.reset()
+
+            # DDO Audit places a manufactured group in the results if the server is down; check for this
+            with suppress(KeyError, IndexError):
+                if self.api_data[server]['Groups'][0]['Id'] == 0:
+                    self.api_data[server] = None
 
         except ClientError:
             await backoff(server)
