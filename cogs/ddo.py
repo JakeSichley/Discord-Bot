@@ -21,19 +21,21 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
+
+from utils.enums.ddo_enums import Servers, AdventureTypes, Difficulties
+
 import re
-from asyncio import sleep, wait_for, TimeoutError
-from contextlib import suppress
-from functools import reduce
+from asyncio import sleep, TimeoutError
 from json.decoder import JSONDecodeError
-from random import seed, shuffle, randrange
-from re import search, findall
+from random import seed, randrange
+from re import search
 from time import time
-from typing import List, no_type_check
+from typing import no_type_check, Dict, Optional, Any, Union
 
 from aiohttp import ClientError
 from bs4 import BeautifulSoup
 from discord import Embed
+from discord import app_commands, Interaction
 from discord.ext import commands, tasks
 
 from dreambot import DreamBot
@@ -41,8 +43,6 @@ from utils.context import Context
 from utils.enums.network_return_type import NetworkReturnType
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, ExponentialBackoff
-
-from discord import app_commands
 
 
 class DDO(commands.Cog):
@@ -63,9 +63,6 @@ class DDO(commands.Cog):
         backoff (ExponentialBackoff): Exponential Backoff calculator for network requests.
     """
 
-    SERVERS = ('Argonnessen', 'Cannith', 'Ghallanda', 'Khyber', 'Orien', 'Sarlona', 'Thelanis', 'Wayfinder', 'Hardcore')
-    QUEST_TYPES = ('Solo', 'Quest', 'Raid')
-    DIFFICULTIES = ('Casual', 'Normal', 'Hard', 'Elite', 'Reaper')
     QUERY_INTERVAL = 15
 
     feature_subgroup = app_commands.Group(
@@ -83,13 +80,13 @@ class DDO(commands.Cog):
         """
 
         self.bot = bot
-        self.api_data = {server: None for server in self.SERVERS}
+        self.api_data: Dict[Servers, Optional[Dict[str, Any]]]  = {server: None for server in Servers}
         self.backoff = ExponentialBackoff(60 * 60 * 4)
         self.roll_regex = re.compile('(?P<quantity>\d{0,6})d(?P<sides>\d{1,6}) ?(?P<modifier>[-+] ?\d{1,6})?')
         # self.query_ddo_audit.start()  # disable for dev testing
 
-    @commands.hybrid_command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')  # type: ignore[arg-type]
-    async def roll(self, ctx: Context, *, pattern: str) -> None:
+    @commands.hybrid_command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')
+    async def roll(self, ctx: Union[Context, Interaction[DreamBot]], *, pattern: str) -> None:
         """
         A method to simulate the rolling of dice.
 
@@ -134,6 +131,7 @@ class DDO(commands.Cog):
 
     # noinspection GrazieInspection
     # needs cleanup
+    # -> 6/22/24 - ignoring during migration as command is essentially disabled
     @no_type_check
     @commands.is_owner()
     @commands.command(name='ddoitem', help='Pulls basic information about an item in Dungeons & Dragons Online '
@@ -251,16 +249,18 @@ class DDO(commands.Cog):
         embed.set_footer(text="Please report any formatting issues to my owner!")
         await ctx.send(embed=embed)
 
-    @commands.command(name='lfms', help=f'Returns a list of active LFMs for the specified server.\nValid servers'
-                                        f' include Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis,'
-                                        f' and Wayfinder\nInformation is populated from \'DDO Audit\' every '
-                                        f'{QUERY_INTERVAL} seconds.')
-    async def ddo_lfms(self, ctx: Context, server: str = 'Khyber') -> None:
+    @app_commands.command(
+        name='lfms',
+        description=f'Returns a list of active LFMs for the specified server. '
+                    f'Information is populated from \'DDO Audit\' every {QUERY_INTERVAL} seconds.'
+    )
+    @app_commands.describe(server='The server to fetch LFM data for')
+    async def ddo_lfms(self, interaction: Interaction, server: Servers) -> None:
         """
         A method that outputs a list of all active groups on a server.
 
         Parameters:
-            ctx (Context): The invocation context.
+            interaction (Interaction): The invocation interaction.
             server (str): The name of the server to return lfms for. Default: 'Khyber'.
 
         Output:
@@ -270,9 +270,6 @@ class DDO(commands.Cog):
         Returns:
             None.
         """
-
-        if server not in self.SERVERS:
-            server = 'Khyber'
 
         try:
             server_data = self.api_data[server]
@@ -329,39 +326,8 @@ class DDO(commands.Cog):
         # attempt to parse arguments provided
         server = atype = diff = level = None
 
-        for arg in args:
-            # parse string arguments first
-            if arg in self.SERVERS:
-                server = arg
-            elif arg in self.QUEST_TYPES:
-                atype = arg
-            elif arg in self.DIFFICULTIES:
-                diff = arg
-            # if we can't parse the arg to one of the above, try to convert the arg to an int
-            # if we can't cast to int OR a successful cast is outside our acceptable range, level = None
-            else:
-                try:
-                    level = int(arg)
-                    if level < 1 or level > 32:
-                        level = None
-                except ValueError:
-                    level = None
-
-        if server not in self.SERVERS:
-            server = 'Khyber'
-
-        try:
-            server_data = self.api_data[server]
-
-            if server_data is None:
-                raise ValueError
-
-        except KeyError:
-            await ctx.send(f'No Active LFM\'s on {server}!')
-            return
-        except ValueError:
-            await ctx.send('Failed to query DDO Audit API.')
-            return
+        # server_data = self.api_data[Servers.Khyber]
+        server_data: Dict[str, Any] = dict()
 
         # build sets for each of our individual filters, as well as a master set of all quests
         # sets are tuples of (LeaderName, QuestName, Difficulty, AdventureType), with LeaderName
@@ -399,7 +365,7 @@ class DDO(commands.Cog):
             None.
         """
 
-        async def backoff(current_server: str) -> None:
+        async def backoff(current_server: Servers) -> None:
             """
             A local function for handling exponential backoff during network errors.
             Backoff behavior is desirable during any exception, though other behavior is exception-specific.
@@ -417,7 +383,7 @@ class DDO(commands.Cog):
             self.backoff.next_backoff()
 
             if self.backoff.backoff_count >= 4:
-                self.api_data = {s: None for s in self.SERVERS}
+                self.api_data = {s: None for s in Servers}
                 bot_logger.warning(
                     f'DDOAudit Total Backoff Duration Will Exceed 5 Minutes. '
                     f'Clearing all LFM data and backing off for {self.backoff.str_time}.'
@@ -427,12 +393,12 @@ class DDO(commands.Cog):
 
             await sleep(self.backoff.total_backoff_seconds)
 
-        server = self.SERVERS[self.query_ddo_audit.current_loop % len(self.SERVERS)]
+        server = list(Servers)[self.query_ddo_audit.current_loop % len(Servers)]
 
         try:
             self.api_data[server] = await network_request(
                 self.bot.session,
-                f'https://api.ddoaudit.com/groups/{server.lower()}',
+                f'https://api.ddoaudit.com/groups/{server.value.lower()}',
                 return_type=NetworkReturnType.JSON, ssl=False
             )
             self.backoff.reset()
@@ -492,7 +458,6 @@ def parse_match(match: str, match_name: str, negative_allowed: bool = False) -> 
         raise commands.UserInputError(f'{match_name} was out-of-bounds (negative or zero).')
 
     return base_value
-
 
 
 async def setup(bot: DreamBot) -> None:
