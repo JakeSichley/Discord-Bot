@@ -26,25 +26,43 @@ from typing import Dict, Any, List, Optional
 
 
 class DDOAuditServer:
+    """
+    A Server model for DDOAudit APIs.
+    """
+
     def __init__(self, json: Dict[str, Any]) -> None:
-        self.name: str = json['Name']
-        self.last_update_time: str = json['LastUpdateTime']
-        self.group_count: int = json['GroupCount']
-        self.groups = ...
+        self.name: Optional[str] = json.get('Name')
+        self.last_update_time: Optional[str] = json.get('LastUpdateTime')
+        self.group_count: Optional[int] = json.get('GroupCount')
+        self.groups: List[DDOAuditGroup] = [DDOAuditGroup(x) for x in json.get('Groups', [])]
+
+    def __repr__(self):
+        return str(self.__dict__)
 
 class DDOAuditGroup:
+    """
+    A Group model for DDOAudit APIs.
+    """
+
     def __init__(self, json: Dict[str, Any]) -> None:
-        self.id: int = json['Id']
-        self.comment: str = json['Comment']
-        self.difficulty: str = json['Difficulty']
-        self.quest: ...
-        self.minimum_level: int = json['MinimumLevel']
-        self.maximum_level: int = json['MaximumLevel']
-        self.adventure_active: int = json['AdventureActive']
-        self.leader: ...
-        self.members: ...
+        self.id: Optional[int] = json.get('Id')
+        self.comment: Optional[str] = json.get('Comment')
+        self.difficulty: Optional[str] = json.get('Difficulty')
+        self.minimum_level: Optional[int] = json.get('MinimumLevel')
+        self.maximum_level: Optional[int] = json.get('MaximumLevel')
+        self.adventure_active: Optional[int] = json.get('AdventureActive')
+        self.quest: Optional[DDOAuditQuest] = DDOAuditQuest(json['Quest']) if json.get('Quest') else None
+        self.leader: Optional[DDOAuditPlayer] = DDOAuditPlayer(json['Leader']) if json.get('Leader') else None
+        self.members: List[DDOAuditPlayer] = [DDOAuditPlayer(x) for x in json.get('Members', [])]
+
+    def __repr__(self):
+        return str(self.__dict__)
 
 class DDOAuditQuest:
+    """
+    A Quest model for DDOAudit APIs.
+    """
+
     def __init__(self, json: Dict[str, Any]) -> None:
         self.id: Optional[int] = json.get('AreaId')
         self.name: Optional[str] = json.get('Name')
@@ -66,27 +84,51 @@ class DDOAuditQuest:
         self.tip: Optional[str] = json.get('Tip')
         self.alt_id: Optional[int] = json.get('AltId')
 
+    def __repr__(self):
+        return str(self.__dict__)
+
 class DDOAuditPlayer:
+    """
+    A Player model for DDOAudit APIs.
+    """
+
     def __init__(self, json: Dict[str, Any]) -> None:
-        self.name: str = json['Name']
-        self.race: str = json['Race']
-        self.total_level: int = json['TotalLevel']
-        self.classes: List[DDOAuditClass] = [DDOAuditClass(x) for x in json['Classes']]
-        self.location: DDOAuditLocation = DDOAuditLocation(json['Location'])
-        self.group_id: int = json['GroupId']
-        self.guild_name: str = json['Guild']
-        self.in_party: bool = json['InParty']
-        self.home_server: str = json['HomeServer']
+        self.name: Optional[str] = json.get('Name')
+        self.race: Optional[str] = json.get('Race')
+        self.total_level: Optional[int] = json.get('TotalLevel')
+        self.group_id: Optional[int] = json.get('GroupId')
+        self.guild_name: Optional[str] = json.get('Guild')
+        self.in_party: Optional[bool] = json.get('InParty')
+        self.home_server: Optional[str] = json.get('HomeServer')
+        self.classes: List[DDOAuditClass] = [DDOAuditClass(x) for x in json.get('Classes', [])]
+        self.location: Optional[DDOAuditLocation] = DDOAuditLocation(json['Location']) if json.get('Location') else None
+
+    def __repr__(self):
+        return str(self.__dict__)
 
 class DDOAuditClass:
+    """
+    A Class model for DDOAudit APIs.
+    """
+
     def __init__(self, json: Dict[str, Any]) -> None:
-        self.id: int = json['Id']
-        self.name: str = json['Name']
-        self.level: int = json['Level']
+        self.id: Optional[int] = json.get('Id')
+        self.name: Optional[str] = json.get('Name')
+        self.level: Optional[int] = json.get('Level')
+
+    def __repr__(self):
+        return str(self.__dict__)
 
 class DDOAuditLocation:
+    """
+    A Location model for DDOAudit APIs.
+    """
+
     def __init__(self, json: Dict[str, Any]) -> None:
-        self.id: int = json['Id']
-        self.name: str = json['Name']
-        self.is_public: bool = json['IsPublicSpace']
-        self.region_name: str = json['Region']
+        self.id: Optional[int] = json.get('Id')
+        self.name: Optional[str] = json.get('Name')
+        self.is_public: Optional[bool] = json.get('IsPublicSpace')
+        self.region_name: Optional[str] = json.get('Region')
+
+    def __repr__(self):
+        return str(self.__dict__)
