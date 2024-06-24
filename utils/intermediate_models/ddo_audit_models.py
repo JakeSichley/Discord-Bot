@@ -36,7 +36,7 @@ class DDOAuditServer:
         self.group_count: Optional[int] = json.get('GroupCount')
         self.groups: List[DDOAuditGroup] = [DDOAuditGroup(x) for x in json.get('Groups', [])]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self.__dict__)
 
 class DDOAuditGroup:
@@ -55,7 +55,7 @@ class DDOAuditGroup:
         self.leader: Optional[DDOAuditPlayer] = DDOAuditPlayer(json['Leader']) if json.get('Leader') else None
         self.members: List[DDOAuditPlayer] = [DDOAuditPlayer(x) for x in json.get('Members', [])]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self.__dict__)
 
 class DDOAuditQuest:
@@ -84,7 +84,7 @@ class DDOAuditQuest:
         self.tip: Optional[str] = json.get('Tip')
         self.alt_id: Optional[int] = json.get('AltId')
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self.__dict__)
 
 class DDOAuditPlayer:
@@ -103,7 +103,7 @@ class DDOAuditPlayer:
         self.classes: List[DDOAuditClass] = [DDOAuditClass(x) for x in json.get('Classes', [])]
         self.location: Optional[DDOAuditLocation] = DDOAuditLocation(json['Location']) if json.get('Location') else None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self.__dict__)
 
 class DDOAuditClass:
@@ -116,7 +116,7 @@ class DDOAuditClass:
         self.name: Optional[str] = json.get('Name')
         self.level: Optional[int] = json.get('Level')
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self.__dict__)
 
 class DDOAuditLocation:
@@ -130,5 +130,91 @@ class DDOAuditLocation:
         self.is_public: Optional[bool] = json.get('IsPublicSpace')
         self.region_name: Optional[str] = json.get('Region')
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self.__dict__)
+
+class DDOAdventureEmbed:
+    """
+    A model with required fields for an embed.
+    """
+
+    def __init__(self, name: str, difficulty: str, group_size: str) -> None:
+        self.name: str = name
+        self.difficulty: str = difficulty
+        self.group_size: str = group_size
+
+    @classmethod
+    def from_group(cls, group: DDOAuditGroup) -> Optional['DDOAdventureEmbed']:
+        """
+        Synthesizes a DDOAdventureEmbed from an existing DDOAuditGroup, handling optionals.
+
+        Parameters:
+            group (DDOAuditGroup): The source group.
+
+        Returns:
+            (Optional[DDOAdventureEmbed]).
+        """
+
+        try:
+            name = group.quest.name  # type: ignore[union-attr]
+
+            quest_type = group.quest.group_size if group.quest else None
+            if quest_type:
+                print(quest_type)
+                max_group_size = '6' if quest_type == 'Party' else '12'
+            else:
+                print('unknown quest type')
+                max_group_size = '?'
+
+            group_size = f'{len(group.members) + 1}/{max_group_size}'
+            difficulty = group.difficulty
+
+            if name is None or group.members is None or difficulty is None:
+                raise ValueError('Missing required field')
+
+            return cls(name, difficulty, group_size)
+        except (AttributeError, ValueError):
+            return None
+
+class DDOPartyEmbed:
+    """
+    A model with required fields for an embed.
+    """
+
+    def __init__(self, name: str, group_size: str) -> None:
+        self.comment: str = name
+        self.group_size: str = group_size
+
+    @classmethod
+    def from_group(cls, group: DDOAuditGroup) -> Optional['DDOPartyEmbed']:
+        """
+        Synthesizes a DDOPartyEmbed from an existing DDOAuditGroup, handling optionals.
+
+        Parameters:
+            group (DDOAuditGroup): The source group.
+
+        Returns:
+            (Optional[DDOPartyEmbed]).
+        """
+
+        try:
+            comment = group.comment
+
+            quest_type = group.quest.group_size if group.quest else None
+            if quest_type:
+                max_group_size = '6' if quest_type == 'Party' else '12'
+            else:
+                max_group_size = '?'
+
+            group_size = f'{len(group.members) + 1}/{max_group_size}'
+
+            if comment is None or group.members is None:
+                raise ValueError('Missing required field')
+
+            return cls(comment, group_size)
+        except (AttributeError, ValueError):
+            return None
+
+
+
+

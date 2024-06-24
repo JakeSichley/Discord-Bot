@@ -21,6 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
+import discord
+from pyparsing import actions
 
 from utils.enums.ddo_enums import Server, AdventureType, Difficulty
 
@@ -38,6 +40,8 @@ from discord import Embed
 from discord import app_commands, Interaction
 from discord.ext import commands, tasks
 
+from discord.app_commands.transformers import Range
+
 from dreambot import DreamBot
 from utils.context import Context
 from utils.enums.network_return_type import NetworkReturnType
@@ -45,6 +49,7 @@ from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, ExponentialBackoff
 
 from contextlib import suppress
+from utils.intermediate_models.ddo_audit_models import DDOAuditServer, DDOAuditGroup, DDOAdventureEmbed, DDOPartyEmbed
 
 
 class DDO(commands.Cog):
@@ -82,23 +87,19 @@ class DDO(commands.Cog):
         """
 
         self.bot = bot
-        self.api_data: Dict[Server, Optional[Dict[str, Any]]]  = {server: None for server in Server}
+        self.api_data: Dict[Server, Optional[DDOAuditServer]]  = {server: None for server in Server}
         self.backoff = ExponentialBackoff(60 * 60 * 4)
         self.roll_regex = re.compile('(?P<quantity>\d{0,6})d(?P<sides>\d{1,6}) ?(?P<modifier>[-+] ?\d{1,6})?')
         self.query_ddo_audit.start()
 
-    @commands.hybrid_command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')
-    async def roll(self, ctx: Union[Context, Interaction[DreamBot]], *, pattern: str) -> None:
+    @commands.hybrid_command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')  # type: ignore[arg-type]
+    async def roll(self, ctx: Context, *, pattern: str) -> None:
         """
         A method to simulate the rolling of dice.
 
         Parameters:
             ctx (Context): The invocation context.
             pattern (str): The die pattern to roll. Example: 9d6 -> Nine Six-Sided die.
-
-        Output:
-            Success: The result of the die pattern rolled.
-            Failure: A description of the syntax error that occurred.
 
         Returns:
             None.
@@ -259,107 +260,153 @@ class DDO(commands.Cog):
     @app_commands.describe(server='The server to fetch LFM data for')
     async def ddo_lfms(
             self,
-            interaction: Interaction,
+            interaction: Interaction[DreamBot],
             server: Server,
-            adventure_type: Optional[AdventureType],
-
+            adventure_type: Optional[AdventureType] = None,
+            difficulty: Optional[Difficulty] = None,
+            level: Optional[Range[int, 1, 34]] = None
     ) -> None:
         """
         A method that outputs a list of all active groups on a server.
 
         Parameters:
             interaction (Interaction): The invocation interaction.
-            server (str): The name of the server to return lfms for. Default: 'Khyber'.
-
-        Output:
-            Success: A message detailing the lfms per category.
-            Failure: A description of the error that occurred.
+            server (Server): The name of the server to return lfms for.
+            adventure_type (Optional[AdventureType]): Filter groups by this adventure type.
+            difficulty (Optional[Difficulty]): Filter groups by this difficulty.
+            level (Optional[int]): Filter groups by this level.
 
         Returns:
             None.
         """
 
-        print(adventure_type)
-
-        server_data = self.api_data[server]
+        server_data: Optional[DDOAuditServer] = self.api_data[server]
 
         if server_data is None:
             await interaction.response.send_message(f'Server data for {server} is not available.', ephemeral=True)
             return
 
-        # Divide the groups into three lists: Raids, Quests, and Groups (No Listed Quest)
-        raids = [
-            q['Quest']['Name'] for q in server_data['Groups'] if q['Quest'] and q['Quest']['GroupSize'] == 'Raid'
+        if server_data.group_count is None or server_data.group_count == 0:
+            await interaction.response.send_message(f'No groups currently available on {server}.', ephemeral=True)
+            return
+
+        base_groups: List[DDOAuditGroup] = server_data.groups
+
+        print('Base Groups: ', len(base_groups))
+
+        # -- filtering --
+        filters: List[str] = []
+
+        if adventure_type is not None:
+            base_groups = [x for x in base_groups if x.quest and x.quest.group_size == adventure_type.ddo_audit_value]
+            filters.append(adventure_type.value)
+            print('Filtered Adventure Type')
+
+        if difficulty is not None:
+            base_groups = [x for x in base_groups if x.difficulty in difficulty.difficulty_set]
+            filters.append(difficulty.value)
+            print('Filtered Difficulty ', difficulty.value, difficulty.difficulty_set)
+
+        if level is not None:
+            base_groups = [
+                x for x in base_groups
+                if x.minimum_level is not None and x.maximum_level is not None
+                   and x.minimum_level <= level <= x.maximum_level
+            ]
+            filters.append(f'Level {level}')
+            print('Filtered Level')
+
+        # -- splitting --
+        quests: List[DDOAuditGroup] = [
+            group for group in base_groups if group.quest and group.quest.group_size == 'Party'
         ]
-        quests = [
-            q['Quest']['Name'] for q in server_data['Groups'] if q['Quest'] and q['Quest']['GroupSize'] != 'Raid'
+        raids: List[DDOAuditGroup] = [
+            group for group in base_groups if group.quest and group.quest.group_size == 'Raid'
         ]
-        groups = [q['Comment'] for q in server_data['Groups'] if not q['Quest'] and q['Comment']]
+        parties: List[DDOAuditGroup] = [
+            group for group in base_groups if group.quest is None and group.comment is not None
+        ]
 
-        # Should a list be empty, append 'None'
-        for li in [raids, quests, groups]:
-            if not li:
-                li.append('None')
+        print('Splits: ', len(quests), len(raids), len(parties))
 
-        # TODO: Convert to Embed
-
-        await interaction.response.send_message(
-            f'**Current Raids on {server}:** {", ".join(raids)}\n'
-            f'**Current Quests on {server}:** {", ".join(quests)}\n'
-            f'**Current Groups on {server}:** {", ".join(groups)}\n'
+        await self.send_lfms_embed(
+            interaction,
+            server,
+            filters if filters else None,
+            quests,
+            raids,
+            parties
         )
 
-    @commands.command(name='flfms', help=f'Returns a filtered list of active LFMs for the specified server.\n'
-                                         f'Optional filters include: LFM Type: (Solo, Quest, Raid), Difficulty: '
-                                         f'(Casual, Normal, Hard, Elite, Reaper), and Level: (1-32).\nYou MUST supply a'
-                                         f' server.\nValid servers include Argonnessen, Cannith, Ghallanda, Khyber,'
-                                         f' Orien, Sarlona, Thelanis, Wayfinder, and Hardcore.\nInformation is '
-                                         f'populated from \'DDO Audit\' every {QUERY_INTERVAL} seconds.')
-    async def ddo_filter_lfms(self, ctx: Context, *args: str) -> None:
+    async def send_lfms_embed(
+            self,
+            interaction: Interaction[DreamBot],
+            server: Server,
+            filters: Optional[List[str]],
+            quests: List[DDOAuditGroup],
+            raids: List[DDOAuditGroup],
+            parties: List[DDOAuditGroup]
+    ) -> None:
         """
-        A method that outputs a list of all active groups on a server that match the specified filters.
+        Generates an embed detailing Group results for the /lfm command.
 
         Parameters:
-            ctx (Context): The invocation context.
-            args (str): The filter options. Options include Type, Difficulty, Level, and a non-optional Server.
-
-        Output:
-            Success: A message detailing the filtered lfms.
-            Failure: A description syntax error that occurred.
+            interaction (Interaction): The invocation interaction.
+            server (Server): The specified server to display LFMs for.
+            filters (Optional[List[str]]): The filters used to refine results, if any.
+            quests (List[DDOAuditGroup]): The resulting list of groups in the 'Quest' category.
+            raids (List[DDOAuditGroup]): The resulting list of groups in the 'Raid' category.
+            parties (List[DDOAuditGroup): The resulting list of groups in that do not specify an adventure.
 
         Returns:
             None.
         """
 
-        # attempt to parse arguments provided
-        server = atype = diff = level = None
+        # group count should always be non-zero at this point since we've already early returned if == 0
+        result_count = len(quests) + len(raids) + len(parties)
 
-        # server_data = self.api_data[Server.Khyber]
-        server_data: Dict[str, Any] = dict()
+        if result_count == 0 and filters is not None:
+            await interaction.response.send_message('No groups current match the specified filters.')
+            return
 
-        # build sets for each of our individual filters, as well as a master set of all quests
-        # sets are tuples of (LeaderName, QuestName, Difficulty, AdventureType), with LeaderName
-        #   included to allow for different hashes of otherwise identical groups
-
-        all_quests = {(q['Leader']['Name'], q['Quest']['Name'], q['Difficulty'], q['Quest']['GroupSize'])
-                      for q in server_data['Groups'] if q['Quest']}
-        atypes = {(q['Leader']['Name'], q['Quest']['Name'], q['Difficulty'], q['Quest']['GroupSize'])
-                  for q in server_data['Groups'] if q['Quest'] and atype and q['Quest']['GroupSize'] == atype}
-        diffs = {(q['Leader']['Name'], q['Quest']['Name'], q['Difficulty'], q['Quest']['GroupSize'])
-                 for q in server_data['Groups'] if q['Quest'] and diff and q['Difficulty'] == diff}
-        levels = {(q['Leader']['Name'], q['Quest']['Name'], q['Difficulty'], q['Quest']['GroupSize']) for q
-                  in server_data['Groups'] if q['Quest'] and level and q['MinimumLevel'] <= level <= q['MaximumLevel']}
-
-        # if our value is not None, start performing intersection calculations on the full set
-        for filtered_set, value in [(atypes, atype), (diffs, diff), (levels, level)]:
-            if value is not None:
-                all_quests.intersection_update(filtered_set)
-
-
-        if not all_quests:
-            await ctx.send(f'**Filtered Results on {server}:** None')
+        if filters is not None:
+            description: str = (f'{result_count:,} group{"s" if result_count > 1 else ""} currently '
+                                f'match{"es" if result_count == 1 else ""} the '
+                                f'filter{"s" if len(filters) > 1 else ""}: {", ".join(filters)}!')
         else:
-            await ctx.send(f'**Filtered Results on {server}:** {", ".join(x[1] for x in all_quests)}')
+            description = f'{result_count:,} group{"s" if result_count > 1 else ""} currently available!'
+
+        embed = discord.Embed(
+            title=f'Dungeons & Dragons Online{" Filtered " if filters else " "}Groups on {server}',
+            description=description,
+            color=0x21705,
+        )
+        embed.set_thumbnail(url="https://ddowiki.com/images/Trinket_Generic_Friends.png")
+        embed.set_footer(text="Please report any issues to my owner!")
+
+        # TODO: probably need to break these into single strings and space-pad them to get all important information in
+        # should also probably check max quest name length.. maybe hack and split on ":" for outliers?
+
+        sanitized_quests = [embed_component for x in quests if (embed_component := DDOAdventureEmbed.from_group(x))]
+        sanitized_raids = [embed_component for x in raids if (embed_component := DDOAdventureEmbed.from_group(x))]
+        sanitized_parties = [embed_component for x in parties if (embed_component := DDOPartyEmbed.from_group(x))]
+
+        if sanitized_quests:
+            embed.add_field(name='Quests', value='\n'.join(x.name for x in sanitized_quests))
+            embed.add_field(name='Difficulty', value='\n'.join(x.difficulty for x in sanitized_quests))
+            embed.add_field(name='Size', value='\n'.join(x.group_size for x in sanitized_quests))
+
+        if sanitized_raids:
+            embed.add_field(name='Raids', value='\n'.join(x.name for x in sanitized_raids))
+            embed.add_field(name='Difficulty', value='\n'.join(x.difficulty for x in sanitized_raids))
+            embed.add_field(name='Size', value='\n'.join(x.group_size for x in sanitized_raids))
+
+        if sanitized_parties:
+            embed.add_field(name='Groups', value='\n'.join(x.comment for x in sanitized_parties))
+            embed.add_field(name='Size', value='\n'.join(x.group_size for x in sanitized_parties))
+
+        with suppress(discord.HTTPException):
+            await interaction.response.send_message(embed=embed)
 
     @tasks.loop(seconds=QUERY_INTERVAL)
     async def query_ddo_audit(self) -> None:
@@ -405,17 +452,13 @@ class DDO(commands.Cog):
         server = list(Server)[self.query_ddo_audit.current_loop % len(Server)]
 
         try:
-            self.api_data[server] = await network_request(
+            server_data = await network_request(
                 self.bot.session,
                 f'https://api.ddoaudit.com/groups/{server.value.lower()}',
                 return_type=NetworkReturnType.JSON, ssl=False
             )
+            self.api_data[server] = DDOAuditServer(server_data)
             self.backoff.reset()
-
-            # DDO Audit places a manufactured group in the results if the server is down; check for this
-            with suppress(KeyError, IndexError):
-                if self.api_data[server]['Groups'][0]['Id'] == 0:
-                    self.api_data[server] = None
 
         except ClientError:
             await backoff(server)

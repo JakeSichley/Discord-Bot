@@ -23,6 +23,7 @@ SOFTWARE.
 """
 
 from enum import Enum
+from typing import Set
 
 class PrettyPrintedEnum(Enum):
     """
@@ -40,6 +41,9 @@ class PrettyPrintedEnum(Enum):
             (str).
         """
 
+        # don't use with non-string types
+        assert isinstance(self.value, str)
+
         return self.value
 
 
@@ -48,15 +52,18 @@ class Server(PrettyPrintedEnum):
     An Enum class that represents DDO Servers.
     """
 
-    Argonnessen = 'Argonnessen'
-    Cannith = 'Cannith'
-    Ghallanda = 'Ghallanda'
-    Khyber = 'Khyber'
     Orien = 'Orien'
-    Sarlona = 'Sarlona'
-    Thelanis = 'Thelanis'
-    Wayfinder = 'Wayfinder'
-    Hardcore = 'Hardcore'
+    Argonnessen = 'Argonnessen'
+
+    # Argonnessen = 'Argonnessen'
+    # Cannith = 'Cannith'
+    # Ghallanda = 'Ghallanda'
+    # Khyber = 'Khyber'
+    # Orien = 'Orien'
+    # Sarlona = 'Sarlona'
+    # Thelanis = 'Thelanis'
+    # Wayfinder = 'Wayfinder'
+    # Hardcore = 'Hardcore'
 
 class AdventureType(PrettyPrintedEnum):
     """
@@ -66,6 +73,21 @@ class AdventureType(PrettyPrintedEnum):
     Solo = 'Solo'
     Quest = 'Quest'
     Raid = 'Raid'
+
+    @property
+    def ddo_audit_value(self) -> str:
+        """
+        Returns the value DDOAudit uses to represent this adventure type.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str).
+        """
+
+        return _ADVENTURE_TYPE_MAPPING[self]
+
 
 class Difficulty(PrettyPrintedEnum):
     """
@@ -77,3 +99,34 @@ class Difficulty(PrettyPrintedEnum):
     Hard = 'Hard'
     Elite = 'Elite'
     Reaper = 'Reaper'
+    EliteReaper = 'Elite or Reaper'
+
+    @property
+    def difficulty_set(self) -> Set[str]:
+        """
+        Returns a set consisting of the represented difficulties. Primarily for `EliteReaper`
+
+        Parameters:
+            None.
+
+        Returns:
+            (Set[str]).
+        """
+
+        return _DIFFICULTY_SET_MAPPING[self]
+
+
+_ADVENTURE_TYPE_MAPPING = {
+    AdventureType.Solo: 'Solo',
+    AdventureType.Quest: 'Party',
+    AdventureType.Raid: 'Raid'
+}
+
+_DIFFICULTY_SET_MAPPING = {
+    Difficulty.Casual: { Difficulty.Casual.value },
+    Difficulty.Normal: { Difficulty.Normal.value },
+    Difficulty.Hard: { Difficulty.Hard.value },
+    Difficulty.Elite: { Difficulty.Elite.value },
+    Difficulty.Reaper: { Difficulty.Reaper.value },
+    Difficulty.EliteReaper: { Difficulty.Elite.value, Difficulty.Reaper.value }
+}
