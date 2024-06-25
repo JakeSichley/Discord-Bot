@@ -50,6 +50,7 @@ from utils.network_utils import network_request, ExponentialBackoff
 
 from contextlib import suppress
 from utils.intermediate_models.ddo_audit_models import DDOAuditServer, DDOAuditGroup, DDOAdventureEmbed, DDOPartyEmbed
+from utils.utils import calculate_padding
 
 
 class DDO(commands.Cog):
@@ -329,7 +330,7 @@ class DDO(commands.Cog):
 
         print('Splits: ', len(quests), len(raids), len(parties))
 
-        await self.send_lfms_embed(
+        await self.send_lfms_response(
             interaction,
             server,
             filters if filters else None,
@@ -338,7 +339,7 @@ class DDO(commands.Cog):
             parties
         )
 
-    async def send_lfms_embed(
+    async def send_lfms_response(
             self,
             interaction: Interaction[DreamBot],
             server: Server,
@@ -369,44 +370,59 @@ class DDO(commands.Cog):
             await interaction.response.send_message('No groups current match the specified filters.')
             return
 
+        response: str = f'**__DDO Groups on {server}__**\n'
+
         if filters is not None:
-            description: str = (f'{result_count:,} group{"s" if result_count > 1 else ""} currently '
+            response += (f'\n_{result_count:,} group{"s" if result_count > 1 else ""} currently '
                                 f'match{"es" if result_count == 1 else ""} the '
-                                f'filter{"s" if len(filters) > 1 else ""}: {", ".join(filters)}!')
+                                f'filter{"s" if len(filters) > 1 else ""}: {", ".join(filters)}!_')
         else:
-            description = f'{result_count:,} group{"s" if result_count > 1 else ""} currently available!'
-
-        embed = discord.Embed(
-            title=f'Dungeons & Dragons Online{" Filtered " if filters else " "}Groups on {server}',
-            description=description,
-            color=0x21705,
-        )
-        embed.set_thumbnail(url="https://ddowiki.com/images/Trinket_Generic_Friends.png")
-        embed.set_footer(text="Please report any issues to my owner!")
-
-        # TODO: probably need to break these into single strings and space-pad them to get all important information in
-        # should also probably check max quest name length.. maybe hack and split on ":" for outliers?
+            response +=  f'_{result_count:,} group{"s" if result_count > 1 else ""} currently available!_'
 
         sanitized_quests = [embed_component for x in quests if (embed_component := DDOAdventureEmbed.from_group(x))]
         sanitized_raids = [embed_component for x in raids if (embed_component := DDOAdventureEmbed.from_group(x))]
         sanitized_parties = [embed_component for x in parties if (embed_component := DDOPartyEmbed.from_group(x))]
 
+        response_components: List[str] = []
+
         if sanitized_quests:
-            embed.add_field(name='Quests', value='\n'.join(x.name for x in sanitized_quests))
-            embed.add_field(name='Difficulty', value='\n'.join(x.difficulty for x in sanitized_quests))
-            embed.add_field(name='Size', value='\n'.join(x.group_size for x in sanitized_quests))
+            title_padding = calculate_padding(sanitized_quests, 'title')
+            difficulty_padding = calculate_padding(sanitized_quests, 'difficulty')
+            members_padding = calculate_padding(sanitized_quests, 'members_description')
+
+            embed_description = '\n'.join(
+                x.full_description(title_padding, difficulty_padding, members_padding) for x in sanitized_quests
+            )
+
+            response_components.append(f'__*Quests*__\n```\n{embed_description}```')
 
         if sanitized_raids:
-            embed.add_field(name='Raids', value='\n'.join(x.name for x in sanitized_raids))
-            embed.add_field(name='Difficulty', value='\n'.join(x.difficulty for x in sanitized_raids))
-            embed.add_field(name='Size', value='\n'.join(x.group_size for x in sanitized_raids))
+            title_padding = calculate_padding(sanitized_raids, 'title')
+            difficulty_padding = calculate_padding(sanitized_raids, 'difficulty')
+            members_padding = calculate_padding(sanitized_raids, 'members_description')
+
+            embed_description = '\n'.join(
+                x.full_description(title_padding, difficulty_padding, members_padding) for x in sanitized_raids
+            )
+
+            response_components.append(f'__*Raids*__\n```\n{embed_description}```')
 
         if sanitized_parties:
-            embed.add_field(name='Groups', value='\n'.join(x.comment for x in sanitized_parties))
-            embed.add_field(name='Size', value='\n'.join(x.group_size for x in sanitized_parties))
+            title_padding = calculate_padding(sanitized_parties, 'title')
+            members_padding = calculate_padding(sanitized_parties, 'members_description')
+
+            embed_description = '\n'.join(
+                x.full_description(title_padding, 0, members_padding) for x in sanitized_parties
+            )
+
+            response_components.append(f'__*Groups*__\n```\n{embed_description}```')
+
+        response += '\n\n' + '\n'.join(response_components)
 
         with suppress(discord.HTTPException):
-            await interaction.response.send_message(embed=embed)
+            # TODO: needs a 2k character check.. batch send. Edge case for now, though.. unlikely to exceed 2k normally.
+            await interaction.response.send_message(response)
+
 
     @tasks.loop(seconds=QUERY_INTERVAL)
     async def query_ddo_audit(self) -> None:
