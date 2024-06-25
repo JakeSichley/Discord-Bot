@@ -43,6 +43,7 @@ from utils.logging_formatter import bot_logger
 VERSION = '2.18.0'
 
 ChoiceT = TypeVar('ChoiceT', str, int, float, Union[str, int, float])
+T = TypeVar('T')
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.abc.Messageable) -> None:
@@ -320,3 +321,18 @@ def generate_autocomplete_choices(
     ratios = sorted(valid_models, reverse=True)
 
     return [x.to_choice() for x in ratios[:limit]]
+
+
+def calculate_padding(objects: List[T], attribute: str) -> int:
+    """
+    Given a list of objects and an attribute, calculates the longest instance of the attribute.
+
+    Parameters:
+        objects (List[T]): The list of objects.
+        attribute (str): The name of the attribute to assess.
+
+    Returns:
+        (int).
+    """
+
+    return max(len(x.__getattribute__(attribute)) for x in objects)
