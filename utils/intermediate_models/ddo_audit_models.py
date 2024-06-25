@@ -39,6 +39,7 @@ class DDOAuditServer:
     def __repr__(self) -> str:
         return str(self.__dict__)
 
+
 class DDOAuditGroup:
     """
     A Group model for DDOAudit APIs.
@@ -57,6 +58,7 @@ class DDOAuditGroup:
 
     def __repr__(self) -> str:
         return str(self.__dict__)
+
 
 class DDOAuditQuest:
     """
@@ -87,6 +89,7 @@ class DDOAuditQuest:
     def __repr__(self) -> str:
         return str(self.__dict__)
 
+
 class DDOAuditPlayer:
     """
     A Player model for DDOAudit APIs.
@@ -106,6 +109,7 @@ class DDOAuditPlayer:
     def __repr__(self) -> str:
         return str(self.__dict__)
 
+
 class DDOAuditClass:
     """
     A Class model for DDOAudit APIs.
@@ -118,6 +122,7 @@ class DDOAuditClass:
 
     def __repr__(self) -> str:
         return str(self.__dict__)
+
 
 class DDOAuditLocation:
     """
@@ -133,15 +138,73 @@ class DDOAuditLocation:
     def __repr__(self) -> str:
         return str(self.__dict__)
 
+
 class DDOAdventureEmbed:
     """
-    A model with required fields for an embed.
+    A model with required fields for the `LFM` command response.
     """
 
-    def __init__(self, name: str, difficulty: str, group_size: str) -> None:
-        self.name: str = name
+    def __init__(
+            self,
+            title: str,
+            difficulty: str,
+            current_members: int,
+            max_members: int,
+            minimum_level: int,
+            maximum_level: int
+    ) -> None:
+        self.title: str = title
         self.difficulty: str = difficulty
-        self.group_size: str = group_size
+        self.current_members: int = current_members
+        self.max_members: int = max_members
+        self.minimum_level: int = minimum_level
+        self.maximum_level: int = maximum_level
+
+    @property
+    def members_description(self) -> str:
+        """
+        Builds the description of the current party occupancy.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str).
+        """
+
+        return f'{self.current_members}/{self.max_members}'
+
+    @property
+    def level_description(self) -> str:
+        """
+        Builds the description of the group's allowable level range.
+
+        Parameters:
+            None.
+
+        Returns:
+            (str).
+        """
+
+        return f'{self.minimum_level}~{self.maximum_level}'
+
+    def full_description(self, title_padding: int, difficulty_padding: int, members_padding: int) -> str:
+        """
+        Builds the full display string for the group.
+
+        Parameters:
+            title_padding (int): The total length the title description should occupy.
+            difficulty_padding (int): The total length the difficulty description should occupy.
+            members_padding (int): The total length the members description should occupy.
+
+        Returns:
+            (str).
+        """
+
+        return (f'{self.title:{title_padding}}  -  '
+                f'{self.difficulty:{difficulty_padding}}  -  '
+                f'{self.members_description:{members_padding}} Members  -  '
+                f'Level {self.level_description}')
 
     @classmethod
     def from_group(cls, group: DDOAuditGroup) -> Optional['DDOAdventureEmbed']:
@@ -158,63 +221,61 @@ class DDOAdventureEmbed:
         try:
             name = group.quest.name  # type: ignore[union-attr]
 
+            if name is not None and ':' in name:
+                name = name.split(': ')[1]
+
             quest_type = group.quest.group_size if group.quest else None
             if quest_type:
-                print(quest_type)
-                max_group_size = '6' if quest_type == 'Party' else '12'
+                max_group_size = 6 if quest_type == 'Party' else 12
             else:
-                print('unknown quest type')
-                max_group_size = '?'
+                max_group_size = 12 if len(group.members) + 1 >= 6 else 6
 
-            group_size = f'{len(group.members) + 1}/{max_group_size}'
+            group_size = len(group.members) + 1
             difficulty = group.difficulty
+            minimum_level = group.minimum_level
+            maximum_level = group.maximum_level
 
-            if name is None or group.members is None or difficulty is None:
-                raise ValueError('Missing required field')
+            _cls = cls(
+                name, difficulty, group_size, max_group_size, minimum_level, maximum_level  # type: ignore[arg-type]
+            )
 
-            return cls(name, difficulty, group_size)
+            if any(True for value in _cls.__dict__.values() if value is None):
+                return None
+            else:
+                return _cls
         except (AttributeError, ValueError):
             return None
 
-class DDOPartyEmbed:
+
+class DDOPartyEmbed(DDOAdventureEmbed):
     """
-    A model with required fields for an embed.
+    A model with required fields for the `LFM` command response.
     """
 
-    def __init__(self, name: str, group_size: str) -> None:
-        self.comment: str = name
-        self.group_size: str = group_size
+    def __init__(
+            self,
+            title: str,
+            difficulty: str,
+            current_members: int,
+            max_members: int,
+            minimum_level: int,
+            maximum_level: int
+    ) -> None:
+        super().__init__(title, difficulty or "N/A", current_members, max_members, minimum_level, maximum_level)
 
-    @classmethod
-    def from_group(cls, group: DDOAuditGroup) -> Optional['DDOPartyEmbed']:
+    def full_description(self, title_padding: int, difficulty_padding: int, members_padding: int) -> str:
         """
-        Synthesizes a DDOPartyEmbed from an existing DDOAuditGroup, handling optionals.
+        Builds the full display string for the group.
 
         Parameters:
-            group (DDOAuditGroup): The source group.
+            title_padding (int): The total length the title description should occupy.
+            difficulty_padding (int): The total length the difficulty description should occupy.
+            members_padding (int): The total length the members description should occupy.
 
         Returns:
-            (Optional[DDOPartyEmbed]).
+            (str).
         """
 
-        try:
-            comment = group.comment
-
-            quest_type = group.quest.group_size if group.quest else None
-            if quest_type:
-                max_group_size = '6' if quest_type == 'Party' else '12'
-            else:
-                max_group_size = '?'
-
-            group_size = f'{len(group.members) + 1}/{max_group_size}'
-
-            if comment is None or group.members is None:
-                raise ValueError('Missing required field')
-
-            return cls(comment, group_size)
-        except (AttributeError, ValueError):
-            return None
-
-
-
-
+        return (f'{self.title:{title_padding}}   -   '
+                f'{self.members_description:{members_padding}} Members   -   '
+                f'Level {self.level_description}')
