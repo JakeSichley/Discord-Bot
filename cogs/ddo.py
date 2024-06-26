@@ -255,15 +255,20 @@ class DDO(commands.Cog):
         description=f'Returns active LFMs on the specified server. '
                     f'Data is populated from \'DDO Audit\' every {QUERY_INTERVAL} seconds.'
     )
-    @app_commands.describe(server='The server to fetch LFM data for')
+    @app_commands.describe(
+        server='The server to show LFMs for',
+        adventure_type='Optional: Filter groups by adventure type',
+        raw_difficulty='Optional: Filter groups by difficulty',
+        level='Optional: Filter groups by supported level'
+    )
     @app_commands.choices(raw_difficulty=Difficulty.choices())
     @app_commands.rename(raw_difficulty='difficulty')
     async def ddo_lfms(
             self,
             interaction: Interaction[DreamBot],
             server: Server,
-            adventure_type: Optional[AdventureType] = None,
             raw_difficulty: Optional[Choice[str]] = None,
+            adventure_type: Optional[AdventureType] = None,
             level: Optional[Range[int, 1, 34]] = None
     ) -> None:
         """
@@ -273,7 +278,7 @@ class DDO(commands.Cog):
             interaction (Interaction): The invocation interaction.
             server (Server): The name of the server to return lfms for.
             adventure_type (Optional[AdventureType]): Filter groups by this adventure type.
-            raw_difficulty (Optional[Difficulty]): Filter groups by this difficulty.
+            raw_difficulty (Optional[Choice[str]]): Filter groups by this difficulty.
             level (Optional[int]): Filter groups by this level.
 
         Returns:
