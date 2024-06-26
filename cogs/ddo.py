@@ -24,7 +24,7 @@ SOFTWARE.
 import discord
 from pyparsing import actions
 
-from utils.enums.ddo_enums import Server, AdventureType, Difficulty
+from utils.enums.ddo_enums import Server, AdventureType, Difficulty, DIFFICULTY_CHOICES
 
 import re
 from asyncio import sleep, TimeoutError
@@ -39,6 +39,7 @@ from bs4 import BeautifulSoup
 from discord import Embed
 from discord import app_commands, Interaction
 from discord.ext import commands, tasks
+from discord.app_commands import Choice
 
 from discord.app_commands.transformers import Range
 
@@ -259,12 +260,14 @@ class DDO(commands.Cog):
                     f'Data is populated from \'DDO Audit\' every {QUERY_INTERVAL} seconds.'
     )
     @app_commands.describe(server='The server to fetch LFM data for')
+    @app_commands.choices(raw_difficulty=Difficulty.choices())
+    @app_commands.rename(raw_difficulty='difficulty')
     async def ddo_lfms(
             self,
             interaction: Interaction[DreamBot],
             server: Server,
             adventure_type: Optional[AdventureType] = None,
-            difficulty: Optional[Difficulty] = None,
+            raw_difficulty: Optional[Choice[str]] = None,
             level: Optional[Range[int, 1, 34]] = None
     ) -> None:
         """
@@ -274,7 +277,7 @@ class DDO(commands.Cog):
             interaction (Interaction): The invocation interaction.
             server (Server): The name of the server to return lfms for.
             adventure_type (Optional[AdventureType]): Filter groups by this adventure type.
-            difficulty (Optional[Difficulty]): Filter groups by this difficulty.
+            raw_difficulty (Optional[Difficulty]): Filter groups by this difficulty.
             level (Optional[int]): Filter groups by this level.
 
         Returns:
@@ -282,6 +285,7 @@ class DDO(commands.Cog):
         """
 
         server_data: Optional[DDOAuditServer] = self.api_data[server]
+        difficulty: Optional[Difficulty] = Difficulty.from_string(raw_difficulty.value) if raw_difficulty else None
 
         if server_data is None:
             await interaction.response.send_message(

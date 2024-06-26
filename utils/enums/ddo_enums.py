@@ -23,7 +23,8 @@ SOFTWARE.
 """
 
 from enum import Enum
-from typing import Set
+from typing import Set, List, Optional
+from discord.app_commands import Choice
 
 class PrettyPrintedEnum(Enum):
     """
@@ -71,7 +72,6 @@ class AdventureType(PrettyPrintedEnum):
     An Enum class that represents DDO Adventure Types.
     """
 
-    Solo = 'Solo'
     Quest = 'Quest'
     Raid = 'Raid'
 
@@ -116,9 +116,39 @@ class Difficulty(PrettyPrintedEnum):
 
         return _DIFFICULTY_SET_MAPPING[self]
 
+    @staticmethod
+    def choices() -> List[Choice[str]]:
+        """
+        Returns a list of difficulties as choices. Primarily for `EliteReaper` since discord.py has weird enum support.
+
+        Parameters:
+            None.
+
+        Returns:
+            (List[Choice[str]]).
+        """
+
+        return [Choice(name=x.value, value=x.value) for x in Difficulty]
+
+    @classmethod
+    def from_string(cls, value: str) -> Optional['Difficulty']:
+        """
+        Safely constructs this enum from a string value.
+
+        Parameters:
+            value (str): The raw value of the enum to construct.
+
+        Returns:
+            (Optional['Difficulty']).
+        """
+
+        try:
+            return cls(value)
+        except ValueError:
+            return None
+
 
 _ADVENTURE_TYPE_MAPPING = {
-    AdventureType.Solo: 'Solo',
     AdventureType.Quest: 'Party',
     AdventureType.Raid: 'Raid'
 }
@@ -131,3 +161,13 @@ _DIFFICULTY_SET_MAPPING = {
     Difficulty.Reaper: { Difficulty.Reaper.value },
     Difficulty.EliteReaper: { Difficulty.Elite.value, Difficulty.Reaper.value }
 }
+
+
+DIFFICULTY_CHOICES: List[Choice[str]] = [
+    Choice(name=Difficulty.Casual.value, value=Difficulty.Casual.value),
+    Choice(name=Difficulty.Normal.value, value=Difficulty.Normal.value),
+    Choice(name=Difficulty.Hard.value, value=Difficulty.Hard.value),
+    Choice(name=Difficulty.Elite.value, value=Difficulty.Elite.value),
+    Choice(name=Difficulty.Reaper.value, value=Difficulty.Reaper.value),
+    Choice(name=Difficulty.EliteReaper.value, value=Difficulty.EliteReaper.value),
+]
