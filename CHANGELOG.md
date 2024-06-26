@@ -11,7 +11,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 ### Features
+* App Command Migration
+  - Migrate `DDO` cog
+
+
+* `DDO`
+  - Simplify `roll` logic; convert to hybrid command
+  - Improve `lfm` command response; add optional filters
 ### Internal
+* (`DDO`) Implement DDOAudit response models instead of using raw json
 ### Issues
 
 ## 2.18.0
