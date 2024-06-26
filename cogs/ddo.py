@@ -378,9 +378,10 @@ class DDO(commands.Cog):
         response: str = f'**__DDO Parties on {server}__**\n'
 
         if filters is not None:
-            response += (f'\n_{result_count:,} part{"ies" if result_count != 1 else "y"} currently '
-                                f'match{"es" if result_count != 1 else ""} the '
-                                f'filter{"s" if len(filters) != 1 else ""}: {", ".join(filters)}!_')
+            response += (f'_{result_count:,} part{"ies" if result_count != 1 else "y"} currently '
+                                f'match{"" if result_count != 1 else "es"} the '
+                                f'filter{"s" if len(filters) != 1 else ""}!'
+                         f'\nFilter{"s" if len(filters) != 1 else ""}: {", ".join(filters)}_')
         else:
             response +=  f'_{result_count:,} part{"ies" if result_count != 1 else "y"} currently available!_'
 
