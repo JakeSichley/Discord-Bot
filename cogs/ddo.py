@@ -219,8 +219,8 @@ class DDO(commands.Cog):
                     # Note: This description was written 'backwards', (positive lookbehind occurs first, etc.)
                     result = search("(?<=>)( )*(\+\d+ )*(\w|\d)(.+?)(?=</a>)", element)
                     # If our result is not a Mythic Bonus (these are on nearly every single item), add it
-                    if result and str(result.group(0)).find('Mythic') == -1:
-                        enchantments.append(result.group(0).strip())
+                    if result and str(result.group()).find('Mythic') == -1:
+                        enchantments.append(result.group().strip())
 
         # Prep other detail variables
         item_type = 'none'
@@ -228,11 +228,11 @@ class DDO(commands.Cog):
 
         # If we have a minimum level string, extract the minimum level using regex
         if minimum_level_string is not None:
-            minimum_level = int(search("\d+?(?=(\n</td>))", minimum_level_string).group(0))
+            minimum_level = int(search("\d+?(?=(\n</td>))", minimum_level_string).group())
 
         # If we have an item type string, extract the item type using regex
         if item_type_string is not None:
-            item_type = search("(?<=>).+?(?=(\n</td>))", item_type_string).group(0)
+            item_type = search("(?<=>).+?(?=(\n</td>))", item_type_string).group()
             # Sometimes (in the case of weapons) the parent type is bolded - strip these tags
             item_type = item_type.replace('<b>', '').replace('</b>', '')
 
@@ -284,11 +284,13 @@ class DDO(commands.Cog):
         server_data: Optional[DDOAuditServer] = self.api_data[server]
 
         if server_data is None:
-            await interaction.response.send_message(f'Server data for {server} is not available.', ephemeral=True)
+            await interaction.response.send_message(
+                f'Server data for {server} is not currently available.', ephemeral=True
+            )
             return
 
         if server_data.group_count is None or server_data.group_count == 0:
-            await interaction.response.send_message(f'No groups currently available on {server}.', ephemeral=True)
+            await interaction.response.send_message(f'No parties currently available on {server}.', ephemeral=True)
             return
 
         base_groups: List[DDOAuditGroup] = server_data.groups
@@ -325,7 +327,9 @@ class DDO(commands.Cog):
             group for group in base_groups if group.quest and group.quest.group_size == 'Raid'
         ]
         parties: List[DDOAuditGroup] = [
-            group for group in base_groups if group.quest is None and group.comment is not None
+            group for group in base_groups if
+            (group.quest is None and group.comment is not None) or
+            (group.guess == True and group.comment is not None)
         ]
 
         print('Splits: ', len(quests), len(raids), len(parties))
@@ -334,9 +338,10 @@ class DDO(commands.Cog):
             interaction,
             server,
             filters if filters else None,
-            quests,
-            raids,
-            parties
+            # need custom sort... min_level <= min_level, else max_level <= max_level
+            quests[::-1],
+            raids[::-1],
+            parties[::-1]
         )
 
     async def send_lfms_response(
@@ -367,21 +372,23 @@ class DDO(commands.Cog):
         result_count = len(quests) + len(raids) + len(parties)
 
         if result_count == 0 and filters is not None:
-            await interaction.response.send_message('No groups current match the specified filters.')
+            await interaction.response.send_message('No parties current match the specified filters.')
             return
 
-        response: str = f'**__DDO Groups on {server}__**\n'
+        response: str = f'**__DDO Parties on {server}__**\n'
 
         if filters is not None:
-            response += (f'\n_{result_count:,} group{"s" if result_count > 1 else ""} currently '
-                                f'match{"es" if result_count == 1 else ""} the '
-                                f'filter{"s" if len(filters) > 1 else ""}: {", ".join(filters)}!_')
+            response += (f'\n_{result_count:,} part{"ies" if result_count != 1 else "y"} currently '
+                                f'match{"es" if result_count != 1 else ""} the '
+                                f'filter{"s" if len(filters) != 1 else ""}: {", ".join(filters)}!_')
         else:
-            response +=  f'_{result_count:,} group{"s" if result_count > 1 else ""} currently available!_'
+            response +=  f'_{result_count:,} part{"ies" if result_count != 1 else "y"} currently available!_'
 
         sanitized_quests = [embed_component for x in quests if (embed_component := DDOAdventureEmbed.from_group(x))]
         sanitized_raids = [embed_component for x in raids if (embed_component := DDOAdventureEmbed.from_group(x))]
         sanitized_parties = [embed_component for x in parties if (embed_component := DDOPartyEmbed.from_group(x))]
+
+        print(sanitized_parties)
 
         response_components: List[str] = []
 

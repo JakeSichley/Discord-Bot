@@ -52,8 +52,9 @@ class Server(PrettyPrintedEnum):
     An Enum class that represents DDO Servers.
     """
 
-    Orien = 'Orien'
+    Sarlona = 'Sarlona'
     Argonnessen = 'Argonnessen'
+    Orien = 'Orien'
 
     # Argonnessen = 'Argonnessen'
     # Cannith = 'Cannith'

@@ -48,6 +48,7 @@ class DDOAuditGroup:
     def __init__(self, json: Dict[str, Any]) -> None:
         self.id: Optional[int] = json.get('Id')
         self.comment: Optional[str] = json.get('Comment')
+        self.guess: Optional[bool] = json.get('Guess')
         self.difficulty: Optional[str] = json.get('Difficulty')
         self.minimum_level: Optional[int] = json.get('MinimumLevel')
         self.maximum_level: Optional[int] = json.get('MaximumLevel')
@@ -255,13 +256,12 @@ class DDOPartyEmbed(DDOAdventureEmbed):
     def __init__(
             self,
             title: str,
-            difficulty: str,
             current_members: int,
             max_members: int,
             minimum_level: int,
             maximum_level: int
     ) -> None:
-        super().__init__(title, difficulty or "N/A", current_members, max_members, minimum_level, maximum_level)
+        super().__init__(title, "N/A", current_members, max_members, minimum_level, maximum_level)
 
     def full_description(self, title_padding: int, difficulty_padding: int, members_padding: int) -> str:
         """
@@ -276,6 +276,41 @@ class DDOPartyEmbed(DDOAdventureEmbed):
             (str).
         """
 
-        return (f'{self.title:{title_padding}}   -   '
-                f'{self.members_description:{members_padding}} Members   -   '
+        return (f'{self.title:{title_padding}}  -  '
+                f'{self.members_description:{members_padding}} Members  -  '
                 f'Level {self.level_description}')
+
+    @classmethod
+    def from_group(cls, group: DDOAuditGroup) -> Optional['DDOPartyEmbed']:
+        """
+        Synthesizes a DDOPartyEmbed from an existing DDOAuditGroup, handling optionals.
+
+        Parameters:
+            group (DDOAuditGroup): The source group.
+
+        Returns:
+            (Optional[DDOPartyEmbed]).
+        """
+
+        try:
+            quest_type = group.quest.group_size if group.quest else None
+            if quest_type:
+                max_group_size = 6 if quest_type == 'Party' else 12
+            else:
+                max_group_size = 12 if len(group.members) + 1 >= 6 else 6
+
+            title = group.comment.strip()  # type: ignore[union-attr]
+            group_size = len(group.members) + 1
+            minimum_level = group.minimum_level
+            maximum_level = group.maximum_level
+
+            _cls = cls(
+                title, group_size, max_group_size, minimum_level, maximum_level  # type: ignore[arg-type]
+            )
+
+            if any(True for value in _cls.__dict__.values() if value is None):
+                return None
+            else:
+                return _cls
+        except AttributeError:
+            return None
