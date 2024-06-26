@@ -123,6 +123,11 @@ class Exceptions(commands.Cog):
             await ctx.send(f'{ctx.message.author.mention}, you do not have permission to use this command!')
             return
 
+        # User Input Error
+        elif isinstance(error, commands.UserInputError):
+            await ctx.send(f'{error}', ephemeral=True)
+            return
+
         # Calling a command currently on cooldown
         elif isinstance(error, commands.CommandOnCooldown):
             if ctx.author.id == self.bot.owner_id:
