@@ -21,36 +21,32 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-import discord
-from pyparsing import actions
-
-from utils.enums.ddo_enums import Server, AdventureType, Difficulty, DIFFICULTY_CHOICES
 
 import re
 from asyncio import sleep, TimeoutError
+from contextlib import suppress
 from json.decoder import JSONDecodeError
 from random import seed, randrange
 from re import search
 from time import time
-from typing import no_type_check, Dict, Optional, Any, Union, List
+from typing import no_type_check, Dict, Optional, List
 
+import discord
 from aiohttp import ClientError
 from bs4 import BeautifulSoup
 from discord import Embed
 from discord import app_commands, Interaction
-from discord.ext import commands, tasks
 from discord.app_commands import Choice
-
 from discord.app_commands.transformers import Range
+from discord.ext import commands, tasks
 
 from dreambot import DreamBot
 from utils.context import Context
+from utils.enums.ddo_enums import Server, AdventureType, Difficulty
 from utils.enums.network_return_type import NetworkReturnType
+from utils.intermediate_models.ddo_audit_models import DDOAuditServer, DDOAuditGroup, DDOAdventureEmbed, DDOPartyEmbed
 from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, ExponentialBackoff
-
-from contextlib import suppress
-from utils.intermediate_models.ddo_audit_models import DDOAuditServer, DDOAuditGroup, DDOAdventureEmbed, DDOPartyEmbed
 from utils.utils import calculate_padding
 
 
@@ -89,7 +85,7 @@ class DDO(commands.Cog):
         """
 
         self.bot = bot
-        self.api_data: Dict[Server, Optional[DDOAuditServer]]  = {server: None for server in Server}
+        self.api_data: Dict[Server, Optional[DDOAuditServer]] = {server: None for server in Server}
         self.backoff = ExponentialBackoff(60 * 60 * 4)
         self.roll_regex = re.compile('(?P<quantity>\d{0,6})d(?P<sides>\d{1,6}) ?(?P<modifier>[-+] ?\d{1,6})?')
         self.query_ddo_audit.start()
@@ -456,11 +452,11 @@ async def send_lfms_response(
 
     if filters is not None:
         response += (f'_{result_count:,} part{"ies" if result_count != 1 else "y"} currently '
-                            f'match{"" if result_count != 1 else "es"} the '
-                            f'filter{"s" if len(filters) != 1 else ""}!'
+                     f'match{"" if result_count != 1 else "es"} the '
+                     f'filter{"s" if len(filters) != 1 else ""}!'
                      f'\nFilter{"s" if len(filters) != 1 else ""}: {", ".join(filters)}_')
     else:
-        response +=  f'_{result_count:,} part{"ies" if result_count != 1 else "y"} currently available!_'
+        response += f'_{result_count:,} part{"ies" if result_count != 1 else "y"} currently available!_'
 
     sanitized_quests = [embed_component for x in quests if (embed_component := DDOAdventureEmbed.from_group(x))]
     sanitized_raids = [embed_component for x in raids if (embed_component := DDOAdventureEmbed.from_group(x))]

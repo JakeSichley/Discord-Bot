@@ -24,7 +24,9 @@ SOFTWARE.
 
 from enum import Enum
 from typing import Set, List, Optional
+
 from discord.app_commands import Choice
+
 
 class PrettyPrintedEnum(Enum):
     """
@@ -66,6 +68,7 @@ class Server(PrettyPrintedEnum):
     # Thelanis = 'Thelanis'
     # Wayfinder = 'Wayfinder'
     # Hardcore = 'Hardcore'
+
 
 class AdventureType(PrettyPrintedEnum):
     """
