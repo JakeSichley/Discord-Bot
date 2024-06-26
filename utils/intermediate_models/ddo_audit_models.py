@@ -229,7 +229,7 @@ class DDOAdventureEmbed:
             if quest_type:
                 max_group_size = 6 if quest_type == 'Party' else 12
             else:
-                max_group_size = 12 if len(group.members) + 1 >= 6 else 6
+                max_group_size = 12 if len(group.members) + 1 > 6 else 6
 
             group_size = len(group.members) + 1
             difficulty = group.difficulty
@@ -297,7 +297,7 @@ class DDOPartyEmbed(DDOAdventureEmbed):
             if quest_type:
                 max_group_size = 6 if quest_type == 'Party' else 12
             else:
-                max_group_size = 12 if len(group.members) + 1 >= 6 else 6
+                max_group_size = 12 if len(group.members) + 1 > 6 else 6
 
             title = group.comment.strip()  # type: ignore[union-attr]
             group_size = len(group.members) + 1
