@@ -413,7 +413,6 @@ class DDO(commands.Cog):
         """
 
         self.query_ddo_audit.cancel()
-        self.api_data = dict()
 
         bot_logger.info('Completed Unload for Cog: DDO')
 

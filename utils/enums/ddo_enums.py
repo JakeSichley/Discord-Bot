@@ -55,19 +55,15 @@ class Server(PrettyPrintedEnum):
     An Enum class that represents DDO Servers.
     """
 
-    Sarlona = 'Sarlona'
     Argonnessen = 'Argonnessen'
+    Cannith = 'Cannith'
+    Ghallanda = 'Ghallanda'
+    Khyber = 'Khyber'
     Orien = 'Orien'
-
-    # Argonnessen = 'Argonnessen'
-    # Cannith = 'Cannith'
-    # Ghallanda = 'Ghallanda'
-    # Khyber = 'Khyber'
-    # Orien = 'Orien'
-    # Sarlona = 'Sarlona'
-    # Thelanis = 'Thelanis'
-    # Wayfinder = 'Wayfinder'
-    # Hardcore = 'Hardcore'
+    Sarlona = 'Sarlona'
+    Thelanis = 'Thelanis'
+    Wayfinder = 'Wayfinder'
+    Hardcore = 'Hardcore'
 
 
 class AdventureType(PrettyPrintedEnum):
