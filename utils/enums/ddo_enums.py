@@ -161,13 +161,3 @@ _DIFFICULTY_SET_MAPPING = {
     Difficulty.Reaper: { Difficulty.Reaper.value },
     Difficulty.EliteReaper: { Difficulty.Elite.value, Difficulty.Reaper.value }
 }
-
-
-DIFFICULTY_CHOICES: List[Choice[str]] = [
-    Choice(name=Difficulty.Casual.value, value=Difficulty.Casual.value),
-    Choice(name=Difficulty.Normal.value, value=Difficulty.Normal.value),
-    Choice(name=Difficulty.Hard.value, value=Difficulty.Hard.value),
-    Choice(name=Difficulty.Elite.value, value=Difficulty.Elite.value),
-    Choice(name=Difficulty.Reaper.value, value=Difficulty.Reaper.value),
-    Choice(name=Difficulty.EliteReaper.value, value=Difficulty.EliteReaper.value),
-]

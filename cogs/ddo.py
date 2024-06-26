@@ -299,20 +299,16 @@ class DDO(commands.Cog):
 
         base_groups: List[DDOAuditGroup] = server_data.groups
 
-        print('Base Groups: ', len(base_groups))
-
         # -- filtering --
         filters: List[str] = []
 
         if adventure_type is not None:
             base_groups = [x for x in base_groups if x.quest and x.quest.group_size == adventure_type.ddo_audit_value]
             filters.append(adventure_type.value)
-            print('Filtered Adventure Type')
 
         if difficulty is not None:
             base_groups = [x for x in base_groups if x.difficulty in difficulty.difficulty_set]
             filters.append(difficulty.value)
-            print('Filtered Difficulty ', difficulty.value, difficulty.difficulty_set)
 
         if level is not None:
             base_groups = [
@@ -321,7 +317,6 @@ class DDO(commands.Cog):
                    and x.minimum_level <= level <= x.maximum_level
             ]
             filters.append(f'Level {level}')
-            print('Filtered Level')
 
         # -- splitting --
         quests: List[DDOAuditGroup] = [
@@ -336,105 +331,14 @@ class DDO(commands.Cog):
             (group.guess == True and group.comment is not None)
         ]
 
-        print('Splits: ', len(quests), len(raids), len(parties))
-
-        await self.send_lfms_response(
+        await send_lfms_response(
             interaction,
             server,
             filters if filters else None,
-            # need custom sort... min_level <= min_level, else max_level <= max_level
             quests[::-1],
             raids[::-1],
             parties[::-1]
         )
-
-    async def send_lfms_response(
-            self,
-            interaction: Interaction[DreamBot],
-            server: Server,
-            filters: Optional[List[str]],
-            quests: List[DDOAuditGroup],
-            raids: List[DDOAuditGroup],
-            parties: List[DDOAuditGroup]
-    ) -> None:
-        """
-        Generates an embed detailing Group results for the /lfm command.
-
-        Parameters:
-            interaction (Interaction): The invocation interaction.
-            server (Server): The specified server to display LFMs for.
-            filters (Optional[List[str]]): The filters used to refine results, if any.
-            quests (List[DDOAuditGroup]): The resulting list of groups in the 'Quest' category.
-            raids (List[DDOAuditGroup]): The resulting list of groups in the 'Raid' category.
-            parties (List[DDOAuditGroup): The resulting list of groups in that do not specify an adventure.
-
-        Returns:
-            None.
-        """
-
-        # group count should always be non-zero at this point since we've already early returned if == 0
-        result_count = len(quests) + len(raids) + len(parties)
-
-        if result_count == 0 and filters is not None:
-            await interaction.response.send_message('No parties current match the specified filters.')
-            return
-
-        response: str = f'**__DDO Parties on {server}__**\n'
-
-        if filters is not None:
-            response += (f'_{result_count:,} part{"ies" if result_count != 1 else "y"} currently '
-                                f'match{"" if result_count != 1 else "es"} the '
-                                f'filter{"s" if len(filters) != 1 else ""}!'
-                         f'\nFilter{"s" if len(filters) != 1 else ""}: {", ".join(filters)}_')
-        else:
-            response +=  f'_{result_count:,} part{"ies" if result_count != 1 else "y"} currently available!_'
-
-        sanitized_quests = [embed_component for x in quests if (embed_component := DDOAdventureEmbed.from_group(x))]
-        sanitized_raids = [embed_component for x in raids if (embed_component := DDOAdventureEmbed.from_group(x))]
-        sanitized_parties = [embed_component for x in parties if (embed_component := DDOPartyEmbed.from_group(x))]
-
-        print(sanitized_parties)
-
-        response_components: List[str] = []
-
-        if sanitized_quests:
-            title_padding = calculate_padding(sanitized_quests, 'title')
-            difficulty_padding = calculate_padding(sanitized_quests, 'difficulty')
-            members_padding = calculate_padding(sanitized_quests, 'members_description')
-
-            embed_description = '\n'.join(
-                x.full_description(title_padding, difficulty_padding, members_padding) for x in sanitized_quests
-            )
-
-            response_components.append(f'__*Quests*__\n```\n{embed_description}```')
-
-        if sanitized_raids:
-            title_padding = calculate_padding(sanitized_raids, 'title')
-            difficulty_padding = calculate_padding(sanitized_raids, 'difficulty')
-            members_padding = calculate_padding(sanitized_raids, 'members_description')
-
-            embed_description = '\n'.join(
-                x.full_description(title_padding, difficulty_padding, members_padding) for x in sanitized_raids
-            )
-
-            response_components.append(f'__*Raids*__\n```\n{embed_description}```')
-
-        if sanitized_parties:
-            title_padding = calculate_padding(sanitized_parties, 'title')
-            members_padding = calculate_padding(sanitized_parties, 'members_description')
-
-            embed_description = '\n'.join(
-                x.full_description(title_padding, 0, members_padding) for x in sanitized_parties
-            )
-
-            response_components.append(f'__*Groups*__\n```\n{embed_description}```')
-
-        response += '\n\n' + '\n'.join(response_components)
-
-        with suppress(discord.HTTPException):
-            # TODO: needs a 2k character check.. batch send. Edge case for now, though.. unlikely to exceed 2k normally.
-            await interaction.response.send_message(response)
-
 
     @tasks.loop(seconds=QUERY_INTERVAL)
     async def query_ddo_audit(self) -> None:
@@ -516,6 +420,91 @@ class DDO(commands.Cog):
         self.api_data = dict()
 
         bot_logger.info('Completed Unload for Cog: DDO')
+
+
+async def send_lfms_response(
+        interaction: Interaction[DreamBot],
+        server: Server,
+        filters: Optional[List[str]],
+        quests: List[DDOAuditGroup],
+        raids: List[DDOAuditGroup],
+        parties: List[DDOAuditGroup]
+) -> None:
+    """
+    Generates an embed detailing Group results for the /lfm command.
+
+    Parameters:
+        interaction (Interaction): The invocation interaction.
+        server (Server): The specified server to display LFMs for.
+        filters (Optional[List[str]]): The filters used to refine results, if any.
+        quests (List[DDOAuditGroup]): The resulting list of groups in the 'Quest' category.
+        raids (List[DDOAuditGroup]): The resulting list of groups in the 'Raid' category.
+        parties (List[DDOAuditGroup): The resulting list of groups in that do not specify an adventure.
+
+    Returns:
+        None.
+    """
+
+    # group count should always be non-zero at this point since we've already early returned if == 0
+    result_count = len(quests) + len(raids) + len(parties)
+
+    if result_count == 0 and filters is not None:
+        await interaction.response.send_message('No parties current match the specified filters.')
+        return
+
+    response: str = f'**__DDO Parties on {server}__**\n'
+
+    if filters is not None:
+        response += (f'_{result_count:,} part{"ies" if result_count != 1 else "y"} currently '
+                            f'match{"" if result_count != 1 else "es"} the '
+                            f'filter{"s" if len(filters) != 1 else ""}!'
+                     f'\nFilter{"s" if len(filters) != 1 else ""}: {", ".join(filters)}_')
+    else:
+        response +=  f'_{result_count:,} part{"ies" if result_count != 1 else "y"} currently available!_'
+
+    sanitized_quests = [embed_component for x in quests if (embed_component := DDOAdventureEmbed.from_group(x))]
+    sanitized_raids = [embed_component for x in raids if (embed_component := DDOAdventureEmbed.from_group(x))]
+    sanitized_parties = [embed_component for x in parties if (embed_component := DDOPartyEmbed.from_group(x))]
+
+    response_components: List[str] = []
+
+    if sanitized_quests:
+        title_padding = calculate_padding(sanitized_quests, 'title')
+        difficulty_padding = calculate_padding(sanitized_quests, 'difficulty')
+        members_padding = calculate_padding(sanitized_quests, 'members_description')
+
+        embed_description = '\n'.join(
+            x.full_description(title_padding, difficulty_padding, members_padding) for x in sanitized_quests
+        )
+
+        response_components.append(f'__*Quests*__\n```\n{embed_description}```')
+
+    if sanitized_raids:
+        title_padding = calculate_padding(sanitized_raids, 'title')
+        difficulty_padding = calculate_padding(sanitized_raids, 'difficulty')
+        members_padding = calculate_padding(sanitized_raids, 'members_description')
+
+        embed_description = '\n'.join(
+            x.full_description(title_padding, difficulty_padding, members_padding) for x in sanitized_raids
+        )
+
+        response_components.append(f'__*Raids*__\n```\n{embed_description}```')
+
+    if sanitized_parties:
+        title_padding = calculate_padding(sanitized_parties, 'title')
+        members_padding = calculate_padding(sanitized_parties, 'members_description')
+
+        embed_description = '\n'.join(
+            x.full_description(title_padding, 0, members_padding) for x in sanitized_parties
+        )
+
+        response_components.append(f'__*Groups*__\n```\n{embed_description}```')
+
+    response += '\n\n' + '\n'.join(response_components)
+
+    with suppress(discord.HTTPException):
+        # TODO: needs a 2k character check.. batch send. Edge case for now, though.. unlikely to exceed 2k normally.
+        await interaction.response.send_message(response)
 
 
 def parse_match(match: str, match_name: str, negative_allowed: bool = False) -> int:
