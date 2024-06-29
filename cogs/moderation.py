@@ -36,10 +36,17 @@ from utils.converters import AggressiveDefaultMemberConverter
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.logging_formatter import bot_logger
 
+from discord import app_commands, Interaction
+from discord.app_commands import Range
+
+from utils.interaction import GuildInteraction
+
 CHANNEL_OBJECT = Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]
 PERMISSIONS_PARENT = Union[discord.Role, discord.Member]
 PURGEABLE_INSTANCES = (discord.StageChannel, discord.TextChannel, discord.Thread, discord.VoiceChannel)
 PURGEABLE_TYPE = Union[discord.StageChannel, discord.TextChannel, discord.Thread, discord.VoiceChannel]
+
+PURGE_UPPER_BOUND: int = 50  # 1_000
 
 
 class Moderation(commands.Cog):
@@ -49,6 +56,12 @@ class Moderation(commands.Cog):
     Attributes:
         bot (DreamBot): The Discord bot class.
     """
+
+    moderation_subgroup = app_commands.Group(
+        name='moderation',
+        description='Commands for moderation of a guild',
+        guild_only=True
+    )
 
     def __init__(self, bot: DreamBot) -> None:
         """
@@ -60,30 +73,39 @@ class Moderation(commands.Cog):
 
         self.bot = bot
 
-    async def cog_check(self, ctx: Context) -> bool:  # type: ignore[override]
+    async def interaction_check(self, interaction: Interaction[DreamBot]) -> bool:  # type: ignore[override]
         """
-        A method that registers a cog-wide check.
+        A method that registers a cog-wide check for App Commands.
         Requires these commands be used in a guild only.
 
         Parameters:
-            ctx (Context): The invocation context.
+            interaction (Interaction): The invoking interaction.
 
         Returns:
             (bool): Whether the command was invoked in a guild.
         """
 
-        return ctx.guild is not None
+        return interaction.guild is not None
 
-    @commands.has_permissions(manage_messages=True)
-    @commands.bot_has_permissions(manage_messages=True, read_message_history=True, manage_channels=True)
-    @commands.command(
+    @app_commands.checks.has_permissions(manage_messages=True)  # type: ignore[arg-type]
+    @app_commands.checks.has_permissions(manage_messages=True, read_message_history=True, manage_channels=True)
+    @moderation_subgroup.command(
         name='purge',
-        help='Purges n+1 messages from the current channel. Specify `all` to completely clear the channel.'
+        description=f'Purges up to {PURGE_UPPER_BOUND} messages from the channel. '
+                    # 'Use `full_reset` to completely clear the channel'
     )
-    async def purge(self, ctx: Context, limit: Union[int, Literal['all']]) -> None:
+    @app_commands.describe(
+        limit=f'The number of messages to delete (up to {PURGE_UPPER_BOUND})',
+        # full_reset='Fully purges the channel. This destroys the current channel and creates a new, identical channel.'
+    )
+    async def purge(
+            self,
+            interaction: GuildInteraction,
+            limit: Optional[Range[int, 1, 1_000]] = None,
+            # full_reset: Optional[bool] = None
+    ) -> None:
         """
-        A method to purge messages from a channel.
-        Should a user ID be supplied, any messages from that user in the last (limit) messages will be deleted.
+        Purges messages from the current channel. Optionally allows you to fully clear the current channel.
 
         Checks:
             has_permissions(manage_messages): Whether the invoking user can manage messages.
@@ -91,33 +113,42 @@ class Moderation(commands.Cog):
                 and read the message history of a channel, both of which are required for the deletion of messages.
 
         Parameters:
-            ctx (Context): The invocation context.
-            limit (Union[int, Literal['all']]): The number of messages to purge.
+            interaction (GuildInteraction): The invoking interaction.
+            limit (Optional[int]): The number of messages to purge.
+            # full_reset (Optional[bool]): Whether the fully clear the current channel.
 
         Returns:
             None.
         """
 
-        if not isinstance(ctx.channel, PURGEABLE_INSTANCES):
+        full_reset: Optional[bool] = None
+
+        if limit is None and full_reset is None:
+            await interaction.response.send_message(f'You must specify either `limit` or `full_reset`.', ephemeral=True)
             return
 
-        if isinstance(limit, int) and limit <= 0:
+        if not isinstance(interaction.channel, PURGEABLE_INSTANCES):
+            await interaction.response.send_message(f'You cannot purge this channel type.')
             return
 
-        prompt = f'Are you sure you want to delete {limit} message(s)?'
-        if (limit == 'all' or limit >= 10) and not await ctx.confirmation_prompt(prompt):
+        # TODO: Add components for confirmation for >50 or full_reset
+        if limit is not None:
+            await interaction.response.send_message(f'Attempting to purge {limit:,} messages..', ephemeral=True)
+            await interaction.channel.purge(limit=limit)
+            await interaction.edit_original_response(content='Purge complete.')
             return
 
-        if isinstance(limit, int):
-            await ctx.channel.purge(limit=limit + 1)
-            return
-
-        if isinstance(ctx.channel, discord.Thread):
-            await ctx.channel.purge(limit=ctx.channel.message_count + 1)
+        # remaining cases are for full reset
+        #   don't have bot re-create thread, since this has UI implications
+        if isinstance(interaction.channel, discord.Thread):
+            await interaction.response.send_message(f'Attempting to purge entire thread..', ephemeral=True)
+            await interaction.channel.purge(limit=None)
+            await interaction.edit_original_response(content='Purge complete.')
         else:
-            position = ctx.channel.position
-            new_channel = await ctx.channel.clone(reason=f'Full channel purge; executed by {ctx.author}')
-            await ctx.channel.delete(reason=f'Full channel purge; executed by {ctx.author}')
+            await interaction.response.send_message(f'Attempting to purge entire channel..', ephemeral=True)
+            position = interaction.channel.position
+            new_channel = await interaction.channel.clone(reason=f'Full channel purge by {interaction.user}')
+            await interaction.channel.delete(reason=f'Full channel purge by {interaction.user}')
             await new_channel.edit(position=position)
 
     @commands.has_guild_permissions(manage_channels=True)
