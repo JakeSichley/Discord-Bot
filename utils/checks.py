@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Callable, Union, List, Tuple, Any
+from typing import Callable, Tuple, Any
 
 from discord.app_commands.errors import CheckFailure
 from discord.ext import commands
@@ -71,33 +71,6 @@ def dynamic_cooldown() -> Callable[[Any], Any]:
     return commands.check(cooldown_predicate)
 
 
-def check_memecoin_channel() -> Callable[[Any], Any]:
-    """
-    Memecoin Channel Check.
-
-    Parameters:
-        None.
-
-    Returns:
-        (Callable[[], Context]): The resulting wrapped predicate.
-    """
-
-    def predicate(ctx: Context) -> bool:
-        """
-        A commands.check decorator that ensures MemeCoin commands are only executed in the proper channel.
-
-        Parameters:
-            ctx (Context): The invocation context.
-
-        Returns:
-            (bool): Whether the invocation channel is the authorized MemeCoin channel.
-        """
-
-        return ctx.message.channel.id == 636356259255287808
-
-    return commands.check(predicate)
-
-
 def ensure_git_credentials() -> Callable[[Any], Any]:
     """
     Admin.Git Group Check.
@@ -121,34 +94,5 @@ def ensure_git_credentials() -> Callable[[Any], Any]:
         """
 
         return ctx.bot.git is not None
-
-    return commands.check(predicate)
-
-
-def guild_only(guild_id: Union[int, List[int]]) -> Callable[[Any], Any]:
-    """
-    Only allows command execution for the specified guild.
-
-    Parameters:
-        guild_id (guild_id: Union[int, List[int]]): The id of the guild authorized to execute this command.
-
-    Returns:
-        (Callable[[], Context]): The resulting wrapped predicate.
-    """
-
-    guild_ids = guild_id if isinstance(guild_id, list) else [guild_id]
-
-    def predicate(ctx: Context) -> bool:
-        """
-        A commands.check decorator that git commands are able to properly execute.
-
-        Parameters:
-            ctx (Context): The invocation context.
-
-        Returns:
-            (bool): Whether the bot was initialized with git credentials.
-        """
-
-        return ctx.guild is not None and ctx.guild.id in guild_ids
 
     return commands.check(predicate)
