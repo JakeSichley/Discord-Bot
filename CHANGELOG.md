@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Provide feedback for `UserInputError` exceptions
 ### Internal
 * (`DDO`) Implement DDOAudit response models instead of using raw json
+* Update `DynamicCooldown` to accept both `Context` and `Interaction`s
 ### Issues
 
 ## 2.18.0
