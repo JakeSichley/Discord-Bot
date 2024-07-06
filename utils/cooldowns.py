@@ -35,6 +35,8 @@ from discord.app_commands import Command, ContextMenu, CommandOnCooldown
 from discord.ext import commands
 from fuzzywuzzy import fuzz  # type: ignore
 
+# noinspection PyUnresolvedReferences
+import dreambot
 from utils.context import Context
 
 CooldownContext = TypeVar('CooldownContext', Context, Interaction['dreambot.DreamBot'])
