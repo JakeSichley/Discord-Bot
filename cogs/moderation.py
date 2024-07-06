@@ -39,6 +39,8 @@ from utils.logging_formatter import bot_logger
 from discord import app_commands, Interaction
 from discord.app_commands import Range
 
+
+from utils.cooldowns import cooldown_predicate
 from utils.interaction import GuildInteraction
 
 CHANNEL_OBJECT = Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]
@@ -151,12 +153,25 @@ class Moderation(commands.Cog):
             await interaction.channel.delete(reason=f'Full channel purge by {interaction.user}')
             await new_channel.edit(position=position)
 
-    @commands.has_guild_permissions(manage_channels=True)
-    @commands.bot_has_guild_permissions(manage_channels=True)
-    @commands.command(name='duplicate_permissions', aliases=['dp'])
+    @app_commands.checks.has_permissions(manage_channels=True, manage_roles=True)  # type: ignore[arg-type]
+    @app_commands.checks.has_permissions(manage_channels=True, manage_roles=True)
+    @app_commands.describe(
+        base_channel='The channel you want to copy permissions from',
+        base_permission_owner='The role or member you want to copy permissions from',
+        target_channel='The channel you want to copy permissions to',
+        target_permission_owner='The role or member you want to copy permissions to',
+    )
+    @app_commands.check(cooldown_predicate)
+    @moderation_subgroup.command(
+        name='duplicate_permissions'
+    )
     async def duplicate_channel_permissions(
-            self, ctx: Context, base_channel: CHANNEL_OBJECT, base_permission_owner: PERMISSIONS_PARENT,
-            target_channel: CHANNEL_OBJECT, target_permission_owner: PERMISSIONS_PARENT
+            self,
+            interaction: GuildInteraction,
+            base_channel: CHANNEL_OBJECT,
+            base_permission_owner: PERMISSIONS_PARENT,
+            target_channel: CHANNEL_OBJECT,
+            target_permission_owner: PERMISSIONS_PARENT
     ) -> None:
         """
         A method to duplicate channel permissions to a different target.
@@ -166,7 +181,7 @@ class Moderation(commands.Cog):
             bot_has_guild_permissions(manage_channels)
 
         Parameters:
-            ctx (Context): The invocation context.
+            interaction (GuildInteraction): The invocation context.
             base_channel (Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]): The base channel
                 to source permissions from.
             base_permission_owner (Union[discord.Role, discord.Member]): The role or member whose permissions should
@@ -180,19 +195,48 @@ class Moderation(commands.Cog):
             None.
         """
 
-        try:
-            base_overwrites = base_channel.overwrites[base_permission_owner]
-        except KeyError:
-            await ctx.send("Overwrites object was not found")
+        await interaction.response.send_message('Ack')
+        self.bot.report_command_failure(interaction)
+        return
+
+        # TODO: dynamic cooldown for forbidden failures
+
+        # no-op check
+        if base_channel == target_channel and base_permission_owner == target_permission_owner:
+            await interaction.response.send_message('You cannot duplicate a permission to itself!', ephemeral=True)
+            self.bot.report_command_failure(interaction)
             return
 
-        try:
-            await target_channel.set_permissions(target_permission_owner, overwrite=base_overwrites)
-            await ctx.send(f"**{base_channel.name}**[`{base_permission_owner}`] --> "
-                           f"**{target_channel.name}**[`{target_permission_owner}`]")
-        except Exception as e:
-            bot_logger.error(f'Overwrites Duplication Error. {e}')
-            await ctx.send(f'Failed to duplicate overwrites ({e})')
+        # permissions check
+        base_highest_role: discord.Role = base_permission_owner \
+            if isinstance(base_permission_owner, discord.Role) else base_permission_owner.top_role
+        target_highest_role: discord.Role = target_permission_owner \
+            if isinstance(target_permission_owner, discord.Role) else target_permission_owner.top_role
+
+        if base_highest_role >= interaction.user.top_role or target_highest_role >= interaction.user.top_role:
+            await interaction.response.send_message(
+                'You cannot duplicate this permission because one of the roles '
+                'or members you specified are higher than your own role',
+                ephemeral=True
+            )
+            return
+
+
+        await interaction.response.send_message('ack', ephemeral=True)
+
+        # try:
+        #     base_overwrites = base_channel.overwrites[base_permission_owner]
+        # except KeyError:
+        #     await ctx.send("Overwrites object was not found")
+        #     return
+        #
+        # try:
+        #     await target_channel.set_permissions(target_permission_owner, overwrite=base_overwrites)
+        #     await ctx.send(f"**{base_channel.name}**[`{base_permission_owner}`] --> "
+        #                    f"**{target_channel.name}**[`{target_permission_owner}`]")
+        # except Exception as e:
+        #     bot_logger.error(f'Overwrites Duplication Error. {e}')
+        #     await ctx.send(f'Failed to duplicate overwrites ({e})')
 
     @commands.has_guild_permissions(manage_roles=True)
     @commands.bot_has_guild_permissions(manage_roles=True)
