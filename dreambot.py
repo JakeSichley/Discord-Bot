@@ -23,7 +23,6 @@ SOFTWARE.
 """
 
 from collections import defaultdict
-from contextlib import suppress
 from datetime import datetime
 from os import getcwd, listdir, path
 from sys import stderr, exc_info
