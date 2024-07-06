@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Callable, Union, List, Tuple, Any
+from typing import Callable, Tuple, Any, Union, List
 
 from discord.app_commands.errors import CheckFailure
 from discord.ext import commands
@@ -69,33 +69,6 @@ def dynamic_cooldown() -> Callable[[Any], Any]:
     """
 
     return commands.check(cooldown_predicate)
-
-
-def check_memecoin_channel() -> Callable[[Any], Any]:
-    """
-    Memecoin Channel Check.
-
-    Parameters:
-        None.
-
-    Returns:
-        (Callable[[], Context]): The resulting wrapped predicate.
-    """
-
-    def predicate(ctx: Context) -> bool:
-        """
-        A commands.check decorator that ensures MemeCoin commands are only executed in the proper channel.
-
-        Parameters:
-            ctx (Context): The invocation context.
-
-        Returns:
-            (bool): Whether the invocation channel is the authorized MemeCoin channel.
-        """
-
-        return ctx.message.channel.id == 636356259255287808
-
-    return commands.check(predicate)
 
 
 def ensure_git_credentials() -> Callable[[Any], Any]:

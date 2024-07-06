@@ -22,12 +22,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from datetime import datetime, timedelta
-from typing import Optional
+from __future__ import annotations
 
+from datetime import datetime
+from datetime import timedelta
+from typing import (
+    Tuple, Optional, TypeVar, Union
+)
+
+from discord import Interaction
+from discord.app_commands import Command, ContextMenu, CommandOnCooldown
 from discord.ext import commands
+from fuzzywuzzy import fuzz  # type: ignore
 
+# noinspection PyUnresolvedReferences
+import dreambot  # needed for typehint, actual usage causes circular import
 from utils.context import Context
+
+CooldownContext = TypeVar('CooldownContext', Context, Interaction['dreambot.DreamBot'])
 
 
 class CooldownMapping:
@@ -138,7 +150,7 @@ class CooldownMapping:
         self.__start_time = None
 
 
-async def cooldown_predicate(ctx: Context) -> bool:
+async def cooldown_predicate(ctx: CooldownContext) -> bool:
     """
     The dynamic cooldown predicate, designed to be used in a command.Check.
     Retrieves the current dynamic cooldown information from the bot for the given context, raising a
@@ -154,17 +166,51 @@ async def cooldown_predicate(ctx: Context) -> bool:
         (bool).
     """
 
-    if ctx.command is None:
+    command_name, author_id = get_cooldown_keys(ctx)
+
+    if command_name is None or author_id is None:
         return True
 
-    command_cooldown_mapping = ctx.bot.dynamic_cooldowns.get(ctx.command.qualified_name)
+    if isinstance(ctx, Context):
+        bot = ctx.bot
+    else:
+        bot = ctx.client
+
+    command_cooldown_mapping = bot.dynamic_cooldowns.get(command_name)
 
     if command_cooldown_mapping is None:
         return True
 
-    author_mapping = command_cooldown_mapping.get(ctx.author.id, CooldownMapping())
+    author_mapping = command_cooldown_mapping.get(author_id, CooldownMapping())
 
     if cooldown := author_mapping.remaining_cooldown:
-        raise commands.CommandOnCooldown(cooldown, cooldown.per, commands.BucketType.user)
+        if isinstance(ctx, Context):
+            raise commands.CommandOnCooldown(cooldown, cooldown.per, commands.BucketType.user)
+        else:
+            raise CommandOnCooldown(cooldown, cooldown.per)
 
     return True
+
+
+def get_cooldown_keys(context: CooldownContext) -> Tuple[Optional[str], Optional[int]]:
+    """
+    Parses the command name and author id from command invocation context/interaction for use in `DynamicCooldown`.
+
+    Note:
+        The typing here is overly verbose due to arg-type issues with discord.py's `CachedSlotProperty`.
+
+    Parameters:
+        context (Union[Context, Interaction[DreamBot]]): The command invocation context/interaction.
+
+    Returns:
+        Tuple[Optional[str], Optional[int]].
+    """
+
+    if isinstance(context, Context) and context.command is not None:
+        return context.command.qualified_name, context.author.id
+    elif isinstance(context, Interaction) and context.command is not None and isinstance(context.command, Command):
+        return context.command.qualified_name, context.user.id
+    elif isinstance(context, Interaction) and context.command is not None and isinstance(context.command, ContextMenu):
+        return context.command.name, context.user.id
+    else:
+        return None, None
