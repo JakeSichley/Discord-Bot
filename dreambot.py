@@ -200,8 +200,6 @@ class DreamBot(Bot):
         if command_name is None or author_id is None:
             return
 
-        # # use try -> except rather .get chaining, since .get would require creating unnecessary objects
-        # with suppress(KeyError):
         self.dynamic_cooldowns[command_name][author_id].increment_failure_count()
 
     def reset_dynamic_cooldown(self, ctx: CooldownContext) -> None:

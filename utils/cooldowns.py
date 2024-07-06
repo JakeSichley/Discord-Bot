@@ -36,7 +36,7 @@ from discord.ext import commands
 from fuzzywuzzy import fuzz  # type: ignore
 
 # noinspection PyUnresolvedReferences
-import dreambot
+import dreambot  # needed for typehint, actual usage causes circular import
 from utils.context import Context
 
 CooldownContext = TypeVar('CooldownContext', Context, Interaction['dreambot.DreamBot'])

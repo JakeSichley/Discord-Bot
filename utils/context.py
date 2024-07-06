@@ -34,7 +34,7 @@ import discord
 from discord.ext import commands
 
 # noinspection PyUnresolvedReferences
-import dreambot  # keep - needed for typehint, actual usage causes circular import
+import dreambot  # needed for typehint, actual usage causes circular import
 from utils.logging_formatter import bot_logger
 
 
