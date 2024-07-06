@@ -37,7 +37,7 @@ from discord.ext.commands import ExtensionError, Bot, when_mentioned
 from google.cloud import errorreporting_v1beta1 as error_reporting
 
 from utils.context import Context
-from utils.cooldowns import CooldownMapping
+from utils.cooldowns import CooldownMapping, get_cooldown_keys, CooldownContext
 from utils.database.cache import TableCache
 from utils.logging_formatter import bot_logger
 from utils.utils import generate_activity
@@ -62,6 +62,8 @@ Optionals = TypedDict(
     },
     total=False
 )
+
+DynamicCooldowns = DefaultDict[str, DefaultDict[int, CooldownMapping]]
 
 
 class DreamBot(Bot):
@@ -117,11 +119,7 @@ class DreamBot(Bot):
         self.uptime = datetime.now()
         self.default_prefix = prefix
         self.environment = environment
-        self.dynamic_cooldowns: Dict[str, DefaultDict[int, CooldownMapping]] = {
-            'raw_yoink': defaultdict(CooldownMapping),
-            'yoink': defaultdict(CooldownMapping),
-            'invert': defaultdict(CooldownMapping)
-        }
+        self.dynamic_cooldowns: DynamicCooldowns = defaultdict(lambda: defaultdict(CooldownMapping))
 
         # optionals
         options = options or dict()
@@ -187,7 +185,7 @@ class DreamBot(Bot):
         if exception and isinstance(exception, Exception):
             await self.report_exception(exception)
 
-    def report_command_failure(self, ctx: Context) -> None:
+    def report_command_failure(self, ctx: CooldownContext) -> None:
         """
         Used to report a failure in the provided context, for the purpose of dynamic cooldowns.
 
@@ -198,14 +196,16 @@ class DreamBot(Bot):
             None.
         """
 
-        if ctx.command is None:
+        command_name, author_id = get_cooldown_keys(ctx)
+
+        if command_name is None or author_id is None:
             return
 
-        # use try -> except rather .get chaining, since .get would require creating unnecessary objects
-        with suppress(KeyError):
-            self.dynamic_cooldowns[ctx.command.qualified_name][ctx.author.id].increment_failure_count()
+        # # use try -> except rather .get chaining, since .get would require creating unnecessary objects
+        # with suppress(KeyError):
+        self.dynamic_cooldowns[command_name][author_id].increment_failure_count()
 
-    def reset_dynamic_cooldown(self, ctx: Context) -> None:
+    def reset_dynamic_cooldown(self, ctx: CooldownContext) -> None:
         """
         Used to reset command failures in the provided context, for the purpose of dynamic cooldowns.
 
@@ -216,13 +216,12 @@ class DreamBot(Bot):
             None.
         """
 
-        if ctx.command is None:
+        command_name, author_id = get_cooldown_keys(ctx)
+
+        if command_name is None or author_id is None:
             return
 
-        # .get chaining is acceptable since we're only removing entries
-        self.dynamic_cooldowns.get(
-            ctx.command.qualified_name, {}
-        ).pop(ctx.author.id, None)  # type: ignore[call-overload]
+        self.dynamic_cooldowns[command_name].pop(author_id, None)
 
     @tasks.loop(minutes=30)
     async def refresh_presence(self) -> None:
