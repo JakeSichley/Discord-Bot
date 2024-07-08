@@ -36,11 +36,12 @@ from utils.converters import AggressiveDefaultMemberConverter
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.logging_formatter import bot_logger
 
-from discord import app_commands, Interaction
+from discord import app_commands, Interaction, AllowedMentions
 from discord.app_commands import Range
 
 
-from utils.cooldowns import cooldown_predicate
+
+from utils.checks import app_dynamic_cooldown
 from utils.interaction import GuildInteraction
 
 CHANNEL_OBJECT = Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]
@@ -161,7 +162,7 @@ class Moderation(commands.Cog):
         target_channel='The channel you want to copy permissions to',
         target_permission_owner='The role or member you want to copy permissions to',
     )
-    @app_commands.check(cooldown_predicate)
+    @app_dynamic_cooldown()
     @moderation_subgroup.command(
         name='duplicate_permissions'
     )
@@ -195,16 +196,9 @@ class Moderation(commands.Cog):
             None.
         """
 
-        await interaction.response.send_message('Ack')
-        self.bot.report_command_failure(interaction)
-        return
-
-        # TODO: dynamic cooldown for forbidden failures
-
         # no-op check
         if base_channel == target_channel and base_permission_owner == target_permission_owner:
             await interaction.response.send_message('You cannot duplicate a permission to itself!', ephemeral=True)
-            self.bot.report_command_failure(interaction)
             return
 
         # permissions check
@@ -221,22 +215,45 @@ class Moderation(commands.Cog):
             )
             return
 
+        try:
+            base_overwrites = base_channel.overwrites[base_permission_owner]
+        except KeyError:
+            await interaction.response.send_mesage(
+                f'{base_permission_owner.mention} does not have permission overwrites '
+                f'in {base_channel.mention}',
+                ephemeral=True,
+                allowed_mentions=AllowedMentions.none()
+            )
+            return
 
-        await interaction.response.send_message('ack', ephemeral=True)
-
-        # try:
-        #     base_overwrites = base_channel.overwrites[base_permission_owner]
-        # except KeyError:
-        #     await ctx.send("Overwrites object was not found")
-        #     return
-        #
-        # try:
-        #     await target_channel.set_permissions(target_permission_owner, overwrite=base_overwrites)
-        #     await ctx.send(f"**{base_channel.name}**[`{base_permission_owner}`] --> "
-        #                    f"**{target_channel.name}**[`{target_permission_owner}`]")
-        # except Exception as e:
-        #     bot_logger.error(f'Overwrites Duplication Error. {e}')
-        #     await ctx.send(f'Failed to duplicate overwrites ({e})')
+        try:
+            await target_channel.set_permissions(target_permission_owner, overwrite=base_overwrites)
+            await interaction.response.send_mesage(
+                f"{base_permission_owner.mention}'s permissions from {base_channel.mention} were applied to"
+                f"{target_permission_owner.mention} in {target_channel.mention}",
+                ephemeral=True,
+                allowed_mentions=AllowedMentions.none()
+            )
+        except discord.Forbidden as e:
+            await interaction.response.send_mesage(
+                f'You do not have permissions to create this overwrite. Error={e}'
+            )
+            bot_logger.warning(f'Overwrites Duplication Error. Forbidden={e}')
+            self.bot.report_command_failure(interaction)
+        except discord.HTTPException as e:
+            await interaction.response.send_mesage(
+                f'Failed to create overwrite. Error={e}'
+            )
+            bot_logger.warning(f'Overwrites Duplication Error. HTTPException={e}')
+            self.bot.report_command_failure(interaction)
+        # these shouldn't be possible - pre-checks failed us somewhere
+        except (discord.NotFound, TypeError) as e:
+            await interaction.response.send_mesage(
+                f'Failed to create overwrite. Error={e}'
+            )
+            bot_logger.error(f'Overwrites Duplication Error. NotFound | TypeError={e}')
+            self.bot.report_command_failure(interaction)
+            await self.bot.report_exception(e)
 
     @commands.has_guild_permissions(manage_roles=True)
     @commands.bot_has_guild_permissions(manage_roles=True)
