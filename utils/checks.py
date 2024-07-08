@@ -26,6 +26,7 @@ from typing import Callable, Tuple, Any, Union, List
 
 from discord.app_commands.errors import CheckFailure
 from discord.ext import commands
+from discord import app_commands
 
 from utils.context import Context
 from utils.cooldowns import cooldown_predicate
@@ -69,6 +70,20 @@ def dynamic_cooldown() -> Callable[[Any], Any]:
     """
 
     return commands.check(cooldown_predicate)
+
+
+def app_dynamic_cooldown() -> Callable[[Any], Any]:
+    """
+    Dynamic Cooldown Check.
+
+    Parameters:
+        None.
+
+    Returns:
+        (Callable[[], Context]): The resulting wrapped predicate.
+    """
+
+    return app_commands.check(cooldown_predicate)
 
 
 def ensure_git_credentials() -> Callable[[Any], Any]:
