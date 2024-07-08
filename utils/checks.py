@@ -98,18 +98,17 @@ def ensure_git_credentials() -> Callable[[Any], Any]:
     return commands.check(predicate)
 
 
-def guild_only(guild_id: Union[int, List[int]]) -> Callable[[Any], Any]:
+def guild_only(guild_id: int) -> Callable[[Any], Any]:
     """
     Only allows command execution for the specified guild.
 
     Parameters:
-        guild_id (guild_id: Union[int, List[int]]): The id of the guild authorized to execute this command.
+        guild_id (int): The id of the guild authorized to execute this command.
 
     Returns:
         (Callable[[], Context]): The resulting wrapped predicate.
     """
 
-    guild_ids = guild_id if isinstance(guild_id, list) else [guild_id]
 
     def predicate(ctx: Context) -> bool:
         """
@@ -122,6 +121,6 @@ def guild_only(guild_id: Union[int, List[int]]) -> Callable[[Any], Any]:
             (bool): Whether the bot was initialized with git credentials.
         """
 
-        return ctx.guild is not None and ctx.guild.id in guild_ids
+        return ctx.guild is not None and ctx.guild.id == guild_id
 
     return commands.check(predicate)
