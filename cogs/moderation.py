@@ -24,7 +24,7 @@ SOFTWARE.
 
 from contextlib import suppress
 from re import findall, sub
-from typing import Union, Optional, Literal
+from typing import Union, Optional, List
 
 import discord
 from aiosqlite import Error as aiosqliteError
@@ -36,7 +36,7 @@ from utils.converters import AggressiveDefaultMemberConverter
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.logging_formatter import bot_logger
 
-from discord import app_commands, Interaction, AllowedMentions
+from discord import app_commands, Interaction, AllowedMentions, Embed
 from discord.app_commands import Range
 
 
@@ -91,15 +91,15 @@ class Moderation(commands.Cog):
         return interaction.guild is not None
 
     @app_commands.checks.has_permissions(manage_messages=True)  # type: ignore[arg-type]
-    @app_commands.checks.has_permissions(manage_messages=True, read_message_history=True, manage_channels=True)
+    @app_commands.checks.bot_has_permissions(manage_messages=True, read_message_history=True, manage_channels=True)
+    @app_commands.describe(
+        limit=f'The number of messages to delete (up to {PURGE_UPPER_BOUND})',
+        # full_reset='Fully purges the channel. This destroys the current channel and creates a new, identical channel.'
+    )
     @moderation_subgroup.command(
         name='purge',
         description=f'Purges up to {PURGE_UPPER_BOUND} messages from the channel. '
                     # 'Use `full_reset` to completely clear the channel'
-    )
-    @app_commands.describe(
-        limit=f'The number of messages to delete (up to {PURGE_UPPER_BOUND})',
-        # full_reset='Fully purges the channel. This destroys the current channel and creates a new, identical channel.'
     )
     async def purge(
             self,
@@ -155,7 +155,7 @@ class Moderation(commands.Cog):
             await new_channel.edit(position=position)
 
     @app_commands.checks.has_permissions(manage_channels=True, manage_roles=True)  # type: ignore[arg-type]
-    @app_commands.checks.has_permissions(manage_channels=True, manage_roles=True)
+    @app_commands.checks.bot_has_permissions(manage_channels=True, manage_roles=True)
     @app_commands.describe(
         base_channel='The channel you want to copy permissions from',
         base_permission_owner='The role or member you want to copy permissions from',
@@ -164,7 +164,8 @@ class Moderation(commands.Cog):
     )
     @app_dynamic_cooldown()
     @moderation_subgroup.command(
-        name='duplicate_permissions'
+        name='duplicate_permissions',
+        description='Allows you duplicate a permissions overwrite to a new target'
     )
     async def duplicate_channel_permissions(
             self,
@@ -182,7 +183,7 @@ class Moderation(commands.Cog):
             bot_has_guild_permissions(manage_channels)
 
         Parameters:
-            interaction (GuildInteraction): The invocation context.
+            interaction (GuildInteraction): The invoking interaction.
             base_channel (Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]): The base channel
                 to source permissions from.
             base_permission_owner (Union[discord.Role, discord.Member]): The role or member whose permissions should
@@ -210,7 +211,16 @@ class Moderation(commands.Cog):
         if base_highest_role >= interaction.user.top_role or target_highest_role >= interaction.user.top_role:
             await interaction.response.send_message(
                 'You cannot duplicate this permission because one of the roles '
-                'or members you specified are higher than your own role',
+                'or members you specified are higher than your own highest role',
+                ephemeral=True
+            )
+            return
+
+        # bot permissions check
+        if base_highest_role >= interaction.guild.me.top_role or target_highest_role >= interaction.guild.me.top_role:
+            await interaction.response.send_message(
+                'You cannot duplicate this permission because one of the roles '
+                'you specified is higher than my highest role',
                 ephemeral=True
             )
             return
@@ -218,7 +228,7 @@ class Moderation(commands.Cog):
         try:
             base_overwrites = base_channel.overwrites[base_permission_owner]
         except KeyError:
-            await interaction.response.send_mesage(
+            await interaction.response.send_message(
                 f'{base_permission_owner.mention} does not have permission overwrites '
                 f'in {base_channel.mention}',
                 ephemeral=True,
@@ -228,103 +238,113 @@ class Moderation(commands.Cog):
 
         try:
             await target_channel.set_permissions(target_permission_owner, overwrite=base_overwrites)
-            await interaction.response.send_mesage(
+            await interaction.response.send_message(
                 f"{base_permission_owner.mention}'s permissions from {base_channel.mention} were applied to"
                 f"{target_permission_owner.mention} in {target_channel.mention}",
                 ephemeral=True,
                 allowed_mentions=AllowedMentions.none()
             )
         except discord.Forbidden as e:
-            await interaction.response.send_mesage(
+            await interaction.response.send_message(
                 f'You do not have permissions to create this overwrite. Error={e}'
             )
             bot_logger.warning(f'Overwrites Duplication Error. Forbidden={e}')
             self.bot.report_command_failure(interaction)
         except discord.HTTPException as e:
-            await interaction.response.send_mesage(
+            await interaction.response.send_message(
                 f'Failed to create overwrite. Error={e}'
             )
             bot_logger.warning(f'Overwrites Duplication Error. HTTPException={e}')
             self.bot.report_command_failure(interaction)
         # these shouldn't be possible - pre-checks failed us somewhere
         except (discord.NotFound, TypeError) as e:
-            await interaction.response.send_mesage(
+            await interaction.response.send_message(
                 f'Failed to create overwrite. Error={e}'
             )
             bot_logger.error(f'Overwrites Duplication Error. NotFound | TypeError={e}')
             self.bot.report_command_failure(interaction)
             await self.bot.report_exception(e)
 
-    @commands.has_guild_permissions(manage_roles=True)
-    @commands.bot_has_guild_permissions(manage_roles=True)
-    @commands.command(name='bulkadd', enabled=False)
-    async def bulk_add_roles(self, ctx: Context, role: discord.Role, *, members: str) -> None:
-        """
-        Special Note:
-            If you are passing strictly IDs or Name#Discriminator arguments, these arguments can be seperated by only
-            a space. If you are mixing IDs, Name#Discriminator, and nickname arguments, arguments must be seperated
-            by a newline to ensure proper matching.
+    # App Commands don't support lists... deferring this for now.
+    # @app_commands.checks.has_permissions(manage_roles=True)
+    # @app_commands.checks.bot_has_permissions(manage_roles=True)
+    # @app_commands.describe(
+    #     base_channel='The channel you want to copy permissions from',
+    # )
+    # @app_dynamic_cooldown()
+    # @moderation_subgroup.command(
+    #     name='bulk_add_role'
+    # )
+    # async def bulk_add_roles(
+    #         self, interaction: GuildInteraction, role: discord.Role, members: List[discord.Member]
+    # ) -> None:
+    #     """
+    #     A method to bulk add members to a role.
+    #
+    #     Checks:
+    #         has_permissions(manage_roles): Whether the invoking user can manage roles.
+    #         bot_has_permissions(manage_roles): Whether the bot can manage roles.
+    #
+    #     Parameters:
+    #         interaction (GuildInteraction): The invoking interaction.
+    #         role (discord.Role): The role to add to the members.
+    #         members (List[discord.Member]): A list of members to add to the role.
+    #
+    #     Returns:
+    #         None.
+    #     """
+    #
+    #     if role >= interaction.user.top_role or role >= interaction.guild.me.top_role:
+    #         await interaction.response.send_message(
+    #             'You specified a role equal to or higher than mine or your top role.',
+    #             ephemeral=True
+    #         )
+    #         return
+    #
+    #     # number of failures allowed before a command failure is reported
+    #     unacceptable_failure_threshold = min(max(len(members) // 5 if len(members) >= 3 else len(members), 1), 5)
+    #     succeeded, failed = [], []
+    #
+    #     for member in members:
+    #         if member.top_role >= interaction.guild.me.top_role:
+    #             failed.append(member.mention)
+    #             continue
+    #
+    #         try:
+    #             await member.add_roles(role, reason=f'Bulk Added by {interaction.user}')
+    #         except discord.Forbidden as e:
+    #             bot_logger.warning(f'Bulk Add Failure. Forbidden={e}')
+    #             failed.append(member.mention)
+    #         except discord.HTTPException as e:
+    #             bot_logger.warning(f'Overwrites Duplication Error. HTTPException={e}')
+    #             failed.append(member.mention)
+    #         else:
+    #             succeeded.append(member.mention)
+    #
+    #     embed = Embed(
+    #         title=f'Bulk Add Summary',
+    #         description=f'{len(succeeded):,} Success(es), {len(failed):,} Failure(s).',
+    #     )
+    #     embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar.url)
+    #     embed.set_thumbnail(url=interaction.guild.icon.url)
+    #     embed.set_footer(text='Please report any formatting issues to my owner!')
+    #
+    #     if succeeded:
+    #         embed.add_field(name='Succeeded', value='\n'.join(succeeded))
+    #     if failed:
+    #         embed.add_field(name='Failed', value='\n'.join(failed))
+    #
+    #     if len(failed) > unacceptable_failure_threshold:
+    #         self.bot.report_command_failure(interaction)
+    #
+    #     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-        A method to bulk add a role to members.
-        Uses a special converter that aggressively attempts to match arguments.
-
-        Checks:
-            has_permissions(manage_roles): Whether the invoking user can manage roles.
-            bot_has_permissions(manage_roles): Whether the bot can manage roles.
-
-        Parameters:
-            ctx (Context): The invocation context.
-            role (discord.Role): The role to add to the members.
-            members (str): A variadic argument representing the members to add the role to.
-
-        Returns:
-            None.
-        """
-
-        assert isinstance(ctx.me, discord.Member)  # guild only
-        assert isinstance(ctx.author, discord.Member)  # guild only
-
-        bot_role = ctx.me.top_role
-        invoker_role = ctx.author.top_role
-
-        if not all((bot_role, invoker_role, role)):
-            await ctx.send("Couldn't retrieve top roles for myself or you. Please try the command again.")
-            return
-        if role >= bot_role or role >= invoker_role:
-            await ctx.send('You specified a role equal to or higher than mine or your top role.')
-            return
-
-        async with ctx.typing():
-            matches = findall(r'(?<=<@!)?(?<=<@)?[0-9]{15,19}(?=>)?|\S.{1,31}?#[0-9]{4}', members)
-            remaining = sub(r'(<@!)?(<@)?[0-9]{15,19}>?|\S.{1,31}?#[0-9]{4}', '', members)
-            potential_members = matches + [x for x in remaining.split('\n') if x and x.strip()]
-            converted = [await AggressiveDefaultMemberConverter().convert(ctx, member) for member in potential_members]
-
-            success, failed = [], []
-
-            for member in converted:
-                if isinstance(member, discord.Member):
-                    try:
-                        await member.add_roles(role, reason=f'Bulk Added by {str(ctx.author)}')
-                    except discord.HTTPException:
-                        failed.append(str(member))
-                    else:
-                        success.append(str(member))
-                else:
-                    failed.append(str(member))
-
-            summary = f'Successfully added {role.mention} to the following members:\n' \
-                      f'```{", ".join(success) if success else "None"}```\n'
-
-            if failed:
-                summary += f'Failed to add {role.mention} to the following members:\n```{", ".join(failed)}```'
-
-            await ctx.send(summary, allowed_mentions=discord.AllowedMentions.none())
-
-    @commands.has_guild_permissions(manage_roles=True)
-    @commands.command(name='getdefaultrole', aliases=['gdr'],
-                      help='Displays the role (if any) users are auto-granted on joining the guild.')
-    async def get_default_role(self, ctx: Context) -> None:
+    @app_commands.checks.has_permissions(manage_roles=True)
+    @moderation_subgroup.command(
+        name='get_default_role',
+        description=f'Retrieves the default role for this guild'
+    )
+    async def get_default_role(self, interaction: GuildInteraction) -> None:
         """
         A method for checking which role (if any) will be auto-granted to new users joining the guild.
 
@@ -332,38 +352,40 @@ class Moderation(commands.Cog):
             has_guild_permissions(manage_guild): Whether the invoking user can manage the guild.
 
         Parameters:
-            ctx (Context): The invocation context.
-
-        Output:
-            A message detailing the default role for the guild.
+            interaction (GuildInteraction): The invoking interaction.
 
         Returns:
             None.
         """
 
-        assert ctx.guild is not None  # guild only
+        default_role_id = self.bot.cache.default_roles.get(interaction.guild_id, None)
 
-        if role := (await typed_retrieve_query(
-                self.bot.database,
-                int,
-                'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
-                (ctx.guild.id,))
-        ):
-            if fetched_role := ctx.guild.get_role(role[0]):
-                await ctx.send(f'The default role for the server is **{fetched_role.name}**')
-            else:
-                await ctx.send(f'The default role for the server has id `{role}`, but I was unable to fetch it.')
+        if default_role_id is None:
+            await interaction.response.send_message(f'No default role found', ephemeral=True)
+            return
+
+        default_role = interaction.guild.get_role(default_role_id)
+
+        if default_role is None:
+            await interaction.response.send_message(
+                'A default role exists, but I am unable to fetch it. The role may have been deleted.',
+                ephemeral=True
+            )
         else:
-            await ctx.send(f'There is no default role set for the server.')
+            await interaction.response.send_message(
+                f'The default role is {default_role.mention}',
+                ephemeral=True,
+                allowed_mentions=AllowedMentions.none()
+            )
 
-    @commands.cooldown(1, 10, commands.BucketType.guild)
-    @commands.has_guild_permissions(manage_guild=True, manage_roles=True)
-    @commands.bot_has_guild_permissions(manage_roles=True)
-    @commands.command(name='setdefaultrole', aliases=['sdr'],
-                      help='Sets the role users are auto-granted on joining.'
-                           '\nTo remove the default role, simply call this command without passing a role.'
-                           '\nNote: The role selected must be lower than the bot\'s role and lower than your role.')
-    async def set_default_role(self, ctx: Context, role: Optional[discord.Role] = None) -> None:
+    @app_commands.checks.cooldown(1, 10, key=lambda i: i.guild_id)
+    @app_commands.checks.has_permissions(manage_guild=True, manage_roles=True)
+    @app_commands.checks.bot_has_permissions(manage_roles=True)
+    @moderation_subgroup.command(
+        name='set_default_role',
+        description=f'Sets or clears the default role for this guild'
+    )
+    async def set_default_role(self, interaction: GuildInteraction, role: Optional[discord.Role] = None) -> None:
         """
         A method for checking which role (if any) will be auto-granted to new users joining the guild.
 
@@ -373,20 +395,30 @@ class Moderation(commands.Cog):
                 Whether the invoking user can manage the guild and roles.
 
         Parameters:
-            ctx (Context): The invocation context.
+            interaction (GuildInteraction): The invoking interaction.
             role (discord.Role): The role to set as the default role. Could be None.
-
-        Output:
-            Success: A confirmation message detailing the new default role.
-            Failure: An error message detailing why the command failed.
 
         Returns:
             None.
         """
 
-        assert isinstance(ctx.me, discord.Member)  # guild only
-        assert isinstance(ctx.author, discord.Member)  # guild only
-        assert ctx.guild is not None  # guild only
+        if role is None:
+            try:
+                await execute_query(
+                    self.bot.database,
+                    'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+                    (interaction.guild_id,)
+                )
+
+                with suppress(KeyError):
+                    del self.bot.cache.default_roles[interaction.guild_id]
+
+                await ctx.send('Cleared the default role for the guild.')
+            except aiosqliteError:
+                await ctx.send('Failed to clear the default role for the guild.')
+            finally:
+                return
+
 
         bot_role = ctx.me.top_role
         invoker_role = ctx.author.top_role
@@ -396,17 +428,7 @@ class Moderation(commands.Cog):
             if not confirmation:
                 return
 
-            try:
-                await execute_query(self.bot.database, 'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?', (ctx.guild.id,))
 
-                with suppress(KeyError):
-                    del self.bot.cache.default_roles[ctx.guild.id]
-
-                await ctx.send('Cleared the default role for the guild.')
-            except aiosqliteError:
-                await ctx.send('Failed to clear the default role for the guild.')
-            finally:
-                return
 
         # ensure all roles are fetched
         if all((role, bot_role, invoker_role)):
