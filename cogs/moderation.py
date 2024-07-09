@@ -339,7 +339,7 @@ class Moderation(commands.Cog):
     #
     #     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @app_commands.checks.has_permissions(manage_roles=True)
+    @app_commands.checks.has_permissions(manage_roles=True)  # type: ignore[arg-type]
     @moderation_subgroup.command(
         name='get_default_role',
         description=f'Retrieves the default role for this guild'
@@ -378,7 +378,7 @@ class Moderation(commands.Cog):
                 allowed_mentions=AllowedMentions.none()
             )
 
-    @app_commands.checks.cooldown(1, 10, key=lambda i: i.guild_id)
+    @app_commands.checks.cooldown(1, 10, key=lambda i: i.guild_id)  # type: ignore[arg-type]
     @app_commands.checks.has_permissions(manage_guild=True, manage_roles=True)
     @app_commands.checks.bot_has_permissions(manage_roles=True)
     @moderation_subgroup.command(
@@ -402,6 +402,25 @@ class Moderation(commands.Cog):
             None.
         """
 
+        # no-op check (none)
+        if role is None and self.bot.cache.default_roles.get(interaction.guild_id, None) is None:
+            await interaction.response.send_message('No default role is set', ephemeral=True)
+            return
+
+        # no-op check (same)
+        if role is not None and role == self.bot.cache.default_roles.get(interaction.guild_id, None):
+            await interaction.response.send_message('This is already the default role', ephemeral=True)
+            return
+
+        # permissions check
+        if role >= interaction.user.top_role or role >= interaction.guild.me.top_role:
+            await interaction.response.send_message(
+                'You specified a role equal to or higher than mine or your top role.',
+                ephemeral=True
+            )
+            return
+
+        # delete role
         if role is None:
             try:
                 await execute_query(
@@ -409,45 +428,38 @@ class Moderation(commands.Cog):
                     'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
                     (interaction.guild_id,)
                 )
-
                 with suppress(KeyError):
                     del self.bot.cache.default_roles[interaction.guild_id]
 
-                await ctx.send('Cleared the default role for the guild.')
-            except aiosqliteError:
-                await ctx.send('Failed to clear the default role for the guild.')
+                await interaction.response.send_message('Successfully cleared the default role', ephemeral=True)
+            except aiosqliteError as e:
+                bot_logger.warning(
+                    f'Failed to delete default role. Error={e}. GuildId={interaction.guild_id}'
+                )
+                await interaction.response.send_message('Failed to clear the default role', ephemeral=True)
             finally:
                 return
 
+        # upsert role
+        try:
+            await execute_query(
+                self.bot.database,
+                'INSERT INTO DEFAULT_ROLES (GUILD_ID, ROLE_ID) VALUES (?, ?) ON CONFLICT(GUILD_ID) '
+                'DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID',
+                (interaction.guild_id, role.id)
+            )
+            self.bot.cache.default_roles[interaction.guild_id] = role.id
 
-        bot_role = ctx.me.top_role
-        invoker_role = ctx.author.top_role
-
-        if not role:
-            confirmation = await ctx.confirmation_prompt('Are you sure you want to remove the default role?')
-            if not confirmation:
-                return
-
-
-
-        # ensure all roles are fetched
-        if all((role, bot_role, invoker_role)):
-            # ensure both the bot and the initializing user have the ability to set the role
-            if role >= bot_role or role >= invoker_role:
-                await ctx.send('Cannot set a default role higher than or equal to the bot\'s or your highest role.')
-            else:
-                try:
-                    await execute_query(
-                        self.bot.database,
-                        'INSERT INTO DEFAULT_ROLES (GUILD_ID, ROLE_ID) VALUES (?, ?) ON CONFLICT(GUILD_ID) '
-                        'DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID',
-                        (ctx.guild.id, role.id)
-                    )
-                    self.bot.cache.default_roles[ctx.guild.id] = role.id
-
-                    await ctx.send(f'Updated the default role to **{role.name}**')
-                except aiosqliteError:
-                    await ctx.send('Failed to set the default role for the guild.')
+            await interaction.response.send_message(
+                f'Successfully set the default role to {role.mention}',
+                ephemeral=True,
+                allowed_mentions=AllowedMentions.none()
+            )
+        except aiosqliteError as e:
+            bot_logger.warning(
+                f'Failed to set default role. Error={e}. GuildId={interaction.guild_id}, RoleId={role.id}'
+            )
+            await interaction.response.send_message('Failed to clear the default role', ephemeral=True)
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
@@ -524,7 +536,10 @@ async def add_default_role(bot: DreamBot, member: discord.Member, gate: bool = F
 
         if sys_channel := member.guild.system_channel:
             try:
-                await sys_channel.send(f'Failed to add the default role to `{str(member)}`.')
+                await sys_channel.send(
+                    f'Failed to add the default role to {member.mention}',
+                    allowed_mentions=AllowedMentions.none()
+                )
             except discord.HTTPException as e:
                 bot_logger.error(f'Role Addition Alert Failure. {e.status}. {e.text}')
 
