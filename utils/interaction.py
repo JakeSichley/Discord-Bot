@@ -24,7 +24,7 @@ SOFTWARE.
 
 from typing import Union
 
-from discord import Interaction, Member
+from discord import Interaction, Member, Guild
 from discord.channel import VoiceChannel, StageChannel, TextChannel, ForumChannel, CategoryChannel
 from discord.threads import Thread
 
@@ -39,3 +39,4 @@ class GuildInteraction(Interaction[DreamBot]):
     guild_id: int
     channel: Union[VoiceChannel, StageChannel, TextChannel, ForumChannel, CategoryChannel, Thread]
     user: Member
+    guild: Guild
