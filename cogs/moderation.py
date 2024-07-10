@@ -23,26 +23,19 @@ SOFTWARE.
 """
 
 from contextlib import suppress
-from re import findall, sub
-from typing import Union, Optional, List
+from typing import Union, Optional
 
 import discord
 from aiosqlite import Error as aiosqliteError
+from discord import app_commands, Interaction, AllowedMentions
+from discord.app_commands import Range
 from discord.ext import commands
 
 from dreambot import DreamBot
-from utils.context import Context
-from utils.converters import AggressiveDefaultMemberConverter
-from utils.database.helpers import execute_query, typed_retrieve_query
-from utils.logging_formatter import bot_logger
-
-from discord import app_commands, Interaction, AllowedMentions, Embed
-from discord.app_commands import Range
-
-
-
 from utils.checks import app_dynamic_cooldown
+from utils.database.helpers import execute_query
 from utils.interaction import GuildInteraction
+from utils.logging_formatter import bot_logger
 
 CHANNEL_OBJECT = Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]
 PERMISSIONS_PARENT = Union[discord.Role, discord.Member]
@@ -99,7 +92,7 @@ class Moderation(commands.Cog):
     @moderation_subgroup.command(
         name='purge',
         description=f'Purges up to {PURGE_UPPER_BOUND} messages from the channel. '
-                    # 'Use `full_reset` to completely clear the channel'
+        # 'Use `full_reset` to completely clear the channel'
     )
     async def purge(
             self,
@@ -239,7 +232,7 @@ class Moderation(commands.Cog):
         try:
             await target_channel.set_permissions(target_permission_owner, overwrite=base_overwrites)
             await interaction.response.send_message(
-                f"{base_permission_owner.mention}'s permissions from {base_channel.mention} were applied to"
+                f"{base_permission_owner.mention}'s permissions from {base_channel.mention} were applied to "
                 f"{target_permission_owner.mention} in {target_channel.mention}",
                 ephemeral=True,
                 allowed_mentions=AllowedMentions.none()
@@ -381,6 +374,9 @@ class Moderation(commands.Cog):
     @app_commands.checks.cooldown(1, 10, key=lambda i: i.guild_id)  # type: ignore[arg-type]
     @app_commands.checks.has_permissions(manage_guild=True, manage_roles=True)
     @app_commands.checks.bot_has_permissions(manage_roles=True)
+    @app_commands.describe(
+        role='The role to set as the default role for this guild. Leave empty to clear the default role.'
+    )
     @moderation_subgroup.command(
         name='set_default_role',
         description=f'Sets or clears the default role for this guild'
@@ -413,7 +409,7 @@ class Moderation(commands.Cog):
             return
 
         # permissions check
-        if role >= interaction.user.top_role or role >= interaction.guild.me.top_role:
+        if role is not None and (role >= interaction.user.top_role or role >= interaction.guild.me.top_role):
             await interaction.response.send_message(
                 'You specified a role equal to or higher than mine or your top role.',
                 ephemeral=True
