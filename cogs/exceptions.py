@@ -93,7 +93,7 @@ class Exceptions(commands.Cog):
         # TODO: should probably be _some_ feedback for commands.BadArgument.. Ex: tag create (name > 100 char)
 
         if not isinstance(error, not_logged):
-            bot_logger.warning(
+            bot_logger.error(
                 f"Encountered exception in command '{ctx.command.qualified_name}'",
                 exc_info=(type(error), error, error.__traceback__),
                 extra={'context': ctx.dump()}
@@ -224,10 +224,10 @@ class Exceptions(commands.Cog):
             await interaction.response.send_message(f'{error}', ephemeral=True)
             return
 
-        bot_logger.warning(
+        bot_logger.error(
             f"Encountered exception in slash command '{interaction.command.qualified_name}'. "
-            f"User: `{interaction.user} ({interaction.user.id})` "
-            f"Guild: `{interaction.guild.id if interaction.guild is not None else 'None'}`",
+            f"User={interaction.user}, UserId={interaction.user.id}, "
+            f"Guild={interaction.guild.id if interaction.guild is not None else 'None'}",
             exc_info=(type(error), error, error.__traceback__)
         )
 
