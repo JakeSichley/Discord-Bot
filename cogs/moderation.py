@@ -496,6 +496,72 @@ class Moderation(commands.Cog):
         if 'MEMBER_VERIFICATION_GATE_ENABLED' in after.guild.features and before.pending and not after.pending:
             await add_default_role(self.bot, after, True)
 
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role: discord.Role) -> None:
+        """
+        A commands.Cog listener event that is called whenever a member is updated.
+
+        Functionality:
+            If a default role is deleted, remove the role from the database.
+
+        Parameters:
+            role (discord.Role): The deleted role.
+
+        Returns:
+            None.
+        """
+
+        if role.id == self.bot.cache.default_roles[role.guild.id]:
+            return
+
+        try:
+            await execute_query(
+                self.bot.database,
+                'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+                (role.guild.id,)
+            )
+            with suppress(KeyError):
+                del self.bot.cache.default_roles[role.guild.id]
+
+        except aiosqliteError as e:
+            bot_logger.warning(
+                f'Failed to delete default role. Error={e}. GuildId={role.guild.id}'
+            )
+
+    # noinspection PyUnusedLocal
+    @commands.Cog.listener()
+    async def on_guild_role_update(self, before: discord.Role, after: discord.Role) -> None:
+        """
+        A commands.Cog listener event that is called whenever a member is updated.
+
+        Functionality:
+            If a default role is updated to be 'greater' than the bot's highest role, remove the role from the database.
+
+        Parameters:
+            before (discord.Role): The state of the role before it was updated.
+            after (discord.Role): The state of the role after it was updated.
+
+        Returns:
+            None.
+        """
+
+        if after.id != self.bot.cache.default_roles[after.guild.id] or after < after.guild.me.top_role:
+            return
+
+        try:
+            await execute_query(
+                self.bot.database,
+                'DELETE FROM DEFAULT_ROLES WHERE GUILD_ID=?',
+                (after.guild.id,)
+            )
+            with suppress(KeyError):
+                del self.bot.cache.default_roles[after.guild.id]
+
+        except aiosqliteError as e:
+            bot_logger.warning(
+                f'Failed to delete default role. Error={e}. GuildId={after.guild.id}'
+            )
+
 
 async def add_default_role(bot: DreamBot, member: discord.Member, gate: bool = False) -> None:
     """
