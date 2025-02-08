@@ -87,7 +87,8 @@ class Exceptions(commands.Cog):
 
         not_logged = (
             commands.CommandNotFound, commands.UserInputError, commands.CheckFailure, ClientResponseError,
-            commands.CommandOnCooldown, commands.DisabledCommand, ServerConnectionError, ForbiddenCharacters
+            commands.CommandOnCooldown, commands.DisabledCommand, ServerConnectionError, ForbiddenCharacters,
+            commands.ExtensionError
         )
 
         # TODO: should probably be _some_ feedback for commands.BadArgument.. Ex: tag create (name > 100 char)

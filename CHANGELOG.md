@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.18.1
+### Internal
+- `Admin`
+  - Allow forbidden characters in `StringConverter::ExtensionName`
+  - Add `cog_unload` to clean up `logging_line_break` on reload
+- Suppress `ExtensionError` from production error reporting
+- Add additional context to `VoiceRoles::on_voice_state_update::Forbidden`
+
 ## 2.18.0
 ### Features
 - Enhance `Group` autocomplete descriptions with owner name and member count

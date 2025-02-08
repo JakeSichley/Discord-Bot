@@ -55,7 +55,8 @@ from utils.network_utils import network_request, Headers
 from utils.utils import pairs, run_in_subprocess, generate_activity, VERSION
 
 ExtensionName = StringConverter(
-    mutator=lambda x: x.strip().lower()
+    mutator=lambda x: x.strip().lower(),
+    allow_forbidden_characters=True
 )
 
 
@@ -865,6 +866,22 @@ class Admin(commands.Cog):
                     # once finished processing all messages, forcibly send the entire buffer
                     if buffer != '':
                         await try_to_send_buffer(channel, buffer, True)
+
+    async def cog_unload(self) -> None:
+        """
+        A method detailing custom extension unloading procedures.
+        Clears internal caches and immediately and forcefully exits any discord.ext.tasks.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
+        self.logging_line_break.cancel()
+
+        bot_logger.info('Completed Unload for Cog: Admin')
 
 
 async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool = False) -> str:
