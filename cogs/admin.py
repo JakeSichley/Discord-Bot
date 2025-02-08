@@ -55,7 +55,8 @@ from utils.network_utils import network_request, Headers
 from utils.utils import pairs, run_in_subprocess, generate_activity, VERSION
 
 ExtensionName = StringConverter(
-    mutator=lambda x: x.strip().lower()
+    mutator=lambda x: x.strip().lower(),
+    allow_forbidden_characters=True
 )
 
 
