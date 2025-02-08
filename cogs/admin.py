@@ -867,6 +867,22 @@ class Admin(commands.Cog):
                     if buffer != '':
                         await try_to_send_buffer(channel, buffer, True)
 
+    async def cog_unload(self) -> None:
+        """
+        A method detailing custom extension unloading procedures.
+        Clears internal caches and immediately and forcefully exits any discord.ext.tasks.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
+        self.logging_line_break.cancel()
+
+        bot_logger.info('Completed Unload for Cog: Admin')
+
 
 async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool = False) -> str:
     """
