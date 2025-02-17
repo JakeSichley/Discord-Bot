@@ -21,12 +21,18 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
+from typing import Union
 
+import discord
 import parsedatetime  # type: ignore[import-untyped]
 from discord.ext import commands
 
+from utils.context import GuildContext, GuildInteraction
+
 ForbiddenCharacterSet = set('_~#/\`><@*')
 
+
+### Forbidden Characters ###
 
 class ForbiddenCharacters(commands.BadArgument):
     def __init__(self) -> None:
@@ -49,3 +55,31 @@ def check_for_forbidden_characters(string: str) -> None:
 
     if set(string).intersection(ForbiddenCharacterSet):
         raise ForbiddenCharacters
+
+
+### Role Hierarchy ###
+
+class InvalidRole(commands.BadArgument):
+    def __init__(self, role: discord.Role):
+        super().__init__(f'Supplied role `{role.name} (id: {role.id})` exceeds mine or your role capabilities.')
+
+
+def validate_role_hierarchy(ctx: Union[GuildContext, GuildInteraction], role: discord.Role) -> None:
+    """
+    Checks if the provided string contains any of the forbidden characters.
+
+    Parameters:
+        ctx (Union[Context, discord.Interaction]): The invocation context.
+        role (discord.Role): The role to validate for usability.
+
+    Raises:
+        InvalidRole: Whether the role is usable by both the invoking user and the bot.
+
+    Returns:
+        None.
+    """
+
+    if isinstance(ctx, GuildContext) and (ctx.me.top_role >= role or ctx.author.top_role >= role):
+        raise InvalidRole(role)
+    elif isinstance(ctx, discord.Interaction) and (ctx.guild.me.top_role >= role or ctx.user.top_role >= role):
+        raise InvalidRole(role)
