@@ -32,7 +32,7 @@ from discord import app_commands, Interaction
 from pytz import utc
 
 from dreambot import DreamBot
-from utils.converters import check_for_forbidden_characters, ForbiddenCharacterSet, ForbiddenCharacters
+from utils.validators import check_for_forbidden_characters, ForbiddenCharacterSet, ForbiddenCharacters
 
 
 # noinspection PyAbstractClass
