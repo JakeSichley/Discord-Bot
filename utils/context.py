@@ -263,3 +263,26 @@ class Context(commands.Context['dreambot.DreamBot']):
                 title + guild_context + category_context + channel_context + message_context + author_context
                 + args_context + kwargs_context
         )
+
+
+class GuildContext(Context):
+    """
+    Represents a guild-only context instance. Overrides properties for type-checking to guarantee their existence.
+    """
+
+    author: discord.Member
+    channel: Union[discord.VoiceChannel, discord.TextChannel, discord.Thread]
+    guild: discord.Guild
+    me: discord.Member
+
+
+class GuildInteraction(discord.Interaction['dreambot.DreamBot']):
+    """
+    Represents a guild-only interaction instance. Overrides properties for type-checking to guarantee their existence.
+    """
+
+    channel: Union[discord.VoiceChannel, discord.TextChannel, discord.Thread]
+    guild: discord.Guild
+    guild_id: int
+    user: discord.Member
+    # channel_id: int // need to verify
