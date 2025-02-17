@@ -27,7 +27,8 @@ import discord
 import parsedatetime  # type: ignore[import-untyped]
 from discord.ext import commands
 
-from utils.context import GuildContext, GuildInteraction
+from utils.context import GuildContext
+from utils.interaction import GuildInteraction
 
 ForbiddenCharacterSet = set('_~#/\`><@*')
 
