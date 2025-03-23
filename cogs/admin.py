@@ -868,26 +868,29 @@ class Admin(commands.Cog):
                         await try_to_send_buffer(channel, buffer, True)
 
     @commands.Cog.listener()
-    async def on_thread_create(self, thread: discord.Thread) -> None:
+    async def on_message(self, message: discord.Message) -> None:
         """
         Adds all members of the forum to newly created threads.
 
         Parameters:
-            thread (discord.Thread): The created thread.
+            message (discord.Message): The newly created message.
 
         Returns:
             None.
         """
 
-        if thread.guild.id != 1084581614878728305:
+        if not message.guild or message.guild.id != 1084581614878728305:
+            return
+
+        if not isinstance(message.channel, discord.Thread) or message.id != message.channel.id:
             return
 
         members_to_add = [
-            member for member in thread.guild.members if
-            not member.bot and member.id not in [146517998205796352, thread.owner_id]
+            member for member in message.guild.members if
+            not member.bot and member.id not in [146517998205796352, message.author.id]
         ]
 
-        await thread.send(
+        await message.channel.send(
             f'_Tagging Members for Notifications: {", ".join([member.mention for member in members_to_add])}_'
         )
 
