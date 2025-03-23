@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.18.2
+### Internal
+- Add private event notifications to `Admin` cog
+
 ## 2.18.1
 ### Internal
 - `Admin`
