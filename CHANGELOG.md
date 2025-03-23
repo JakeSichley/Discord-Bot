@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.18.3
+### Internal
+- Enhance `Bot::on_error` logging to include traceback information where available
+- Update `Admin` cog private event notifications to use `on_message` to avoid `Forbidden (error code: 40058)` issues with `on_thread_create`
+
 ## 2.18.2
 ### Internal
 - Add private event notifications to `Admin` cog

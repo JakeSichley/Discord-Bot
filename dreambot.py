@@ -180,12 +180,17 @@ class DreamBot(Bot):
             None.
         """
 
-        await super().on_error(event_method, *args, **kwargs)
-
         _, exception, _ = exc_info()
 
         if exception and isinstance(exception, Exception):
+            bot_logger.error(
+                f"Encountered exception in '{event_method}'",
+                exc_info=(type(exception), exception, exception.__traceback__),
+            )
+
             await self.report_exception(exception)
+        else:
+            await super().on_error(event_method, *args, **kwargs)
 
     def report_command_failure(self, ctx: Context) -> None:
         """
