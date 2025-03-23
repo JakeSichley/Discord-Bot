@@ -80,7 +80,7 @@ def validate_role_hierarchy(ctx: Union[GuildContext, GuildInteraction], role: di
         None.
     """
 
-    if isinstance(ctx, GuildContext) and (ctx.me.top_role >= role or ctx.author.top_role >= role):
+    if isinstance(ctx, commands.Context) and (ctx.me.top_role >= role or ctx.author.top_role >= role):
         raise InvalidRole(role)
     elif isinstance(ctx, discord.Interaction) and (ctx.guild.me.top_role >= role or ctx.user.top_role >= role):
         raise InvalidRole(role)
