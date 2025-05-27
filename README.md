@@ -4,7 +4,7 @@ A Python-based bot for Discord utilizing [Rapptz's Discord Wrapper](https://gith
 #### Versions
 **Python**: 3.9.2
 
-**discord.py**: 2.3.1
+**discord.py**: 2.5.2
 
 # Overview
 I created this bot as a way to learn how to use Python. Since then, Willump Bot (formerly DreamBot) has evolved from a 

@@ -40,7 +40,7 @@ from fuzzywuzzy import fuzz  # type: ignore
 
 from utils.logging_formatter import bot_logger
 
-VERSION = '2.18.3'
+VERSION = '2.18.4'
 
 ChoiceT = TypeVar('ChoiceT', str, int, float, Union[str, int, float])
 

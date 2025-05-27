@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.18.4
+### Internal
+- Bump discord.py to `2.5.2` (discord.Member.MemberFlags.guest)
+### Issues
+- Prevent `VoiceRoles::on_voice_state_update` from attempting to add voice roles to guests
+
 ## 2.18.3
 ### Internal
 - Enhance `Bot::on_error` logging to include traceback information where available

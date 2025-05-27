@@ -36,7 +36,7 @@ from utils.converters import check_for_forbidden_characters, ForbiddenCharacterS
 
 
 # noinspection PyAbstractClass
-class SentinelTransformer(app_commands.Transformer):
+class SentinelTransformer(app_commands.Transformer[DreamBot]):
     """
     Allows users to enter a sentinel value in addition to acceptable value range.
     """
@@ -298,7 +298,7 @@ class SentinelRange(SentinelTransformer):
         return 'Integer'
 
 
-class StringTransformer(app_commands.Transformer):
+class StringTransformer(app_commands.Transformer[DreamBot]):
     """
     Converts an argument to a string and applies the specified mutation.
 
