@@ -297,7 +297,8 @@ class VoiceRoles(commands.Cog):
             None.
         """
 
-        if not member.guild.me.guild_permissions.manage_roles:
+        # don't try to add roles to a guest
+        if not member.guild.me.guild_permissions.manage_roles or member.flags.guest:
             return
 
         # todo: guild / role unavailability checks
@@ -340,7 +341,8 @@ class VoiceRoles(commands.Cog):
                 bot_logger.error(
                     f'Voice Role - Role Edit Error. {e.status}. {e.text}. '
                     f'GuildId={member.guild.id}, Available={not member.guild.unavailable}, MemberId={member.id}, '
-                    f'BeforeChannelId={before.channel.id if before.channel else "None"}, Reason={reason}'
+                    f'BeforeChannelId={before.channel.id if before.channel else "None"}, Reason={reason}, '
+                    f'MemberFlags={member.flags.value}'
                 )
 
 
