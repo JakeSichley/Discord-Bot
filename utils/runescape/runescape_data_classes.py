@@ -90,7 +90,7 @@ class RunescapeItem:
     examine: str
     icon: str
     members: bool
-    value: int
+    value: Optional[int] = None
     limit: Optional[int] = None
     lowalch: Optional[int] = None
     highalch: Optional[int] = None
