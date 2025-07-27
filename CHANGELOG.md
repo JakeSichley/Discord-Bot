@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 ### Issues
 
+## 2.18.5
+### Internal
+- Refactor `Runescape::query_mapping_data` to handle mapping exceptions at the individual item level, rather than query level
+
 ## 2.18.4
 ### Internal
 - Bump discord.py to `2.5.2` (discord.Member.MemberFlags.guest)

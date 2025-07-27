@@ -75,7 +75,7 @@ class RunescapeItem:
         examine (str): The item's description.
         icon (str): The item's icon name on the Old School Wiki.
         members (bool): Whether the item is members-only.
-        value (int): The item's base value.
+        value (Optional[int]): The item's base value.
         limit (Optional[int]): The item's Grand Exchange limit, if any.
         lowalch (Optional[int]): The item's low alchemy value, if any.
         highalch (Optional[int]): The item's high alchemy value, if any.
@@ -90,7 +90,7 @@ class RunescapeItem:
     examine: str
     icon: str
     members: bool
-    value: int
+    value: Optional[int] = None
     limit: Optional[int] = None
     lowalch: Optional[int] = None
     highalch: Optional[int] = None

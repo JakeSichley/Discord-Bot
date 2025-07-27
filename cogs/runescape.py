@@ -796,19 +796,25 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                 return_type=NetworkReturnType.JSON
             )
 
-            for item in [RunescapeItem(**item) for item in mapping_response if 'id' in item]:
-                self.item_names_to_ids[item.name] = item.id
+            for raw_item in mapping_response:
+                try:
+                    resolved_item = RunescapeItem(**raw_item)
 
-                if item.id in self.item_data:
-                    self.item_data[item.id].update_with_mapping_fragment(item)
-                else:
-                    self.item_data[item.id] = item
+                    self.item_names_to_ids[resolved_item.name] = resolved_item.id
+
+                    if resolved_item.id in self.item_data:
+                        self.item_data[resolved_item.id].update_with_mapping_fragment(resolved_item)
+                    else:
+                        self.item_data[resolved_item.id] = resolved_item
+
+                except TypeError as e:
+                    bot_logger.warning(f'OSRS RunescapeItem Init Error: {e} - {raw_item=}')
+
+                except Exception as e:
+                    bot_logger.warning(f'OSRS RunescapeItem Init Exception: {type(e)} - {e} - {raw_item=}')
 
         except ClientError:
             pass
-
-        except TypeError as e:
-            bot_logger.warning(f'OSRS RunescapeItem Init Error: {e}')
 
         except (JSONDecodeError, UnicodeError) as e:
             bot_logger.warning(f'OSRS Mapping Query Error: {type(e)} - {e}')
