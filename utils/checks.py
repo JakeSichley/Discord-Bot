@@ -38,7 +38,7 @@ class InvocationCheckFailure(CheckFailure):
     A special exception that inherits from commands.CheckFailure.
     This check isn't run as a pre-condition, but rather is an exception raised during the execution of the command.
 
-    Intended to allow for reusable Cog-contextual checks that ensures some condition or aborts execution.
+    Intended to allow for reusable Cog-contextual checks that ensure some condition or aborts execution.
     """
 
     def __init__(self, message: str, *args: Tuple[Any]) -> None:
