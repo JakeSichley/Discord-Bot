@@ -867,33 +867,6 @@ class Admin(commands.Cog):
                     if buffer != '':
                         await try_to_send_buffer(channel, buffer, True)
 
-    @commands.Cog.listener()
-    async def on_message(self, message: discord.Message) -> None:
-        """
-        Adds all members of the forum to newly created threads.
-
-        Parameters:
-            message (discord.Message): The newly created message.
-
-        Returns:
-            None.
-        """
-
-        if not message.guild or message.guild.id != 1084581614878728305:
-            return
-
-        if not isinstance(message.channel, discord.Thread) or message.id != message.channel.id:
-            return
-
-        members_to_add = [
-            member for member in message.guild.members if
-            not member.bot and member.id not in [146517998205796352, message.author.id]
-        ]
-
-        await message.channel.send(
-            f'_Tagging Members for Notifications: {", ".join([member.mention for member in members_to_add])}_'
-        )
-
     async def cog_unload(self) -> None:
         """
         A method detailing custom extension unloading procedures.
