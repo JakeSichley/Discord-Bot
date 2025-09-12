@@ -223,7 +223,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     async def join_group(self, interaction: Interaction[DreamBot], group_name: Transform[str, GroupName]) -> None:
         """
         Joins an existing group.
-        Must not already be a member of the group and the group must not be at maximum capacity.
+        Must not yet be a member of the group, and the group must not be at maximum capacity.
 
         Parameters:
             interaction (Interaction): The invocation interaction.
@@ -403,6 +403,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         owner = interaction.guild.get_member(group.owner_id)
 
         if member.id == group.owner_id:
+            # noinspection SpellCheckingInspection
             raise InvocationCheckFailure("Ah, yes, the ol' self-transferoo. Bold move, Cotton.")
 
         self.privileged_action_check(interaction.user, group.owner_id)
