@@ -229,7 +229,7 @@ class DreamBot(Bot):
             ctx.command.qualified_name, {}
         ).pop(ctx.author.id, None)  # type: ignore[call-overload]
 
-    @tasks.loop(minutes=30)
+    @tasks.loop(minutes=5)
     async def refresh_presence(self) -> None:
         """
         A task to refresh the bot's presence if the existing presence is dropped.
