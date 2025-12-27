@@ -11,8 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 ### Features
+- Enhance `Runescape` autocomplete descriptions for user-provided values
 ### Internal
 ### Issues
+- Fix `RunescapeHerbComparison` using grimy values for min/max comparisons instead of grimy and clean
 
 ## 2.18.5
 ### Internal
