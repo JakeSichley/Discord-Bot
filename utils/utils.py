@@ -27,7 +27,7 @@ import functools
 import subprocess
 from datetime import datetime
 from re import search
-from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable, Optional, Literal
+from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable, Optional, Literal, TypeVar, Union
 
 import discord
 import pytz
@@ -36,6 +36,8 @@ from discord.utils import format_dt
 from utils.logging_formatter import bot_logger
 
 VERSION = '2.18.5'
+
+PluralT = TypeVar('PluralT', int, str, Union[int, str])
 
 
 async def cleanup(messages: List[discord.Message], channel: discord.abc.Messageable) -> None:
@@ -207,3 +209,29 @@ def format_unix_dt(timestamp: int, style: Optional[Literal['f', 'F', 'd', 'D', '
 
     dt = datetime.fromtimestamp(timestamp, tz=pytz.UTC)
     return format_dt(dt, style)
+
+
+def plural(value: PluralT, *, singularization: str = '', pluralization: str = 's', singular_value: int = 1) -> str:
+    """
+    Rudimentary pluralization helper.
+    Will attempt to coerce the value to an integer for comparison.
+
+    Parameters:
+        value (PluralT): The value to base pluralization on.
+        singularization (str): The singularization to use. Default: ''.
+        pluralization (str): The pluralization to use. Default: 's'.
+        singular_value (int): The value to use for evaluating whether to use the singular case. Default: 1.
+
+    Returns:
+        (str): The resulting pluralization value. Defaults to the singularization case if conversion fails.
+    """
+
+    if isinstance(value, int):
+        return singularization if value == singular_value else pluralization
+
+    try:
+        return singularization if int(value) == singular_value else pluralization
+    except (ValueError, TypeError) as e:
+        bot_logger.error(f'Pluralization (`PluralT`) failed to convert {value} ({type(value)}) to an integer. {e}')
+        return singularization
+
