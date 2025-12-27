@@ -55,7 +55,7 @@ from utils.runescape.runescape_data_classes import (
 )
 from utils.runescape.runescape_herbs import generate_herb_comparison
 from utils.transformers import RunescapeNumberTransformer, HumanDatetimeDuration, SentinelRange
-from utils.utils import format_unix_dt, generate_autocomplete_choices, plural
+from utils.utils import format_unix_dt, plural
 
 FIVE_MINUTES = 300
 ONE_YEAR = 31_556_926
