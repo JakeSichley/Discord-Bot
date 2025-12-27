@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+import struct
 from typing import List, Tuple, Any, Optional, Iterable, Type, TypeVar, Union
 
 import aiosqlite
@@ -233,6 +234,38 @@ async def typed_retrieve_one_query(
     except KeyError as e:
         bot_logger.error(f'Retrieve One Query ("{query}"). {e}.')
         raise aiosqlite.Error(f'Failed to fetch any rows')
+
+
+def encode_integer_array_to_blob(array: List[int]) -> bytes:
+    """
+    Helper method to encode an array of integers to bytes for storage as a blob.
+
+    Parameters:
+        array (List[int]): The array of integers.
+
+    Returns:
+        (bytes): The packed array.
+    """
+
+    pack_format = f'<{len(array)}I'
+    return struct.pack(pack_format, *array)
+
+
+def decode_blob_to_integer_array(blob: bytes) -> List[int]:
+    """
+    Helper method to decode bytes as an array of integers.
+
+    Parameters:
+        blob (bytes): The encoded array.
+
+    Returns:
+        (bytes): The decoded array of integers.
+    """
+
+    count = len(blob) // 4
+    unpack_format = f'<{count}I'
+
+    return list(struct.unpack(unpack_format, blob))
 
 
 class Sqlite3Typing:

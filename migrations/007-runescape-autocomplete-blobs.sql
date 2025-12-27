@@ -1,0 +1,17 @@
+-- Revises: 006
+-- Creation Date: 2025-12-10 09:11:31 UTC
+-- Reason: Add Runescape Item Name Autocomplete Blobs
+
+CREATE TABLE IF NOT EXISTS "RUNESCAPE_ITEM_NAME_AUTOCOMPLETE" (
+    "SEARCH_TERM"   TEXT NOT NULL,
+    "ITEM_IDS"      BLOB NOT NULL,
+    PRIMARY KEY("SEARCH_TERM")
+);
+
+CREATE TABLE IF NOT EXISTS "PERSISTENT_CACHE" (
+    "CACHE_KEY"         TEXT NOT NULL,
+    "VALUE"             BLOB,
+    PRIMARY KEY("CACHE_KEY")
+);
+
+PRAGMA user_version = 7;
