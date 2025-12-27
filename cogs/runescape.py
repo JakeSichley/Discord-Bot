@@ -632,7 +632,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         ]
 
         if current:
-            choices.insert(0, Choice(name=f"New Value: {current} alert{plural(current)}", value=current))
+            choices.insert(0, Choice(name=f'New Value: {current} alert{plural(current)}', value=current))
 
         return choices
 
