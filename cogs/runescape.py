@@ -50,7 +50,7 @@ from utils.runescape.runescape_data_classes import (
 )
 from utils.runescape.runescape_herbs import generate_herb_comparison
 from utils.transformers import RunescapeNumberTransformer, HumanDatetimeDuration, SentinelRange
-from utils.utils import format_unix_dt, generate_autocomplete_choices
+from utils.utils import format_unix_dt, generate_autocomplete_choices, plural
 
 FIVE_MINUTES = 300
 ONE_YEAR = 31_556_926
@@ -552,7 +552,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(Choice(name=f'Current Market Low: {item.low:,} coins', value=str(item.low)))
 
         if current:
-            choices.insert(0, Choice(name=f'New Value: {current}', value=current))
+            choices.insert(0, Choice(name=f'New Value: {format_unverified_coin_amount(current)}', value=current))
 
         return choices
 
@@ -582,7 +582,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(Choice(name=f'Current Market High: {item.high:,} coins', value=str(item.high)))
 
         if current:
-            choices.insert(0, Choice(name=f'New Value: {current}', value=current))
+            choices.insert(0, Choice(name=f'New Value: {format_unverified_coin_amount(current)}', value=current))
 
         return choices
 
@@ -632,7 +632,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         ]
 
         if current:
-            choices.insert(0, Choice(name=f'New Value: {current}', value=current))
+            choices.insert(0, Choice(name=f"New Value: {current} alert{plural(current)}", value=current))
 
         return choices
 
@@ -666,7 +666,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(Choice(name=f'Remove Existing Value: {alert.target_low:,} coins', value='-1'))
 
         if current:
-            choices.insert(0, Choice(name=f'New Value: {current}', value=current))
+            choices.insert(0, Choice(name=f'New Value: {format_unverified_coin_amount(current)}', value=current))
 
         return choices
 
@@ -702,7 +702,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(Choice(name=f'Remove Existing Value: {alert.target_high:,} coins', value='-1'))
 
         if current:
-            choices.insert(0, Choice(name=f'New Value: {current}', value=current))
+            choices.insert(0, Choice(name=f'New Value: {format_unverified_coin_amount(current)}', value=current))
 
         return choices
 
@@ -768,7 +768,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             choices.append(Choice(name=f'Remove Existing Value: {alert.maximum_alerts:,} alerts', value='-1'))
 
         if current:
-            choices.insert(0, Choice(name=f'New Value: {current}', value=current))
+            choices.insert(0, Choice(name=f'New Value: {current} alert{plural(current)}', value=current))
 
         return choices
 
@@ -1086,6 +1086,24 @@ def percentage_change(start: int, final: int) -> str:
 
     change = (final - start) / start
     return '{0:,.2f}%'.format(change * 100)
+
+
+def format_unverified_coin_amount(value: str) -> str:
+    """
+    Attempts to pretty format an unverified coin amount for autocomplete descriptions.
+
+    Parameters:
+        value (str): The user's current autocomplete value.
+
+    Returns:
+        (str): The formatted value.
+    """
+
+    try:
+        int_value = int(value)
+        return f'{int_value:,} coin{plural(int_value)}'
+    except (ValueError, TypeError):
+        return f'{value} coins'
 
 
 async def setup(bot: DreamBot) -> None:
