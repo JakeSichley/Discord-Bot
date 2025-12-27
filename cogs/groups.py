@@ -36,13 +36,14 @@ from discord.ext import commands
 from discord.utils import utcnow
 
 from dreambot import DreamBot
+from utils.autocomplete import generate_autocomplete_choices
 from utils.checks import InvocationCheckFailure
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import Group, GroupMember
 from utils.intermediate_models.composite_group import CompositeGroup
 from utils.logging_formatter import bot_logger
 from utils.transformers import StringTransformer
-from utils.utils import format_unix_dt, generate_autocomplete_choices
+from utils.utils import format_unix_dt
 
 # TODO: Groups v3 -> edit group (max_members); needs components for confirmation when new max_members < current_members
 
