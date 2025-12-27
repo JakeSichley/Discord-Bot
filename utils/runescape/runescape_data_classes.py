@@ -188,7 +188,7 @@ class RunescapeHerbComparison:
             (float).
         """
 
-        return min(self.grimy_profit, self.grimy_profit)
+        return min(self.clean_profit, self.grimy_profit)
 
     @property
     def max(self) -> int:
@@ -202,7 +202,7 @@ class RunescapeHerbComparison:
             (float).
         """
 
-        return max(self.grimy_profit, self.grimy_profit)
+        return max(self.clean_profit, self.grimy_profit)
 
     def __lt__(self, other: 'RunescapeHerbComparison') -> bool:
         """
