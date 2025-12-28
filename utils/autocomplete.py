@@ -187,13 +187,13 @@ class AutocompleteModel(Generic[ChoiceT]):
         name (str): The name of the choice.
         value (ChoiceT): The value of the choice.
         current (str): The current input.
-        ratio (int): The similarity ratio between this model's name and the current input.
+        fitness (AutocompleteFitness): The similarity ratio between this model's name and the current input.
     """
 
     current: str
     name: str
     value: ChoiceT
-    ratio: AutocompleteFitness = field(init=False)
+    fitness: AutocompleteFitness = field(init=False)
 
     def __post_init__(self) -> None:
         """
@@ -206,9 +206,7 @@ class AutocompleteModel(Generic[ChoiceT]):
             None.
         """
 
-        self.name = self.name.casefold()
-        self.current = self.current.casefold()
-        self.ratio = self.__generate_autocomplete_fitness()
+        self.fitness = self.__generate_autocomplete_fitness()
 
     def __generate_autocomplete_fitness(self) -> AutocompleteFitness:
         """
@@ -221,16 +219,19 @@ class AutocompleteModel(Generic[ChoiceT]):
             (AutocompleteFitness).
         """
 
-        length_difference = len(self.current) - len(self.name)
+        casefolded_name = self.name.casefold()
+        casefolded_current = self.current.casefold()
+
+        length_difference = len(casefolded_current) - len(casefolded_name)
         length_ratio = 1 / abs(length_difference) if length_difference != 0 else 1
 
-        if fuzz.token_set_ratio(self.name, self.current) >= 100.0:
+        if fuzz.token_set_ratio(casefolded_name, casefolded_current) >= 100.0:
             return AutocompleteFitness(200.0, length_ratio)
 
-        if fuzz.partial_token_set_ratio(self.name, self.current) >= 100.0:
+        if fuzz.partial_token_sort_ratio(casefolded_name, casefolded_current) >= 100.0:
             return AutocompleteFitness(100.0, length_ratio)
 
-        return AutocompleteFitness(fuzz.QRatio(self.name, self.current), length_ratio)
+        return AutocompleteFitness(fuzz.QRatio(casefolded_name, casefolded_current), length_ratio)
 
     def to_choice(self) -> Choice[ChoiceT]:
         """
@@ -256,7 +257,7 @@ class AutocompleteModel(Generic[ChoiceT]):
             (bool): self < other.
         """
 
-        return self.ratio < other.ratio
+        return self.fitness < other.fitness
 
     def __le__(self, other: 'AutocompleteModel[ChoiceT]') -> bool:
         """
@@ -269,7 +270,7 @@ class AutocompleteModel(Generic[ChoiceT]):
             (bool): self <= other.
         """
 
-        return self.ratio <= other.ratio
+        return self.fitness <= other.fitness
 
 
 def generate_autocomplete_choices(
@@ -299,7 +300,7 @@ def generate_autocomplete_choices(
     minimum_threshold = max(0.0, min(200.0, minimum_threshold))  # clamp to [0.0, 200.0]
 
     autocomplete_models = [AutocompleteModel(current, *x) for x in items]
-    valid_models = [x for x in autocomplete_models if x.ratio >= minimum_threshold]
+    valid_models = [x for x in autocomplete_models if x.fitness.fuzz_ratio >= minimum_threshold]
     ratios = sorted(valid_models, reverse=True)
 
     return [x.to_choice() for x in ratios[:limit]]
