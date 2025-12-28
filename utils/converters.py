@@ -277,8 +277,9 @@ class StringConverter(commands.Converter[str]):
         TagName = StringConverter(
             mutator=lambda x: x.strip().lower(),
             constraint=lambda x: x is not None and 2 <= len(x) <= 100 and x not in ReservedTags,
-            description: Must be between 2 and 100 characters. Cannot be {Reserved Tag}. Cannot be {ForbiddenCharacters}
+            allow_forbidden_characters=False
         )
+        Description: Must be between 2 and 100 characters. Cannot be {Reserved Tag}. Cannot be {ForbiddenCharacters}.
     """
 
     def __init__(

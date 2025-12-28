@@ -43,7 +43,7 @@ from humanfriendly import format_timespan
 from dreambot import DreamBot
 from utils.autocomplete import generate_autocomplete_choices
 from utils.database.helpers import (
-    execute_query, typed_retrieve_query, typed_retrieve_one_query,
+    execute_query, typed_retrieve_query, typed_retrieve_one_query, typed_optional_retrieve_one_query,
     decode_blob_to_integer_array, encode_integer_array_to_blob
 )
 from utils.database.table_dataclasses import RunescapeAlert
@@ -119,12 +119,13 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             None.
         """
 
-        self.item_ids_hash = await typed_retrieve_one_query(
-            self.bot.database,
-            str,
-            'SELECT * FROM PERSISTENT_CACHE WHERE CACHE_KEY=?',
-            ('RUNESCAPE_ITEM_IDS_HASH',)
-        )
+        with suppress(aiosqliteError):
+            self.item_ids_hash = await typed_optional_retrieve_one_query(
+                self.bot.database,
+                str,
+                'SELECT CACHE_VALUE FROM PERSISTENT_CACHE WHERE CACHE_KEY=?',
+                ('RUNESCAPE_ITEM_IDS_HASH',)
+            )
 
         alerts = await typed_retrieve_query(
             self.bot.database,
@@ -561,12 +562,15 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         """
 
         try:
-            blob = await typed_retrieve_one_query(
+            blob = await typed_optional_retrieve_one_query(
                 self.bot.database,
                 bytes,
                 'SELECT ITEM_IDS FROM RUNESCAPE_ITEM_NAME_AUTOCOMPLETE WHERE SEARCH_TERM=?',
                 (term.lower(),),
             )
+
+            if blob is None:
+                return None
 
             if decoded_keys := decode_blob_to_integer_array(blob):
                 return [Choice(name=self.item_data[key].name, value=key) for key in decoded_keys]
@@ -594,7 +598,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         try:
             await execute_query(
                 self.bot.database,
-                'INSERT INTO RUNESCAPE_ITEM_NAME_AUTOCOMPLETE VALUES (?, ?)',
+                'INSERT OR IGNORE INTO RUNESCAPE_ITEM_NAME_AUTOCOMPLETE (SEARCH_TERM, ITEM_IDS) VALUES (?, ?)',
                 (term.lower(), encode_integer_array_to_blob(item_ids)),
             )
         except aiosqliteError as e:
@@ -628,7 +632,8 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         try:
             await execute_query(
                 self.bot.database,
-                'INSERT INTO PERSISTENT_CACHE VALUES (?, ?)',
+                'INSERT INTO PERSISTENT_CACHE (CACHE_KEY, CACHE_VALUE) VALUES (?, ?) '
+                'ON CONFLICT(CACHE_KEY) DO UPDATE SET CACHE_VALUE=EXCLUDED.CACHE_VALUE',
                 ('RUNESCAPE_ITEM_IDS_HASH', new_item_ids_hash)
             )
         except aiosqliteError as e:
@@ -645,6 +650,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                     self.bot.database,
                     'DELETE FROM RUNESCAPE_ITEM_NAME_AUTOCOMPLETE'
                 )
+                bot_logger.info('OSRS Item Name Autocomplete Cache Invalidated')
             except aiosqliteError as e:
                 bot_logger.error(f'OSRS Item Name Autocomplete Invalidation Error: {type(e)} - {e}')
 
