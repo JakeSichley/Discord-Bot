@@ -47,9 +47,9 @@ from utils.database.helpers import (
     decode_blob_to_integer_array, encode_integer_array_to_blob
 )
 from utils.database.table_dataclasses import RunescapeAlert
-from utils.enums.network_return_type import NetworkReturnType
+from utils.network.return_type import NetworkReturnType
 from utils.logging_formatter import bot_logger
-from utils.network_utils import network_request, ExponentialBackoff
+from utils.network.utils import network_request, ExponentialBackoff
 from utils.runescape.runescape_data_classes import (
     RunescapeItem, ItemMarketData, AlertEmbedFragment, RunescapeHerbComparison
 )

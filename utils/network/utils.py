@@ -27,7 +27,7 @@ from typing import Any, TypedDict, Optional
 
 import aiohttp
 
-from utils.enums.network_return_type import NetworkReturnType
+from utils.network.return_type import NetworkReturnType
 from utils.logging_formatter import bot_logger
 
 Headers = TypedDict(

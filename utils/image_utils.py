@@ -35,8 +35,8 @@ from aiohttp import ClientSession
 from discord.ext.commands import MissingRequiredArgument, BadArgument
 from discord.ext.commands import Parameter
 
-from utils.enums.network_return_type import NetworkReturnType
-from utils.network_utils import network_request
+from utils.network.return_type import NetworkReturnType
+from utils.network.utils import network_request
 from utils.utils import run_in_executor
 
 
