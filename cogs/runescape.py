@@ -536,12 +536,16 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             return [Choice(name=item.name, value=item_id) for item_id, item in list(self.item_data.items())[:25]]
 
         # check database for existing autocomplete results
-        if precomputed_choices := await self.fetch_precomputed_item_autocomplete_ids(current):
+        precomputed_choices = await self.fetch_precomputed_item_autocomplete_ids(current)
+
+        # explicit None check vs. implicit empty list check
+        if precomputed_choices is not None:
             return precomputed_choices
 
         choices = generate_autocomplete_choices(
             current,
-            [(self.item_data[key].name, key) for key in self.item_data.keys()]
+            [(self.item_data[key].name, key) for key in self.item_data.keys()],
+            minimum_threshold=60.0
         )
 
         self.bot.loop.create_task(
@@ -569,11 +573,8 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                 (term.lower(),),
             )
 
-            if blob is None:
-                return None
-
-            if decoded_keys := decode_blob_to_integer_array(blob):
-                return [Choice(name=self.item_data[key].name, value=key) for key in decoded_keys]
+            if blob is not None:
+                return [Choice(name=self.item_data[key].name, value=key) for key in decode_blob_to_integer_array(blob)]
 
         except aiosqliteError as e:
             bot_logger.warning(f'OSRS Precomputed Fetch Error: {type(e)} - {e}')
@@ -591,9 +592,6 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         Returns:
             None.
         """
-
-        if not item_ids:
-            return
 
         try:
             await execute_query(
@@ -1247,8 +1245,8 @@ def hash_runescape_item_ids(item_keys: KeysView[int]) -> str:
     """
 
     sorted_keys = sorted(item_keys)
-    keys_string = ",".join(map(str, sorted_keys))
-    return sha256(keys_string.encode('utf-8')).hexdigest()
+    keys_string = ','.join(map(str, sorted_keys))
+    return sha256(keys_string.encode()).hexdigest()
 
 
 async def setup(bot: DreamBot) -> None:

@@ -234,4 +234,3 @@ def plural(value: PluralT, *, singularization: str = '', pluralization: str = 's
     except (ValueError, TypeError) as e:
         bot_logger.error(f'Pluralization (`PluralT`) failed to convert {value} ({type(value)}) to an integer. {e}')
         return singularization
-
