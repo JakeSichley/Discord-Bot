@@ -544,7 +544,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         choices = generate_autocomplete_choices(
             current,
-            [(self.item_data[key].name, key) for key in self.item_data.keys()],
+            [(item.name, item_id) for item_id, item in self.item_data.items()],
             minimum_threshold=60.0
         )
 

@@ -192,12 +192,14 @@ class AutocompleteModel(Generic[ChoiceT]):
         name (str): The name of the choice.
         value (ChoiceT): The value of the choice.
         current (str): The current input.
+        score_cutoff (float): The score cutoff to use. Default: 0.0.
         fitness (AutocompleteFitness): The similarity ratio between this model's name and the current input.
     """
 
     current: str
     name: str
     value: ChoiceT
+    score_cutoff: float = 0.0
     fitness: AutocompleteFitness = field(init=False)
 
     def __post_init__(self) -> None:
@@ -230,13 +232,16 @@ class AutocompleteModel(Generic[ChoiceT]):
         length_difference = len(casefolded_current) - len(casefolded_name)
         length_ratio = 1 / abs(length_difference) if length_difference != 0 else 1
 
-        if fuzz.token_set_ratio(casefolded_name, casefolded_current) >= 100.0:
+        if fuzz.token_set_ratio(casefolded_name, casefolded_current, score_cutoff=self.score_cutoff) >= 100.0:
             return AutocompleteFitness(200.0, length_ratio)
 
-        if fuzz.partial_token_sort_ratio(casefolded_name, casefolded_current) >= 100.0:
+        if fuzz.partial_token_sort_ratio(casefolded_name, casefolded_current, score_cutoff=self.score_cutoff) >= 100.0:
             return AutocompleteFitness(100.0, length_ratio)
 
-        return AutocompleteFitness(fuzz.QRatio(casefolded_name, casefolded_current), length_ratio)
+        return AutocompleteFitness(
+            fuzz.QRatio(casefolded_name, casefolded_current, score_cutoff=self.score_cutoff),
+            length_ratio
+        )
 
     def to_choice(self) -> Choice[ChoiceT]:
         """
@@ -283,14 +288,14 @@ def generate_autocomplete_choices(
         items: Iterable[Tuple[str, ChoiceT]],
         *,
         limit: int = 25,
-        minimum_threshold: float = 0
+        minimum_threshold: float = 0.0
 ) -> List[Choice[ChoiceT]]:
     """
     Generator that yields pairs of items in a sequence
 
     Parameters:
         current (str): The current autocomplete input.
-        items (Iterable[T]): An iterable of objects to convert to AutocompleteModels.
+        items (Iterable[Tuple[str, ChoiceT]]): An iterable of objects to convert to AutocompleteModels.
         limit (int): The maximum number of Choices to return.
         minimum_threshold (float): The minimum ratio for a Choice to be valid.
             200.0: Full token-set match.
@@ -304,8 +309,7 @@ def generate_autocomplete_choices(
     limit = max(1, min(25, limit))  # clamp to [1, 25]
     minimum_threshold = max(0.0, min(200.0, minimum_threshold))  # clamp to [0.0, 200.0]
 
-    autocomplete_models = [AutocompleteModel(current, *x) for x in items]
-    valid_models = [x for x in autocomplete_models if x.fitness.fuzz_ratio >= minimum_threshold]
-    ratios = sorted(valid_models, reverse=True)
+    autocomplete_models = [AutocompleteModel(current, name, value, minimum_threshold) for name, value in items]
+    sorted_models = sorted(autocomplete_models, reverse=True)
 
-    return [x.to_choice() for x in ratios[:limit]]
+    return [x.to_choice() for x in sorted_models[:limit]]
