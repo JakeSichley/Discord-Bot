@@ -25,24 +25,18 @@ SOFTWARE.
 import asyncio
 import functools
 import subprocess
-from dataclasses import dataclass, field
 from datetime import datetime
 from re import search
-from typing import (
-    List, Sequence, Any, Iterator, Tuple, Callable, Awaitable, Optional, Literal, TypeVar, Union, Generic, Iterable
-)
+from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable, Optional, Literal, TypeVar, Union
 
 import discord
 import pytz
-from discord.app_commands import Choice
 from discord.utils import format_dt
-from fuzzywuzzy import fuzz  # type: ignore
 
 from utils.logging_formatter import bot_logger
 
 VERSION = '2.18.5'
 
-ChoiceT = TypeVar('ChoiceT', str, int, float, Union[str, int, float])
 PluralT = TypeVar('PluralT', int, str, Union[int, str])
 
 
@@ -217,112 +211,6 @@ def format_unix_dt(timestamp: int, style: Optional[Literal['f', 'F', 'd', 'D', '
     return format_dt(dt, style)
 
 
-@dataclass
-class AutocompleteModel(Generic[ChoiceT]):
-    """
-    A Dataclass that encapsulates `app_commands.Choice` and a fuzzy search ratio.
-
-    Attributes:
-        name (str): The name of the choice.
-        value (ChoiceT): The value of the choice.
-        current (str): The current input.
-        ratio (int): The similarity ratio between this model's name and the current input.
-    """
-
-    current: str
-    name: str
-    value: ChoiceT
-    ratio: int = field(init=False)
-
-    def __post_init__(self) -> None:
-        """
-        Calculates the similarity ratio after initialization.
-
-        Parameters:
-            None.
-
-        Returns:
-            None.
-        """
-
-        name = self.name.casefold()
-        current = self.current.casefold()
-
-        partial_ratio = fuzz.partial_ratio(name, current)
-        set_ratio = fuzz.token_set_ratio(name, current)
-
-        self.ratio = partial_ratio + set_ratio
-
-    def to_choice(self) -> Choice[ChoiceT]:
-        """
-        Returns this model as an `app_commands.Choice` model.
-
-        Parameters:
-            None.
-
-        Returns:
-            (Choice): The `app_commands.Choice` model.
-        """
-
-        return Choice(name=self.name, value=self.value)
-
-    def __lt__(self, other: 'AutocompleteModel[ChoiceT]') -> bool:
-        """
-        Returns whether this model is less-than (<) another model.
-
-        Parameters:
-            other (AutocompleteModel): The other model.
-
-        Returns:
-            (bool): self < other.
-        """
-
-        return self.ratio < other.ratio
-
-    def __le__(self, other: 'AutocompleteModel[ChoiceT]') -> bool:
-        """
-        Returns whether this model is less-than-or-equal-to (<=) another model.
-
-        Parameters:
-            other (AutocompleteModel): The other model.
-
-        Returns:
-            (bool): self <= other.
-        """
-
-        return self.ratio <= other.ratio
-
-
-def generate_autocomplete_choices(
-        current: str,
-        items: Iterable[Tuple[str, ChoiceT]],
-        *,
-        limit: int = 25,
-        minimum_threshold: int = 0
-) -> List[Choice[ChoiceT]]:
-    """
-    Generator that yields pairs of items in a sequence
-
-    Parameters:
-        current (str): The current autocomplete input.
-        items (Iterable[T]): An iterable of objects to convert to AutocompleteModels.
-        limit (int): The maximum number of Choices to return.
-        minimum_threshold (int): The minimum ratio for a Choice to be valid.
-
-    Returns:
-        (List[Choice]): A list of converted and sorted Choices.
-    """
-
-    limit = max(1, min(25, limit))  # clamp to [1, 25]
-    minimum_threshold = max(0, min(200, minimum_threshold))  # clamp to [0, 200]
-
-    autocomplete_models = [AutocompleteModel(current, *x) for x in items]
-    valid_models = [x for x in autocomplete_models if x.ratio >= minimum_threshold]
-    ratios = sorted(valid_models, reverse=True)
-
-    return [x.to_choice() for x in ratios[:limit]]
-
-
 def plural(value: PluralT, *, singularization: str = '', pluralization: str = 's', singular_value: int = 1) -> str:
     """
     Rudimentary pluralization helper.
@@ -346,4 +234,3 @@ def plural(value: PluralT, *, singularization: str = '', pluralization: str = 's
     except (ValueError, TypeError) as e:
         bot_logger.error(f'Pluralization (`PluralT`) failed to convert {value} ({type(value)}) to an integer. {e}')
         return singularization
-

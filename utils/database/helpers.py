@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+import struct
 from typing import List, Tuple, Any, Optional, Iterable, Type, TypeVar, Union
 
 import aiosqlite
@@ -207,6 +208,7 @@ async def typed_retrieve_query(
     return transformed_entries
 
 
+# TODO: this can probably be deprecated in the future.. throw on miss was an interesting choice
 async def typed_retrieve_one_query(
         database: str, data_type: Type[T], query: str, values: Optional[Tuple[Any, ...]] = None,
 ) -> T:
@@ -230,9 +232,69 @@ async def typed_retrieve_one_query(
 
     try:
         return rows[0]
-    except KeyError as e:
+    except IndexError as e:
         bot_logger.error(f'Retrieve One Query ("{query}"). {e}.')
         raise aiosqlite.Error(f'Failed to fetch any rows')
+
+
+async def typed_optional_retrieve_one_query(
+        database: str, data_type: Type[T], query: str, values: Optional[Tuple[Any, ...]] = None,
+) -> Optional[T]:
+    """
+    A typed SQLite 'SELECT' query. Attempts to retrieve and coerce a single row to the specified data type.
+    If a result cannot be found, None is returned instead.
+
+    Parameters:
+        database (str): The name of the bot's database.
+        data_type (Type[T]): The data type to coerce returned rows to.
+        query (str): The statement to execute.
+        values (Tuple[Any, ...]): The values to insert into the query.
+
+    Raises:
+        (propagates) aiosqlite.Error.
+
+    Returns:
+        (Optional[T]): A single transformed sqlite3 row object.
+    """
+
+    rows = await typed_retrieve_query(database, data_type, query, values)
+
+    try:
+        return rows[0]
+    except IndexError:
+        return None
+
+
+def encode_integer_array_to_blob(array: List[int]) -> bytes:
+    """
+    Helper method to encode an array of integers to bytes for storage as a blob.
+
+    Parameters:
+        array (List[int]): The array of integers.
+
+    Returns:
+        (bytes): The packed array.
+    """
+
+    pack_format = f'<{len(array)}I'
+    return struct.pack(pack_format, *array)
+
+
+def decode_blob_to_integer_array(blob: bytes) -> List[int]:
+    """
+    Helper method to decode bytes as an array of integers.
+
+    Parameters:
+        blob (bytes): The encoded array.
+
+    Returns:
+        (bytes): The decoded array of integers.
+    """
+
+    count = len(blob) // 4
+    unpack_format = f'<{count}I'
+
+    return list(struct.unpack(unpack_format, blob))
 
 
 class Sqlite3Typing:

@@ -4,7 +4,6 @@ aiosqlite==0.17.0
 async_timeout==3.0.1
 beautifulsoup4==4.10.0
 discord.py[speed,voice]==2.5.2
-fuzzywuzzy==0.18.0
 google-cloud-error-reporting==1.4.0
 grpcio==1.40.0
 html5lib==1.1
@@ -16,8 +15,8 @@ Pillow==10.1.0
 protobuf==3.19.5
 PyNaCl==1.4.0
 python-dotenv==0.19.2
-python-Levenshtein==0.20.9
 pytz==2020.1
+RapidFuzz==3.13.0
 git+https://github.com/Rapptz/discord-ext-menus@master # menus
 # pip install -r requirements.txt --use-deprecated=legacy-resolver
 # -- grpcio --

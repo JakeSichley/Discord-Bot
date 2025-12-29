@@ -25,9 +25,10 @@ SOFTWARE.
 from asyncio import Event, TimeoutError
 from collections import defaultdict
 from contextlib import suppress
+from hashlib import sha256
 from itertools import chain
 from json.decoder import JSONDecodeError
-from typing import List, Optional, Dict, Literal
+from typing import List, Optional, Dict, Literal, KeysView
 
 import aiosqlite
 import discord
@@ -40,7 +41,11 @@ from discord.utils import utcnow
 from humanfriendly import format_timespan
 
 from dreambot import DreamBot
-from utils.database.helpers import execute_query, typed_retrieve_query, typed_retrieve_one_query
+from utils.autocomplete import generate_autocomplete_choices
+from utils.database.helpers import (
+    execute_query, typed_retrieve_query, typed_retrieve_one_query, typed_optional_retrieve_one_query,
+    decode_blob_to_integer_array, encode_integer_array_to_blob
+)
 from utils.database.table_dataclasses import RunescapeAlert
 from utils.enums.network_return_type import NetworkReturnType
 from utils.logging_formatter import bot_logger
@@ -50,7 +55,7 @@ from utils.runescape.runescape_data_classes import (
 )
 from utils.runescape.runescape_herbs import generate_herb_comparison
 from utils.transformers import RunescapeNumberTransformer, HumanDatetimeDuration, SentinelRange
-from utils.utils import format_unix_dt, generate_autocomplete_choices, plural
+from utils.utils import format_unix_dt, plural
 
 FIVE_MINUTES = 300
 ONE_YEAR = 31_556_926
@@ -95,6 +100,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         self.bot = bot
         self.item_data: Dict[int, RunescapeItem] = {}  # [item_id: RunescapeItem]
+        self.item_ids_hash: Optional[str] = None
         self.item_names_to_ids: Dict[str, int] = {}  # [item_name: item_id]
         self.alerts: Dict[int, Dict[int, RunescapeAlert]] = defaultdict(dict)  # [user_id: [item_id: RunescapeAlert]]
         self.backoff = ExponentialBackoff(3600 * 4)
@@ -112,6 +118,14 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         Returns:
             None.
         """
+
+        with suppress(aiosqliteError):
+            self.item_ids_hash = await typed_optional_retrieve_one_query(
+                self.bot.database,
+                str,
+                'SELECT CACHE_VALUE FROM PERSISTENT_CACHE WHERE CACHE_KEY=?',
+                ('RUNESCAPE_ITEM_IDS_HASH',)
+            )
 
         alerts = await typed_retrieve_query(
             self.bot.database,
@@ -521,10 +535,122 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         if not current:
             return [Choice(name=item.name, value=item_id) for item_id, item in list(self.item_data.items())[:25]]
 
-        return generate_autocomplete_choices(
+        # check database for existing autocomplete results
+        precomputed_choices = await self.fetch_precomputed_item_autocomplete_ids(current)
+
+        # explicit None check vs. implicit empty list check
+        if precomputed_choices is not None:
+            return precomputed_choices
+
+        choices = generate_autocomplete_choices(
             current,
-            [(self.item_data[key].name, key) for key in self.item_data.keys()]
+            [(item.name, item_id) for item_id, item in self.item_data.items()],
+            minimum_threshold=60.0
         )
+
+        self.bot.loop.create_task(
+            self.record_precomputed_item_autocomplete_ids(current, [x.value for x in choices])
+        )
+
+        return choices
+
+    async def fetch_precomputed_item_autocomplete_ids(self, term: str) -> Optional[List[Choice[int]]]:
+        """
+        Fetches precomputed autocomplete item ids for a search term, if available.
+
+        Parameters:
+            term (str): The current autocomplete term.
+
+        Returns:
+            Optional[List[Choice[int]]]: A list of item ids, if available.
+        """
+
+        try:
+            blob = await typed_optional_retrieve_one_query(
+                self.bot.database,
+                bytes,
+                'SELECT ITEM_IDS FROM RUNESCAPE_ITEM_NAME_AUTOCOMPLETE WHERE SEARCH_TERM=?',
+                (term.lower(),),
+            )
+
+            if blob is not None:
+                return [Choice(name=self.item_data[key].name, value=key) for key in decode_blob_to_integer_array(blob)]
+
+        except aiosqliteError as e:
+            bot_logger.warning(f'OSRS Precomputed Fetch Error: {type(e)} - {e}')
+
+        return None
+
+    async def record_precomputed_item_autocomplete_ids(self, term: str, item_ids: List[int]) -> None:
+        """
+        Records precomputed autocomplete item ids for a search term.
+
+        Parameters:
+            term (str): The current autocomplete term.
+            item_ids (List[int]): The corresponding item ids for the autocomplete term.
+
+        Returns:
+            None.
+        """
+
+        try:
+            await execute_query(
+                self.bot.database,
+                'INSERT OR IGNORE INTO RUNESCAPE_ITEM_NAME_AUTOCOMPLETE (SEARCH_TERM, ITEM_IDS) VALUES (?, ?)',
+                (term.lower(), encode_integer_array_to_blob(item_ids)),
+            )
+        except aiosqliteError as e:
+            bot_logger.warning(f'OSRS Precomputed Write Error: {type(e)} - {e}')
+
+    async def validate_runescape_autocomplete_cache(self) -> None:
+        """
+        Invalidates the item autocomplete term cache whenever new items are added or old items are removed from the
+        mapping data.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
+        if not self.item_data:
+            return
+
+        current_item_ids_hash = self.item_ids_hash
+        new_item_ids_hash = hash_runescape_item_ids(self.item_data.keys())
+
+        # hash is set and items haven't changed
+        if self.item_ids_hash is not None and self.item_ids_hash == new_item_ids_hash:
+            return
+
+        # otherwise, always set + record new hash
+        self.item_ids_hash = new_item_ids_hash
+
+        try:
+            await execute_query(
+                self.bot.database,
+                'INSERT INTO PERSISTENT_CACHE (CACHE_KEY, CACHE_VALUE) VALUES (?, ?) '
+                'ON CONFLICT(CACHE_KEY) DO UPDATE SET CACHE_VALUE=EXCLUDED.CACHE_VALUE',
+                ('RUNESCAPE_ITEM_IDS_HASH', new_item_ids_hash)
+            )
+        except aiosqliteError as e:
+            bot_logger.error(f'OSRS Persistent Cache (`RUNESCAPE_ITEM_IDS_HASH`) Write Error: {type(e)} - {e}')
+            return
+
+        # if item_id_hash is set and different, also invalidate cache
+        # if current item_ids_hash was None, don't invalidate cache
+        if current_item_ids_hash is not None and current_item_ids_hash != new_item_ids_hash:
+            self.item_ids_hash = new_item_ids_hash
+
+            try:
+                await execute_query(
+                    self.bot.database,
+                    'DELETE FROM RUNESCAPE_ITEM_NAME_AUTOCOMPLETE'
+                )
+                bot_logger.info('OSRS Item Name Autocomplete Cache Invalidated')
+            except aiosqliteError as e:
+                bot_logger.error(f'OSRS Item Name Autocomplete Invalidation Error: {type(e)} - {e}')
 
     @add_alert.autocomplete('low_price')
     async def add_item_market_low_price_autocomplete(
@@ -825,6 +951,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         else:
             self.initial_mapping_data_event.set()
+            await self.validate_runescape_autocomplete_cache()
 
     @tasks.loop(seconds=MARKET_QUERY_INTERVAL)
     async def query_market_data(self) -> None:
@@ -1104,6 +1231,22 @@ def format_unverified_coin_amount(value: str) -> str:
         return f'{int_value:,} coin{plural(int_value)}'
     except (ValueError, TypeError):
         return f'{value} coins'
+
+
+def hash_runescape_item_ids(item_keys: KeysView[int]) -> str:
+    """
+    Creates a reproducible hash for item id keys.
+
+    Parameters:
+        item_keys (KeysView[int]): The item id keys.
+
+    Returns:
+        (str): The hash of the item ids.
+    """
+
+    sorted_keys = sorted(item_keys)
+    keys_string = ','.join(map(str, sorted_keys))
+    return sha256(keys_string.encode()).hexdigest()
 
 
 async def setup(bot: DreamBot) -> None:
