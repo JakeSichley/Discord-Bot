@@ -33,11 +33,16 @@ ChoiceT = TypeVar('ChoiceT', str, int, float, Union[str, int, float])
 
 class AutocompleteFitness:
     """
-    A Dataclass that encapsulates `app_commands.Choice` and a fuzzy search ratio.
+    A class that represents the fitness measurement of a fuzzy string search.
+
+    Notes:
+        Levenshtein distance already incorporates string length delta as a metric, however, for our purposes
+        we want to be able to sort resulting matches (with equal fitness) based on their distance,
+        where matches of similar length receive higher priority.
 
     Attributes:
         fuzz_ratio (float): The fuzzy string search ratio. Bound to [0.0, 200.0].
-        length_ratio (float): A ratio representing how close the current term is to search term. Bound to [0.0, 1.0].
+        length_ratio (float): A ratio representing how close the current term is to search term. Bound to (0.0, 1.0].
     """
 
     __slots__ = ('fuzz_ratio', 'length_ratio')
@@ -289,7 +294,7 @@ def generate_autocomplete_choices(
         limit (int): The maximum number of Choices to return.
         minimum_threshold (float): The minimum ratio for a Choice to be valid.
             200.0: Full token-set match.
-            100.0: Full partial token-set match.
+            100.0: Full partial token-sort match.
             <=100.0: Q-ratio.
 
     Returns:
