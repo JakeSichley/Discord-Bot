@@ -33,7 +33,7 @@ import discord
 import pytz
 from discord.utils import format_dt
 
-from utils.logging_formatter import bot_logger
+from utils.observability.loggers import bot_logger
 
 VERSION = '2.18.5'
 

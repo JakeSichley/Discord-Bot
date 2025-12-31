@@ -48,8 +48,8 @@ from utils.database.helpers import (
 )
 from utils.database.table_dataclasses import RunescapeAlert
 from utils.enums.network_return_type import NetworkReturnType
-from utils.logging_formatter import bot_logger
 from utils.network_utils import network_request, ExponentialBackoff
+from utils.observability.loggers import bot_logger
 from utils.runescape.runescape_data_classes import (
     RunescapeItem, ItemMarketData, AlertEmbedFragment, RunescapeHerbComparison
 )

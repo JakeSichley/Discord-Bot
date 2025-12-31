@@ -36,7 +36,7 @@ from utils.checks import InvocationCheckFailure
 from utils.context import Context
 from utils.converters import ForbiddenCharacters
 from utils.enums.guild_feature import GuildFeature
-from utils.logging_formatter import bot_logger
+from utils.observability.loggers import bot_logger
 
 
 class Exceptions(commands.Cog):

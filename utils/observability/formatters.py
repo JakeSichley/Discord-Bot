@@ -37,10 +37,8 @@ green = '\x1b[32m'
 red = '\x1b[31;20m'
 reset = '\x1b[0m'
 
-bot_logger: logging.Logger = logging.getLogger('DreamBot')
 
-
-def format_loggers() -> None:
+def format_loggers(*, is_production: bool) -> None:
     """
     Formats loggers for discord.py and DreamBot.
 
@@ -58,10 +56,12 @@ def format_loggers() -> None:
         os.mkdir(file_path)
 
     # set up bot handlers
+    bot_logging_level: int = logging.INFO if is_production else logging.DEBUG
+
     logger = logging.getLogger('DreamBot')
-    logger.setLevel(logging.INFO)
+    logger.setLevel(bot_logging_level)
     handler = logging.StreamHandler()
-    handler.setLevel(logging.INFO)
+    handler.setLevel(bot_logging_level)
     handler.setFormatter(
         StreamLoggingFormatter(
             '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s)',
@@ -72,7 +72,7 @@ def format_loggers() -> None:
     logger.addHandler(handler)
 
     bot_file_handler = logging.FileHandler(os.path.join(file_path, file_time_name))
-    bot_file_handler.setLevel(logging.INFO)
+    bot_file_handler.setLevel(bot_logging_level)
     bot_file_handler.setFormatter(
         FileLoggingFormatter(
             '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s)',

@@ -28,7 +28,7 @@ from typing import List, Tuple, Any, Optional, Iterable, Type, TypeVar, Union
 import aiosqlite
 from typing_extensions import TypeGuard
 
-from utils.logging_formatter import bot_logger
+from utils.observability.loggers import bot_logger
 
 T = TypeVar('T')
 

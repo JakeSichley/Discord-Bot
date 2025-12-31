@@ -34,7 +34,7 @@ from dreambot import DreamBot
 from utils.context import Context
 from utils.converters import AggressiveDefaultMemberConverter
 from utils.database.helpers import execute_query, typed_retrieve_query
-from utils.logging_formatter import bot_logger
+from utils.observability.loggers import bot_logger
 
 CHANNEL_OBJECT = Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]
 PERMISSIONS_PARENT = Union[discord.Role, discord.Member]

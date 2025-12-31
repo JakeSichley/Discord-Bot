@@ -26,7 +26,7 @@ from discord import app_commands, Interaction
 from discord.ext import commands
 
 from dreambot import DreamBot
-from utils.logging_formatter import bot_logger
+from utils.observability.loggers import bot_logger
 
 
 class LostArk(commands.Cog):
