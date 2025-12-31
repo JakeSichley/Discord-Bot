@@ -23,6 +23,10 @@ SOFTWARE.
 """
 
 from enum import Enum
+from typing import Dict, Union, List
+from typing_extensions import TypeAlias
+
+JSON: TypeAlias = Union[Dict[str, 'JSON'], List['JSON'], str, int, float, bool, None]
 
 
 class NetworkReturnType(Enum):
