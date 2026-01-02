@@ -31,8 +31,8 @@ from aiohttp import ClientSession, ClientError
 
 from utils.context import Context
 from utils.network.return_type import NetworkReturnType
-from utils.logging_formatter import bot_logger
 from utils.network.utils import network_request
+from utils.observability.loggers import bot_logger
 
 
 @dataclass

@@ -38,7 +38,7 @@ from utils.defaults import MessageReply
 from utils.emoji_manager import (
     EmojiManager, EmojiComponent, NoViableEmoji, NoRemainingEmojiSlots, NoEmojisFound, FailureStage
 )
-from utils.logging_formatter import bot_logger
+from utils.observability.loggers import bot_logger
 from utils.utils import readable_flags
 
 

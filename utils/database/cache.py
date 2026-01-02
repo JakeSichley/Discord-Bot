@@ -31,7 +31,7 @@ from aiosqlite import Error as aiosqliteError
 from utils.database import table_dataclasses as TableDC
 from utils.database.helpers import typed_retrieve_query
 from utils.enums.guild_feature import GuildFeature, has_guild_feature
-from utils.logging_formatter import bot_logger
+from utils.observability.loggers import bot_logger
 
 
 class TableCache:

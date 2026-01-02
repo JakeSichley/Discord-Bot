@@ -41,7 +41,7 @@ from utils.checks import InvocationCheckFailure
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import Group, GroupMember
 from utils.intermediate_models.composite_group import CompositeGroup
-from utils.logging_formatter import bot_logger
+from utils.observability.loggers import bot_logger
 from utils.transformers import StringTransformer
 from utils.utils import format_unix_dt
 

@@ -35,7 +35,7 @@ from discord.ext import commands
 
 # noinspection PyUnresolvedReferences
 import dreambot  # keep - needed for typehint, actual usage causes circular import
-from utils.logging_formatter import bot_logger
+from utils.observability.loggers import bot_logger
 
 
 class Context(commands.Context['dreambot.DreamBot']):

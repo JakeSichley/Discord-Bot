@@ -31,7 +31,7 @@ from dreambot import DreamBot
 from utils import image_utils
 from utils.context import Context
 from utils.defaults import MessageReply
-from utils.logging_formatter import bot_logger
+from utils.observability.loggers import bot_logger
 
 
 class Images(commands.Cog):

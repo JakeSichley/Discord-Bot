@@ -34,7 +34,7 @@ from utils.context import Context
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import VoiceRole
 from utils.expiring_dict import ExpiringDict
-from utils.logging_formatter import bot_logger
+from utils.observability.loggers import bot_logger
 from utils.prompts import prompt_user_for_voice_channel, prompt_user_for_role
 from utils.utils import cleanup
 

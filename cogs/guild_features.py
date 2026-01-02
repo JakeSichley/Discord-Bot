@@ -32,7 +32,7 @@ from discord.ext import commands
 from dreambot import DreamBot
 from utils.database.helpers import execute_query
 from utils.enums.guild_feature import GuildFeature, has_guild_feature, set_guild_feature
-from utils.logging_formatter import bot_logger
+from utils.observability.loggers import bot_logger
 
 
 class GuildFeatures(commands.Cog):

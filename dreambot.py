@@ -39,7 +39,7 @@ from google.cloud import errorreporting_v1beta1 as error_reporting
 from utils.context import Context
 from utils.cooldowns import CooldownMapping
 from utils.database.cache import TableCache
-from utils.logging_formatter import bot_logger
+from utils.observability.loggers import bot_logger
 from utils.utils import generate_activity
 
 GitOptionals = TypedDict(
