@@ -26,10 +26,11 @@ import datetime
 import logging
 import os
 from contextlib import suppress
-from typing import Tuple
+from typing import Tuple, Set
 
 import discord
 
+gray = '\x1b[38;5;15m'
 cyan = '\x1b[36m'
 yellow = '\x1b[33;20m'
 blue = '\x1b[34m'
@@ -38,74 +39,47 @@ red = '\x1b[31;20m'
 reset = '\x1b[0m'
 
 
-def format_loggers(*, is_production: bool) -> None:
+class ScopedDebugFilter(logging.Filter):
     """
-    Formats loggers for discord.py and DreamBot.
+    A filter that allows records if they don't have a scope, or if their scope is explicitly enabled.
 
-    Parameters:
-        None.
-
-    Returns:
-        None.
+    Attributes:
+        enabled_scopes (Set[str]): A set of scope names to allow debug logs with.
     """
 
-    file_path = os.path.join(os.getcwd(), 'logs')
-    file_time_name = f"{str(datetime.datetime.today()).replace(':', '-').replace(' ', '-')}.txt"
+    def __init__(self) -> None:
+        """
+        The constructor for the ScopedDebugFilter class.
 
-    with suppress(FileExistsError):
-        os.mkdir(file_path)
+        Parameters:
+            None.
 
-    # set up bot handlers
-    bot_logging_level: int = logging.INFO if is_production else logging.DEBUG
+        Returns:
+            None.
+        """
 
-    logger = logging.getLogger('DreamBot')
-    logger.setLevel(bot_logging_level)
-    handler = logging.StreamHandler()
-    handler.setLevel(bot_logging_level)
-    handler.setFormatter(
-        StreamLoggingFormatter(
-            '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s)',
-            '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)',
-            (cyan, cyan, yellow, red, red)
-        )
-    )
-    logger.addHandler(handler)
+        super().__init__()
+        self.enabled_scopes: Set[str] = set()
 
-    bot_file_handler = logging.FileHandler(os.path.join(file_path, file_time_name))
-    bot_file_handler.setLevel(bot_logging_level)
-    bot_file_handler.setFormatter(
-        FileLoggingFormatter(
-            '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s)',
-            '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
-        )
-    )
-    logger.addHandler(bot_file_handler)
+    def filter(self, record: logging.LogRecord) -> bool:
+        """
+        Determine if the specified record is to be logged.
 
-    # set up discord handlers
-    discord_handler = logging.StreamHandler()
-    discord_handler.setLevel(logging.INFO)
-    discord_handler.addFilter(NoResumeFilter())
-    discord.utils.setup_logging(
-        formatter=StreamLoggingFormatter(
-            '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s)',
-            '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)',
-            (blue, blue, yellow, red, red)
-        ),
-        handler=discord_handler,
-        root=False
-    )
-    discord_logger = logging.getLogger('discord')
+        Parameters:
+            record (logging.LogRecord): The logging record for an event.
 
-    discord_file_handler = logging.FileHandler(os.path.join(file_path, file_time_name))
-    discord_file_handler.setLevel(logging.INFO)
-    discord_file_handler.setFormatter(
-        FileLoggingFormatter(
-            '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s)',
-            '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
-        )
-    )
+        Returns:
+            (bool): True if the specified record is to be logged.
+        """
 
-    discord_logger.addHandler(discord_file_handler)
+        # don't filter non-debug logs
+        if record.levelno > logging.DEBUG:
+            return True
+
+        if scope := getattr(record, 'debug_scope', None):
+            return scope in self.enabled_scopes
+
+        return False
 
 
 class StreamLoggingFormatter(logging.Formatter):
@@ -233,7 +207,13 @@ class NoResumeFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         """
         Determine if the specified record is to be logged.
-        Returns True if the record should be logged, or False otherwise.
+
+        Parameters:
+            record (logging.LogRecord): The logging record for an event.
+
+        Returns:
+            (bool): True if the specified record is to be logged.
         """
 
         return 'RESUMED' not in record.getMessage()
+

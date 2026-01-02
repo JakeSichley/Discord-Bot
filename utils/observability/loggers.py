@@ -22,101 +22,102 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+import datetime
 import logging
-from typing import Callable, Any
+import os
+from contextlib import suppress
+from typing import Dict
+
+import discord
+
+from utils.observability.formatters import (
+    StreamLoggingFormatter, FileLoggingFormatter, NoResumeFilter, ScopedDebugFilter as ScopedDebugFilter,
+    gray, cyan, yellow, blue, red
+)
 
 bot_logger: logging.Logger = logging.getLogger('DreamBot')
+debug_filter: ScopedDebugFilter = ScopedDebugFilter()
 
 
-class OptionalLogger:
+def make_debug_scope(scope: str) -> Dict[str, str]:
     """
-    A logger that allows for runtime enabling or disabling of a logging section.
+    Make a standardized debug scope for use in `ScopedDebugFilter`.
 
-    Attributes:
-        _logger (logging.Logger): The primary (enabled) logger to use.
-        _null_logger (logging.Logger): The null (disabled) logger to use.
-        _enabled (bool): Whether to _actually_ log messages.
+    Parameters:
+        scope (str): The scope to use.
+
+    Returns:
+        (Dict[str, str]): The parameterized scope, suitable for use as argument to logging functions (extra=scope).
     """
 
-    class NullLogger(logging.Logger):
-        """
-        Provides a logging.Logger interface while sending any and all logs to the void.
-        """
+    return {'debug_scope': scope}
 
-        def __init__(self) -> None:
-            """
-            The constructor for the NullLogger class.
 
-            Parameters:
-                None.
-            """
+def setup_loggers() -> None:
+    """
+    Formats loggers for discord.py and DreamBot.
 
-            super().__init__('NullLogger')
+    Parameters:
+        None.
 
-        def __getattribute__(self, name: str) -> Callable[[Any, Any], None]:
-            """
-            The constructor for the NullLogger class.
+    Returns:
+        None.
+    """
 
-            Parameters:
-                name (str): The name of the attribute to access.
+    file_path = os.path.join(os.getcwd(), 'logs')
+    file_time_name = f"{str(datetime.datetime.today()).replace(':', '-').replace(' ', '-')}.txt"
 
-            Returns:
-                (Callable[[Any, Any], None]): A lambda closure that accepts any arguments and returns None.
-            """
+    with suppress(FileExistsError):
+        os.mkdir(file_path)
 
-            return lambda *args, **kwargs: None
+    # set up bot handlers
+    logger = logging.getLogger('DreamBot')
+    logger.setLevel(logging.DEBUG)
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.DEBUG)
+    handler.addFilter(debug_filter)
+    handler.setFormatter(
+        StreamLoggingFormatter(
+            '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s)',
+            '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)',
+            (gray, cyan, yellow, red, red)
+        )
+    )
+    logger.addHandler(handler)
 
-    __slots__ = ('_logger', '_null_logger', '_enabled')
+    bot_file_handler = logging.FileHandler(os.path.join(file_path, file_time_name))
+    bot_file_handler.setLevel(logging.DEBUG)
+    handler.addFilter(debug_filter)
+    bot_file_handler.setFormatter(
+        FileLoggingFormatter(
+            '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s)',
+            '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
+        )
+    )
+    logger.addHandler(bot_file_handler)
 
-    def __init__(self, enabled: bool) -> None:
-        """
-        The constructor for the OptionalLogger class.
+    # set up discord handlers
+    discord_handler = logging.StreamHandler()
+    discord_handler.setLevel(logging.INFO)
+    discord_handler.addFilter(NoResumeFilter())
+    discord.utils.setup_logging(
+        formatter=StreamLoggingFormatter(
+            '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s)',
+            '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)',
+            (gray, blue, yellow, red, red)
+        ),
+        handler=discord_handler,
+        root=False
+    )
+    discord_logger = logging.getLogger('discord')
 
-        Parameters:
-            enabled (bool) Whether the primary logger is enabled.
-        """
+    discord_file_handler = logging.FileHandler(os.path.join(file_path, file_time_name))
+    discord_file_handler.setLevel(logging.INFO)
+    discord_file_handler.setFormatter(
+        FileLoggingFormatter(
+            '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s)',
+            '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
+        )
+    )
 
-        self._logger: logging.Logger = bot_logger
-        self._null_logger: logging.Logger = self.NullLogger()
-        self._enabled: bool = enabled
-
-    def __call__(self) -> logging.Logger:
-        """
-        Allows `OptionalLogger` to be called like a function, returning the underlying logger for more fluent chaining.
-
-        Parameters:
-            None.
-
-        Returns:
-            (logging.Logger): The primary or null logger, depending on whether the primary logger is enabled.
-        """
-
-        return self._logger if self._enabled else self._null_logger
-
-    @property
-    def enabled(self) -> bool:
-        """
-        Getter for the underlying `_enabled` attribute.
-
-        Parameters:
-            None.
-
-        Returns:
-            (bool): Whether the primary logger is enabled.
-        """
-
-        return self._enabled
-
-    @enabled.setter
-    def enabled(self, is_enabled: bool) -> None:
-        """
-        Setter for the underlying `_enabled` attribute.
-
-        Parameters:
-            is_enabled (bool): Whether to enable or disable the primary logger.
-
-        Returns:
-            None.
-        """
-
-        self._enabled = is_enabled
+    discord_logger.addHandler(discord_file_handler)

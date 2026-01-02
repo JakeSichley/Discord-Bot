@@ -32,8 +32,7 @@ from dotenv import load_dotenv
 
 from dreambot import DreamBot, Optionals, GitOptionals
 from utils.database.migrations import Migrator
-from utils.observability.formatters import format_loggers
-from utils.observability.loggers import bot_logger
+from utils.observability.loggers import bot_logger, setup_loggers
 from utils.utils import VERSION
 
 
@@ -41,6 +40,13 @@ async def main() -> None:
     """
     Driver method.
     """
+
+    # logging setup
+    setup_loggers()
+
+    bot_logger.info(f'Current DreamBot Version: {VERSION}')
+    bot_logger.info(f'Current Python Version: {version}')
+    bot_logger.info(f'Current Discord Version: {discord.__version__}')
 
     load_dotenv()
 
@@ -53,13 +59,6 @@ async def main() -> None:
 
     assert database is not None
     assert token is not None
-
-    # logging setup
-    format_loggers(is_production=environment == 'PROD')
-
-    bot_logger.info(f'Current DreamBot Version: {VERSION}')
-    bot_logger.info(f'Current Python Version: {version}')
-    bot_logger.info(f'Current Discord Version: {discord.__version__}')
 
     # apply database migrations
     async with Migrator(database) as m:
