@@ -49,7 +49,7 @@ from utils.database.helpers import (
 from utils.database.table_dataclasses import RunescapeAlert
 from utils.enums.network_return_type import NetworkReturnType
 from utils.network_utils import network_request, ExponentialBackoff
-from utils.observability.loggers import bot_logger
+from utils.observability.loggers import bot_logger, make_debug_scope
 from utils.runescape.runescape_data_classes import (
     RunescapeItem, ItemMarketData, AlertEmbedFragment, RunescapeHerbComparison
 )
@@ -77,6 +77,8 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         MARKET_QUERY_INTERVAL (int): How frequently market data from the OSRS Wiki's API should be queried.
         alert_subgroup (app_commands.Group): The Runescape Alert command group.
 
+        ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE (Dict[str, str]): Debug scope tag for item_id autocomplete logs.
+
     Attributes:
         bot (DreamBot): The Discord bot.
         item_data (Dict[int, RunescapeItem]): A mapping of Runescape items.
@@ -87,6 +89,8 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
     MAPPING_QUERY_INTERVAL = 60 * 60  # 1 hour
     MARKET_QUERY_INTERVAL = 60  # 1 minute
+
+    ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE = make_debug_scope('runescape_item_id_autocomplete')
 
     alert_subgroup = app_commands.Group(name='alert', description='Commands for managing item alerts')
 
@@ -531,15 +535,28 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         Returns:
             (List[Choice]): A list of relevant Choices for the current input.
         """
+        
+        bot_logger.debug(
+            f'{interaction.id} Starting item_id autocomplete for term `{current}`',
+            extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE
+        )
 
         if not current:
+            bot_logger.debug(
+                f'{interaction.id} Term was empty, returning first 25 items',
+                extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE
+            )
             return [Choice(name=item.name, value=item_id) for item_id, item in list(self.item_data.items())[:25]]
 
         # check database for existing autocomplete results
-        precomputed_choices = await self.fetch_precomputed_item_autocomplete_ids(current)
+        precomputed_choices = await self.fetch_precomputed_item_autocomplete_ids(current, interaction.id)
 
         # explicit None check vs. implicit empty list check
         if precomputed_choices is not None:
+            bot_logger.debug(
+                f'{interaction.id} Received decoded precomputed choices, returning {len(precomputed_choices)} items',
+                extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE
+            )
             return precomputed_choices
 
         choices = generate_autocomplete_choices(
@@ -548,18 +565,26 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             minimum_threshold=60.0
         )
 
+        bot_logger.debug(
+            f'{interaction.id} Generated new choices, returning {len(choices)} items',
+            extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE
+        )
+
         self.bot.loop.create_task(
-            self.record_precomputed_item_autocomplete_ids(current, [x.value for x in choices])
+            self.record_precomputed_item_autocomplete_ids(current, [x.value for x in choices], interaction.id)
         )
 
         return choices
 
-    async def fetch_precomputed_item_autocomplete_ids(self, term: str) -> Optional[List[Choice[int]]]:
+    async def fetch_precomputed_item_autocomplete_ids(
+            self, term: str, interaction_id: int
+    ) -> Optional[List[Choice[int]]]:
         """
         Fetches precomputed autocomplete item ids for a search term, if available.
 
         Parameters:
             term (str): The current autocomplete term.
+            interaction_id (int): The current autocomplete interaction id for logging.
 
         Returns:
             Optional[List[Choice[int]]]: A list of item ids, if available.
@@ -574,20 +599,31 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             )
 
             if blob is not None:
+                bot_logger.debug(
+                    f'{interaction_id} Precomputed choices found, decoding blob to item_ids',
+                    extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE
+                )
                 return [Choice(name=self.item_data[key].name, value=key) for key in decode_blob_to_integer_array(blob)]
 
         except aiosqliteError as e:
             bot_logger.warning(f'OSRS Precomputed Fetch Error: {type(e)} - {e}')
 
+        bot_logger.debug(
+            f'{interaction_id} Precomputed choices not found',
+            extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE
+        )
         return None
 
-    async def record_precomputed_item_autocomplete_ids(self, term: str, item_ids: List[int]) -> None:
+    async def record_precomputed_item_autocomplete_ids(
+            self, term: str, item_ids: List[int], interaction_id: int
+    ) -> None:
         """
         Records precomputed autocomplete item ids for a search term.
 
         Parameters:
             term (str): The current autocomplete term.
             item_ids (List[int]): The corresponding item ids for the autocomplete term.
+            interaction_id (int): The current autocomplete interaction id for logging.
 
         Returns:
             None.
@@ -598,6 +634,10 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                 self.bot.database,
                 'INSERT OR IGNORE INTO RUNESCAPE_ITEM_NAME_AUTOCOMPLETE (SEARCH_TERM, ITEM_IDS) VALUES (?, ?)',
                 (term.lower(), encode_integer_array_to_blob(item_ids)),
+            )
+            bot_logger.debug(
+                f'{interaction_id} Recording `{len(item_ids)}` precomputed autocomplete item ids for term `{term}`',
+                extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE
             )
         except aiosqliteError as e:
             bot_logger.warning(f'OSRS Precomputed Write Error: {type(e)} - {e}')
