@@ -34,7 +34,7 @@ from dreambot import DreamBot
 from utils.context import Context
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import ReactionRole
-from utils.logging_formatter import bot_logger
+from utils.observability.loggers import bot_logger
 from utils.prompts import prompt_user_for_role, prompt_user_for_discord_message
 from utils.utils import cleanup
 

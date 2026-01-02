@@ -32,7 +32,7 @@ from dotenv import load_dotenv
 
 from dreambot import DreamBot, Optionals, GitOptionals
 from utils.database.migrations import Migrator
-from utils.logging_formatter import format_loggers, bot_logger
+from utils.observability.loggers import bot_logger, setup_loggers
 from utils.utils import VERSION
 
 
@@ -42,7 +42,7 @@ async def main() -> None:
     """
 
     # logging setup
-    format_loggers()
+    setup_loggers()
 
     bot_logger.info(f'Current DreamBot Version: {VERSION}')
     bot_logger.info(f'Current Python Version: {version}')

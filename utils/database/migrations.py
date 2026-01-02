@@ -30,7 +30,7 @@ from typing import Type, List
 import aiofiles
 import aiosqlite
 
-from utils.logging_formatter import bot_logger
+from utils.observability.loggers import bot_logger
 
 
 class MigrationVersionMismatch(Exception):

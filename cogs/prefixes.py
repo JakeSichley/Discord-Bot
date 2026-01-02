@@ -28,7 +28,7 @@ from discord.ext import commands
 from dreambot import DreamBot
 from utils.context import Context
 from utils.database.helpers import execute_query
-from utils.logging_formatter import bot_logger
+from utils.observability.loggers import bot_logger
 
 
 class Prefixes(commands.Cog):
