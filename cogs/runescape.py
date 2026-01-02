@@ -535,7 +535,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         Returns:
             (List[Choice]): A list of relevant Choices for the current input.
         """
-        
+
         bot_logger.debug(
             f'{interaction.id} Starting item_id autocomplete for term `{current}`',
             extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE

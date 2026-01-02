@@ -22,13 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import datetime
 import logging
-import os
-from contextlib import suppress
 from typing import Tuple, Set
-
-import discord
 
 gray = '\x1b[38;5;15m'
 cyan = '\x1b[36m'
@@ -216,4 +211,3 @@ class NoResumeFilter(logging.Filter):
         """
 
         return 'RESUMED' not in record.getMessage()
-

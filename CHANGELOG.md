@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Switch from `fuzzywuzzy` to `RapidFuzz` for increased performance
   - Improve match quality by prioritizing `token_set` > `partial_token_sort` > `QRatio`, followed by string length delta
   - Further improve autocomplete performance for `Runescape` by storing previously computed autocomplete results
+- Add `ScopedDebugFilter` to allow for toggleable debug logs
 ### Issues
 - Fix `RunescapeHerbComparison` using grimy values for min/max comparisons instead of grimy and clean
 
