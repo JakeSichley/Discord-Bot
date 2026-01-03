@@ -23,16 +23,22 @@ SOFTWARE.
 """
 
 from typing import Optional, Callable, Awaitable, TypeVar, Set
+import inspect
 
 import aiohttp
 
-from utils.observability.loggers import bot_logger
+from utils.observability.loggers import bot_logger, make_debug_scope, debug_filter
 from utils.network.return_type import JSON
-from utils.network.utils import Headers
-from utils.network.exponential_backoff import ExponentialBackoff, BackoffRule
+from utils.network.utils import Headers, EmptyResponseError
+from utils.network.exponential_backoff import ExponentialBackoff, BackoffRule, ExponentialBackoffException
+from utils.utils import short_random_id
 
 
 ReturnType = TypeVar('ReturnType')
+
+
+class FakeException(Exception):
+    pass
 
 
 class NetworkClient:
@@ -40,28 +46,60 @@ class NetworkClient:
     Client for making network requests with unified error handling.
     """
 
+    NETWORK_CLIENT_DEBUG_SCOPE = make_debug_scope('network_client')
+
     def __init__(
             self,
             session: aiohttp.ClientSession,
             default_max_backoff_time: int = 60 * 60 * 4  # four hours
     ) -> None:
-        self._session = session
+        self._session: aiohttp.ClientSession = session
         self._backoff_cache: Set[BackoffRule] = set()
-        self._default_max_backoff_time = default_max_backoff_time
+        self._default_max_backoff_time: int = default_max_backoff_time
 
-    def _get_or_create_backoff_for_url(self, url: str) -> ExponentialBackoff:
+        # REMOVE ME AFTER TESTING
+        debug_filter.enabled_scopes.add('network_client')
+
+    def _get_or_create_backoff_for_url(self, url: str, debug_identifier: str) -> BackoffRule:
         try:
-            return next(x.backoff for x in self._backoff_cache if x.matches_url(url))
+            existing_rule = next(x for x in self._backoff_cache if x.matches_url(url))
+            bot_logger.debug(
+                f'{debug_identifier} Matched url `{url}` against existing pattern `{existing_rule.pattern.pattern}`.',
+                extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+            )
+            return existing_rule
         except StopIteration:
             new_rule = BackoffRule(url, self._default_max_backoff_time)
             self._backoff_cache.add(new_rule)
-            return new_rule.backoff
+            bot_logger.debug(
+                f'{debug_identifier} No matches for url `{url}` against existing patterns, creating new rule.',
+                extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+            )
+            return new_rule
 
-    def _increment_backoff_for_url(self, url: str) -> None:
+    def _increment_backoff_for_url(self, url: str, debug_identifier: str) -> None:
         if existing_rule := next((x for x in self._backoff_cache if x.matches_url(url)), None):
             self._backoff_cache.remove(existing_rule)
             existing_rule.backoff.record_failure()
             self._backoff_cache.add(existing_rule)
+            bot_logger.debug(
+                f'{debug_identifier} Incremented backoff for url `{url}`. '
+                f'New count: {existing_rule.backoff.backoff_count}',
+                extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+            )
+        else:
+            bot_logger.warning(f'Attempted to increment backoff for url `{url}` but no matching rule found.')
+
+    def _reset_backoff_for_url(self, url: str, debug_identifier: str) -> None:
+        if existing_rule := next((x for x in self._backoff_cache if x.matches_url(url)), None):
+            self._backoff_cache.remove(existing_rule)
+            existing_rule.backoff.reset()
+            self._backoff_cache.add(existing_rule)
+            bot_logger.debug(
+                f'{debug_identifier} Reset backoff for url `{url}`.', extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+            )
+        else:
+            bot_logger.warning(f'Attempted to increment reset for url `{url}` but no matching rule found.')
 
     async def _request(
             self,
@@ -69,42 +107,102 @@ class NetworkClient:
             handler: Callable[[aiohttp.ClientResponse], Awaitable[ReturnType]],
             *,
             headers: Optional['Headers'],
-            raise_errors: Optional[bool],
+            forward_exceptions: bool,
             ssl: Optional[bool],
             bypass_backoff: bool,
+            raise_for_empty_response: bool
     ) -> Optional[ReturnType]:
         """
         Internal generic method to handle the request lifecycle and error logging.
         """
 
         exception: Optional[Exception] = None
+        transformed_response: Optional[ReturnType] = None
+        debug_identifier: str = short_random_id()
+        return_type_identifier: str = inspect.getouterframes(inspect.currentframe(), 2)[1][3]
 
-        if (
-            not bypass_backoff
-            and raise_errors
-            and self._get_or_create_backoff_for_url(url).remaining_backoff > 0
-        ):
-            raise  # something
+        bot_logger.debug(
+            f'{debug_identifier} Starting request for url `{url}`. '
+            f'Kwargs: {headers=}, {forward_exceptions=}, {ssl=}, {bypass_backoff=}, {raise_for_empty_response=}.',
+            extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+        )
 
         try:
+            if (
+                not bypass_backoff
+                and (matched_rule := self._get_or_create_backoff_for_url(url, debug_identifier))
+                and matched_rule.backoff.remaining_backoff > 0
+            ):
+                bot_logger.debug(
+                    f'{debug_identifier} Request for url `{url}` is currently backed off without bypass - '
+                    f'raising `ExponentialBackoffException`.',
+                    extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                )
+                raise ExponentialBackoffException(url, matched_rule)
+
+            # raise FakeException
+
             async with self._session.get(
-                    url, headers=headers, ssl=ssl, raise_for_status=raise_errors
+                    url, headers=headers, ssl=ssl, raise_for_status=True
             ) as r:
-                return await handler(r)
+                transformed_response = await handler(r)
 
         except aiohttp.ClientResponseError as e:
             exception = e
-            bot_logger.warning(f'Network Request Error. ("{url}"). {e.status}. {e.message}')
+            bot_logger.warning(f'Network Request Error. ("{url}"). {e.status}. {e.message}.')
         except aiohttp.ClientError as e:
             exception = e
-            bot_logger.warning(f'Network Request Client Error. ("{url}"). {type(e)} - {e} - {e.args}')
+            bot_logger.warning(f'Network Request Client Error. ("{url}"). {type(e)} - {e} - {e.args}.')
+        except ExponentialBackoffException as e:
+            exception = e
+            bot_logger.warning(f'Network Request ExponentialBackoff Error: {e}.')
+        except Exception as e:
+            exception = e
+            bot_logger.error(f'Network Request Uncaught Exception. ("{url}"). {type(e)} - {e}.')
 
-        if raise_errors and (caught_exception := exception):
+        # if there was an exception raised, we should always attempt to increment backoff
+        #   -> Exceptions: Don't increment if `bypass_backoff` is True,
+        #   or if we avoided a bad request by raising ExponentialBackoffException
+        if caught_exception := exception:
+            if not bypass_backoff and not isinstance(caught_exception, ExponentialBackoffException):
+                bot_logger.debug(
+                    f'{debug_identifier} Error was encountered during request for `{url}` '
+                    f'without bypass backoff - attempting to increment backoff.',
+                    extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                )
+                self._increment_backoff_for_url(url, debug_identifier)
+
+            if forward_exceptions:
+                raise caught_exception
+
+        if transformed_response is not None:
             if not bypass_backoff:
-                self._increment_backoff_for_url(url)
-            raise caught_exception
+                self._reset_backoff_for_url(url, debug_identifier)
 
-        return None
+            bot_logger.debug(
+                f'{debug_identifier} Request for url `{url}` was successful. '
+                f'Response handler type: {return_type_identifier}',
+                extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+            )
+            return transformed_response
+
+        if raise_for_empty_response:
+            bot_logger.debug(
+                f'{debug_identifier} Request for url `{url}` was successful, but errors are either suppressed or '
+                f'none were raised. {forward_exceptions=}, {exception=}',
+                extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+            )
+            raise EmptyResponseError(
+                f'Request for url `{url}` was successful, but response was empty. '
+                f'Response handler type: {return_type_identifier}.'
+            )
+        else:
+            bot_logger.debug(
+                f'{debug_identifier} Request for url `{url}` was unsuccessful, but errors are either suppressed or '
+                f'none were raised. {forward_exceptions=}, {exception=}',
+                extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+            )
+            return None
 
     async def fetch_bytes(
             self,
@@ -112,18 +210,20 @@ class NetworkClient:
             /,
             *,
             headers: Optional['Headers'] = None,
-            raise_errors: Optional[bool] = True,
+            forward_exceptions: bool = False,
             ssl: Optional[bool] = None,
-            bypass_backoff: bool = False
+            bypass_backoff: bool = False,
+            raise_for_empty_response: bool = False
     ) -> Optional[bytes]:
         """Requests content from the specified url, returned as bytes."""
         return await self._request(
             url,
             lambda r: r.read(),
             headers=headers,
-            raise_errors=raise_errors,
+            forward_exceptions=forward_exceptions,
             ssl=ssl,
-            bypass_backoff=bypass_backoff
+            bypass_backoff=bypass_backoff,
+            raise_for_empty_response=raise_for_empty_response
         )
 
     async def fetch_json(
@@ -133,18 +233,20 @@ class NetworkClient:
             *,
             encoding: str = 'utf-8',
             headers: Optional['Headers'] = None,
-            raise_errors: Optional[bool] = True,
+            forward_exceptions: bool = False,
             ssl: Optional[bool] = None,
-            bypass_backoff: bool = False
+            bypass_backoff: bool = False,
+            raise_for_empty_response: bool = False
     ) -> Optional['JSON']:
         """Requests content from the specified url, returned as JSON."""
         return await self._request(
             url,
             lambda r: r.json(encoding=encoding),
             headers=headers,
-            raise_errors=raise_errors,
+            forward_exceptions=forward_exceptions,
             ssl=ssl,
-            bypass_backoff=bypass_backoff
+            bypass_backoff=bypass_backoff,
+            raise_for_empty_response=raise_for_empty_response
         )
 
     async def fetch_text(
@@ -154,9 +256,10 @@ class NetworkClient:
             *,
             encoding: str = 'utf-8',
             headers: Optional['Headers'] = None,
-            raise_errors: Optional[bool] = True,
+            forward_exceptions: bool = False,
             ssl: Optional[bool] = None,
-            bypass_backoff: bool = False
+            bypass_backoff: bool = False,
+            raise_for_empty_response: bool = False
     ) -> Optional[str]:
         """
         Requests content from the specified url, returned as text (str).
@@ -166,8 +269,9 @@ class NetworkClient:
             url,
             lambda r: r.text(encoding=encoding),
             headers=headers,
-            raise_errors=raise_errors,
+            forward_exceptions=forward_exceptions,
             ssl=ssl,
-            bypass_backoff=bypass_backoff
+            bypass_backoff=bypass_backoff,
+            raise_for_empty_response=raise_for_empty_response
         )
 

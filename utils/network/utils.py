@@ -222,3 +222,7 @@ class ExponentialBackoff:
         }
 
         return ', '.join([f'{time} {label}' for label, time in times.items() if time > 0])
+
+
+class EmptyResponseError(Exception):
+    pass

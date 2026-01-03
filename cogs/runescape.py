@@ -962,6 +962,13 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                 return_type=NetworkReturnType.JSON
             )
 
+            # mapping_response = await self.bot.network_client.fetch_json(
+            #     'https://prices.runescape.wiki/api/v1/osrs/mapping',
+            # )
+
+            assert mapping_response is not None
+            print('hit assert mapping_response')
+
             for raw_item in mapping_response:
                 try:
                     resolved_item = RunescapeItem(**raw_item)
@@ -993,7 +1000,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             self.initial_mapping_data_event.set()
             await self.validate_runescape_autocomplete_cache()
 
-    @tasks.loop(seconds=MARKET_QUERY_INTERVAL)
+    @tasks.loop(seconds=20)
     async def query_market_data(self) -> None:
         """
         A discord.ext.tasks loop that queries the OSRS Wiki API for item market data.
@@ -1007,11 +1014,18 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         """
 
         try:
-            market_response = await network_request(
-                self.bot.session,
-                'https://prices.runescape.wiki/api/v1/osrs/latest',
-                return_type=NetworkReturnType.JSON
+            # market_response = await network_request(
+            #     self.bot.session,
+            #     'https://prices.runescape.wiki/api/v1/osrs/latest',
+            #     return_type=NetworkReturnType.JSON
+            # )
+
+            market_response = await self.bot.network_client.fetch_json(
+                'https://prices.runescape.wiki/api/v1/osrs/latest'
             )
+
+            assert market_response is not None
+            print('hit assert market_response')
 
             for item_id in [item_id for item_id in market_response['data'] if int(item_id) in self.item_data]:
                 fragment = ItemMarketData(**market_response['data'][item_id])
@@ -1027,9 +1041,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             bot_logger.warning(f'OSRS Mapping Query Error: {type(e)} - {e}')
 
         except Exception as e:
-            bot_logger.error(f'OSRS Mapping Query Unhandled Exception: {type(e)} - {e}')
-            await self.bot.report_exception(e)
-
+            # bot_logger.error(f'OSRS Mapping Query Unhandled Exception: {type(e)} - {e}')
+            # await self.bot.report_exception(e)
+            pass
         else:
             await self.check_alerts()
 

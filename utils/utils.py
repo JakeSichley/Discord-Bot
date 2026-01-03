@@ -35,6 +35,9 @@ from discord.utils import format_dt
 
 from utils.observability.loggers import bot_logger
 
+from random import choice as random_choice
+from string import ascii_letters, digits
+
 VERSION = '2.18.5'
 
 PluralT = TypeVar('PluralT', int, str, Union[int, str])
@@ -234,3 +237,17 @@ def plural(value: PluralT, *, singularization: str = '', pluralization: str = 's
     except (ValueError, TypeError) as e:
         bot_logger.error(f'Pluralization (`PluralT`) failed to convert {value} ({type(value)}) to an integer. {e}')
         return singularization
+
+
+def short_random_id(length: int = 8) -> str:
+    """
+    Generates a short, random id (primarily used for short-lived identification).
+
+    Parameters:
+        length (int): The length of the id to generate. Default: 8.
+
+    Returns:
+        (str): The randomly generated id.
+    """
+
+    return ''.join([random_choice(ascii_letters + digits) for _ in range(length)])
