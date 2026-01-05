@@ -32,9 +32,9 @@ from dotenv import load_dotenv
 
 from dreambot import DreamBot, Optionals, GitOptionals
 from utils.database.migrations import Migrator
+from utils.network.client import NetworkClient
 from utils.observability.loggers import bot_logger, setup_loggers
 from utils.utils import VERSION
-from utils.network.client import NetworkClient
 
 
 async def main() -> None:

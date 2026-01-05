@@ -26,7 +26,9 @@ import asyncio
 import functools
 import subprocess
 from datetime import datetime
+from random import choice as random_choice
 from re import search
+from string import ascii_letters, digits
 from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable, Optional, Literal, TypeVar, Union
 
 import discord
@@ -34,9 +36,6 @@ import pytz
 from discord.utils import format_dt
 
 from utils.observability.loggers import bot_logger
-
-from random import choice as random_choice
-from string import ascii_letters, digits
 
 VERSION = '2.18.5'
 
