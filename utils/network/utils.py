@@ -222,3 +222,11 @@ class ExponentialBackoff:
         }
 
         return ', '.join([f'{time} {label}' for label, time in times.items() if time > 0])
+
+
+class EmptyResponseError(Exception):
+    """
+    Exception raised when a response returns no data and the caller requests an exception instead of None.
+    """
+
+    pass
