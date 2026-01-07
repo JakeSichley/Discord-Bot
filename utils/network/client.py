@@ -196,8 +196,6 @@ class NetworkClient:
                 )
                 raise ExponentialBackoffException(url, matched_rule)
 
-            # raise FakeException
-
             async with self._session.get(
                     url, headers=headers, ssl=ssl, raise_for_status=True
             ) as r:
@@ -244,8 +242,8 @@ class NetworkClient:
 
         if raise_for_empty_response:
             bot_logger.debug(
-                f'{debug_identifier} Request for url `{url}` was successful, but errors are either suppressed or '
-                f'none were raised. {forward_exceptions=}, {exception=}',
+                f'{debug_identifier} Request for url `{url}` was successful, but did not yield a transformable '
+                f'response. Per caller, raising for empty response.',
                 extra=self.NETWORK_CLIENT_DEBUG_SCOPE
             )
             raise EmptyResponseError(
@@ -254,8 +252,8 @@ class NetworkClient:
             )
         else:
             bot_logger.debug(
-                f'{debug_identifier} Request for url `{url}` was unsuccessful, but errors are either suppressed or '
-                f'none were raised. {forward_exceptions=}, {exception=}',
+                f'{debug_identifier} Request for url `{url}` was either unsuccessful or did not yield a transformable '
+                f'response. Errors are either suppressed or no errors were raised. {forward_exceptions=}, {exception=}',
                 extra=self.NETWORK_CLIENT_DEBUG_SCOPE
             )
             return None
