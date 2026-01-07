@@ -23,6 +23,11 @@ SOFTWARE.
 """
 
 from enum import Enum
+from typing import Any
+
+from typing_extensions import TypeAlias
+
+JSON: TypeAlias = Any
 
 
 class NetworkReturnType(Enum):

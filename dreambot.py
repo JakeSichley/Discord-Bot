@@ -39,6 +39,7 @@ from google.cloud import errorreporting_v1beta1 as error_reporting
 from utils.context import Context
 from utils.cooldowns import CooldownMapping
 from utils.database.cache import TableCache
+from utils.network.client import NetworkClient
 from utils.observability.loggers import bot_logger
 from utils.utils import generate_activity
 
@@ -109,9 +110,10 @@ class DreamBot(Bot):
             command_prefix=get_prefix, case_insensitive=True, owner_id=owner, max_messages=None, intents=intents
         )
 
-        # connection, session will always be set as part of async initialization with context managers
+        # connection, session, client will always be set as part of async initialization with context managers
         self.database = database
         self.session: ClientSession = None  # type: ignore[assignment]
+        self.network_client: NetworkClient = None  # type: ignore[assignment]
         self.wavelink = None
         self.cache = TableCache(database)
         self.uptime = datetime.now()

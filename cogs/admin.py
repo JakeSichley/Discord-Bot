@@ -49,8 +49,8 @@ from utils.checks import ensure_git_credentials
 from utils.context import Context
 from utils.converters import StringConverter
 from utils.database.helpers import execute_query, retrieve_query
-from utils.enums.network_return_type import NetworkReturnType
-from utils.network_utils import network_request, Headers
+from utils.network.return_type import NetworkReturnType
+from utils.network.utils import network_request, Headers
 from utils.observability.loggers import bot_logger
 from utils.utils import pairs, run_in_subprocess, generate_activity, VERSION
 

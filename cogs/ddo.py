@@ -37,8 +37,8 @@ from discord.ext import commands, tasks
 
 from dreambot import DreamBot
 from utils.context import Context
-from utils.enums.network_return_type import NetworkReturnType
-from utils.network_utils import network_request, ExponentialBackoff
+from utils.network.return_type import NetworkReturnType
+from utils.network.utils import network_request, ExponentialBackoff
 from utils.observability.loggers import bot_logger
 
 

@@ -27,7 +27,7 @@ from typing import Any, TypedDict, Optional
 
 import aiohttp
 
-from utils.enums.network_return_type import NetworkReturnType
+from utils.network.return_type import NetworkReturnType
 from utils.observability.loggers import bot_logger
 
 Headers = TypedDict(
@@ -222,3 +222,11 @@ class ExponentialBackoff:
         }
 
         return ', '.join([f'{time} {label}' for label, time in times.items() if time > 0])
+
+
+class EmptyResponseError(Exception):
+    """
+    Exception raised when a response returns no data and the caller requests an exception instead of None.
+    """
+
+    pass

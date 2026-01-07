@@ -26,7 +26,9 @@ import asyncio
 import functools
 import subprocess
 from datetime import datetime
+from random import choice as random_choice
 from re import search
+from string import ascii_letters, digits
 from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable, Optional, Literal, TypeVar, Union
 
 import discord
@@ -234,3 +236,17 @@ def plural(value: PluralT, *, singularization: str = '', pluralization: str = 's
     except (ValueError, TypeError) as e:
         bot_logger.error(f'Pluralization (`PluralT`) failed to convert {value} ({type(value)}) to an integer. {e}')
         return singularization
+
+
+def short_random_id(length: int = 8) -> str:
+    """
+    Generates a short, random id (primarily used for short-lived identification).
+
+    Parameters:
+        length (int): The length of the id to generate. Default: 8.
+
+    Returns:
+        (str): The randomly generated id.
+    """
+
+    return ''.join([random_choice(ascii_letters + digits) for _ in range(length)])

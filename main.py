@@ -32,6 +32,7 @@ from dotenv import load_dotenv
 
 from dreambot import DreamBot, Optionals, GitOptionals
 from utils.database.migrations import Migrator
+from utils.network.client import NetworkClient
 from utils.observability.loggers import bot_logger, setup_loggers
 from utils.utils import VERSION
 
@@ -100,6 +101,7 @@ async def main() -> None:
         aiohttp.ClientSession(headers=headers) as session
     ):
         bot.session = session
+        bot.network_client = NetworkClient(session)
         await bot.start(token)
 
 
