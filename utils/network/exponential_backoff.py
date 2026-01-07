@@ -32,7 +32,16 @@ class ExponentialBackoff:
 
     def record_failure(self) -> None:
         """
-        pass
+        Records a failure, incrementing the Exponential Backoff and resetting the offset start time.
+
+        Warnings:
+            The caller is responsible for checking whether a backoff currently exists.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
         """
 
         self._start_time = datetime.now()
@@ -64,7 +73,7 @@ class ExponentialBackoff:
             (int): The total amount of time this backoff lasts for.
         """
 
-        return min(2 ** (5 + self._count // 2), self._max_backoff_time)  # type: ignore[no-any-return]
+        return min(int(2 ** (5 + self._count // 2)), self._max_backoff_time)
 
     @property
     def backoff_count(self) -> int:

@@ -199,7 +199,16 @@ class NetworkClient:
             async with self._session.get(
                     url, headers=headers, ssl=ssl, raise_for_status=True
             ) as r:
-                transformed_response = await handler(r)
+                if transformed_response := await handler(r):
+                    if not bypass_backoff:
+                        self._reset_backoff_for_url(url, debug_identifier)
+
+                    bot_logger.debug(
+                        f'{debug_identifier} Request for url `{url}` was successful. '
+                        f'Response handler type: {return_type_identifier}',
+                        extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                    )
+                    return transformed_response
 
         except aiohttp.ClientResponseError as e:
             exception = e
@@ -228,17 +237,6 @@ class NetworkClient:
 
             if forward_exceptions:
                 raise caught_exception
-
-        if transformed_response is not None:
-            if not bypass_backoff:
-                self._reset_backoff_for_url(url, debug_identifier)
-
-            bot_logger.debug(
-                f'{debug_identifier} Request for url `{url}` was successful. '
-                f'Response handler type: {return_type_identifier}',
-                extra=self.NETWORK_CLIENT_DEBUG_SCOPE
-            )
-            return transformed_response
 
         if raise_for_empty_response:
             bot_logger.debug(
