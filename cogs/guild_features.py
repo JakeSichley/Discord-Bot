@@ -22,7 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from contextlib import suppress
 from typing import Optional
+from urllib.parse import urlparse
 
 import discord
 from aiosqlite import Error as aiosqliteError
@@ -99,11 +101,14 @@ class GuildFeatures(commands.Cog):
     @feature_subgroup.command(name='modify', description='Modify feature statuses for the current guild')
     @app_commands.describe(
         direct_tag_invoke='Optional: Whether to send tags automatically without needing the tag command',
+        alternative_twitter_embeds="Optional: Whether the bot should replace Twitter embeds with 'FixupX.com' "
+                                   "embeds instead"
     )
     async def modify_guild_features(
             self,
             interaction: Interaction[DreamBot],
             direct_tag_invoke: Optional[bool] = None,
+            alternative_twitter_embeds: Optional[bool] = None
     ) -> None:
         """
         Modifies feature statuses for the current guild.
@@ -111,6 +116,7 @@ class GuildFeatures(commands.Cog):
         Parameters:
             interaction (Interaction): The invocation interaction.
             direct_tag_invoke (Optional[bool]): Whether tags are able to be directly invoked in this guild.
+            alternative_twitter_embeds (Optional[bool]): Whether to enable the alternative Twitter embedder.
 
         Returns:
             None.
@@ -119,7 +125,8 @@ class GuildFeatures(commands.Cog):
         assert interaction.guild_id is not None
 
         feature_mapping = {
-            GuildFeature.TAG_DIRECT_INVOKE: direct_tag_invoke
+            GuildFeature.TAG_DIRECT_INVOKE: direct_tag_invoke,
+            GuildFeature.ALTERNATIVE_TWITTER_EMBEDS: alternative_twitter_embeds
         }
 
         if all(x is None for x in feature_mapping.values()):
@@ -143,6 +150,47 @@ class GuildFeatures(commands.Cog):
         else:
             await interaction.response.send_message('Successfully modified guild features.', ephemeral=True)
             self.bot.cache.guild_features[interaction.guild_id] = features
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message) -> None:
+        """
+        Replaces Twitter (X) embeds with better ones and eliminates tracking parameters.
+
+        Parameters:
+            message (discord.Message): The newly created message.
+
+        Returns:
+            None.
+        """
+
+        if (
+            message.guild is None
+            or message.author.bot
+            or not self.bot.cache.guild_feature_enabled(message.guild.id, GuildFeature.ALTERNATIVE_TWITTER_EMBEDS)
+        ):
+            return
+
+        # naive search for Twitter url - getting this perfect is not mission-critical nor worth expensive computations
+        try:
+            url = next(token for token in message.content.split() if 'x.com' in token)
+        except StopIteration:
+            return
+
+        if (parsed_url := urlparse(url)) and parsed_url.netloc != 'x.com':
+            return
+
+        try:
+            await message.edit(suppress=True)
+            await message.reply(
+                content=parsed_url._replace(netloc='fixupx.com', query='', fragment='').geturl(),
+                allowed_mentions=discord.AllowedMentions.none(),
+                mention_author=False,
+                silent=True
+            )
+        # this is a low-priority operation, so at most we'll try to restore the original embed on any failure
+        except discord.HTTPException:
+            with suppress(discord.HTTPException):
+                await message.edit(suppress=False)
 
 
 async def setup(bot: DreamBot) -> None:
