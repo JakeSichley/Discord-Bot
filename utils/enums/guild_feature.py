@@ -22,16 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from enum import IntEnum, auto
+from enum import IntFlag
 from typing import Optional
 
 
-class GuildFeature(IntEnum):
+class GuildFeature(IntFlag):
     """
     An Enum class that represents variables toggleable features for a guild.
     """
 
-    TAG_DIRECT_INVOKE = auto()
+    TAG_DIRECT_INVOKE = 1
+    ALTERNATIVE_TWITTER_EMBEDS = 2
 
 
 def has_guild_feature(features: int, feature: GuildFeature) -> bool:

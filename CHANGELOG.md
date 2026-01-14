@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased
 ### Features
 - Enhance `Runescape` autocomplete descriptions for user-provided values
+- Add `GuildFeature` support for alternative Twitter embeds (via 'fixupx.com')
 ### Internal
 - Autocomplete
   - Switch from `fuzzywuzzy` to `RapidFuzz` for increased performance
