@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 import inspect
-from typing import Optional, Callable, Awaitable, TypeVar, Set
+from typing import Optional, Callable, Awaitable, TypeVar, Set, overload, Literal
 
 import aiohttp
 
@@ -199,6 +199,10 @@ class NetworkClient:
             async with self._session.get(
                     url, headers=headers, ssl=ssl, raise_for_status=True
             ) as r:
+                # anything in this context manager implicitly means the request was successful
+                # and no exceptions were raised by either the request or the handler
+
+                # if we successfully transform our response, check for backoff and return
                 if transformed_response := await handler(r):
                     if not bypass_backoff:
                         self._reset_backoff_for_url(url, debug_identifier)
@@ -209,10 +213,33 @@ class NetworkClient:
                         extra=self.NETWORK_CLIENT_DEBUG_SCOPE
                     )
                     return transformed_response
+                # if we don't successfully transform our response, check whether the caller wants an empty exception
+                elif raise_for_empty_response:
+                    bot_logger.debug(
+                        f'{debug_identifier} Request for url `{url}` was successful, but did not yield a transformable '
+                        f'response - raising for empty response per caller request.',
+                        extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                    )
+                    raise EmptyResponseError(
+                        f'Request for url `{url}` was successful, but response was empty. '
+                        f'Response handler type: {return_type_identifier}.'
+                    )
+                # if we don't successfully transform our response and the caller does not want an exception, return None
+                else:
+                    bot_logger.debug(
+                        f'{debug_identifier} Request for url `{url}` was successful, but did not '
+                        f'yield a transformable response.',
+                        extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                    )
+                    return None
 
+        # catch and log any exceptions raised during the request or handler transformation
+        except aiohttp.ServerConnectionError as e:
+            exception = e
+            bot_logger.warning(f'Network Request Server Error. ("{url}"). {type(e)} - {e} - {e.args}.')
         except aiohttp.ClientResponseError as e:
             exception = e
-            bot_logger.warning(f'Network Request Error. ("{url}"). {e.status}. {e.message}.')
+            bot_logger.warning(f'Network Request Client Response Error. ("{url}"). {e.status}. {e.message}.')
         except aiohttp.ClientError as e:
             exception = e
             bot_logger.warning(f'Network Request Client Error. ("{url}"). {type(e)} - {e} - {e.args}.')
@@ -227,6 +254,8 @@ class NetworkClient:
         #   -> Exceptions: Don't increment if `bypass_backoff` is True,
         #   or if we avoided a bad request by raising ExponentialBackoffException
         if caught_exception := exception:
+            # if the caller has not opted out of backoff, increment backoff
+            # if we proactively raised `ExponentialBackoffException`, don't re-increment
             if not bypass_backoff and not isinstance(caught_exception, ExponentialBackoffException):
                 bot_logger.debug(
                     f'{debug_identifier} Error was encountered during request for `{url}` '
@@ -235,26 +264,34 @@ class NetworkClient:
                 )
                 self._increment_backoff_for_url(url, debug_identifier)
 
+            # if we've caught an exception and the caller has opted to blanket receive, re-raise
             if forward_exceptions:
+                bot_logger.debug(
+                    f'{debug_identifier} Error was encountered during request for `{url}` - forwarding '
+                    f'exception per caller request',
+                    extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                )
                 raise caught_exception
+            # if we've caught an exception and the caller has not opted to blanket receive, check whether the
+            # caller wants an empty exception
+            elif raise_for_empty_response:
+                bot_logger.debug(
+                    f'{debug_identifier} Request for url `{url}` was unsuccessful - raising for empty '
+                    f'response per caller request.',
+                    extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                )
+                raise EmptyResponseError(
+                    f'Request for url `{url}` was unsuccessful, but blanket exceptions are not forwarded. '
+                    f'Response handler type: {return_type_identifier}.'
+                )
 
-        if raise_for_empty_response:
-            bot_logger.debug(
-                f'{debug_identifier} Request for url `{url}` was successful, but did not yield a transformable '
-                f'response. Per caller, raising for empty response.',
-                extra=self.NETWORK_CLIENT_DEBUG_SCOPE
-            )
-            raise EmptyResponseError(
-                f'Request for url `{url}` was successful, but response was empty. '
-                f'Response handler type: {return_type_identifier}.'
-            )
-        else:
-            bot_logger.debug(
-                f'{debug_identifier} Request for url `{url}` was either unsuccessful or did not yield a transformable '
-                f'response. Errors are either suppressed or no errors were raised. {forward_exceptions=}, {exception=}',
-                extra=self.NETWORK_CLIENT_DEBUG_SCOPE
-            )
-            return None
+        # if we've reached this point, the request was unsuccessful and the caller has opted out of any exceptions
+        bot_logger.debug(
+            f'{debug_identifier} Request for url `{url}` was either unsuccessful or raised an exception during '
+            f'the transformation process. Errors are suppressed by the caller. {forward_exceptions=}, {exception=}',
+            extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+        )
+        return None
 
     async def fetch_bytes(
             self,
@@ -292,6 +329,36 @@ class NetworkClient:
             raise_for_empty_response=raise_for_empty_response
         )
 
+    @overload
+    async def fetch_json(
+            self,
+            url: str,
+            /,
+            *,
+            encoding: str = 'utf-8',
+            headers: Optional['Headers'] = None,
+            forward_exceptions: bool = False,
+            ssl: Optional[bool] = None,
+            bypass_backoff: bool = False,
+            raise_for_empty_response: Literal[True]
+    ) -> 'JSON':
+        ...
+
+    @overload
+    async def fetch_json(
+            self,
+            url: str,
+            /,
+            *,
+            encoding: str = 'utf-8',
+            headers: Optional['Headers'] = None,
+            forward_exceptions: bool = False,
+            ssl: Optional[bool] = None,
+            bypass_backoff: bool = False,
+            raise_for_empty_response: Literal[False] = False
+    ) -> Optional['JSON']:
+        ...
+
     async def fetch_json(
             self,
             url: str,
@@ -308,7 +375,7 @@ class NetworkClient:
         Fetches JSON from a url.
 
         Attributes:
-            url (str): The url to fetch json from.
+            url (str): The url to fetch JSON from.
             encoding (str): The encoding to use.
             headers (Optional[Headers]): The headers to send with the request.
             forward_exceptions (bool): Whether to forward exceptions instead of suppressing them.
