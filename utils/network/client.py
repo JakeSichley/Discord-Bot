@@ -185,9 +185,9 @@ class NetworkClient:
 
         try:
             if (
-                    not bypass_backoff
-                    and (matched_rule := self._get_or_create_backoff_for_url(url, debug_identifier))
-                    and matched_rule.backoff.remaining_backoff > 0
+                not bypass_backoff
+                and (matched_rule := self._get_or_create_backoff_for_url(url, debug_identifier))
+                and matched_rule.backoff.remaining_backoff > 0
             ):
                 bot_logger.debug(
                     f'{debug_identifier} Request for url `{url}` is currently backed off without bypass - '
@@ -342,6 +342,21 @@ class NetworkClient:
             bypass_backoff: bool = False,
             raise_for_empty_response: Literal[True]
     ) -> 'JSON':
+        """
+        Fetches JSON from a url.
+
+        Attributes:
+            url (str): The url to fetch JSON from.
+            encoding (str): The encoding to use.
+            headers (Optional[Headers]): The headers to send with the request.
+            forward_exceptions (bool): Whether to forward exceptions instead of suppressing them.
+            ssl (Optional[bool]): Whether to use ssl.
+            bypass_backoff (bool): Whether to bypass the exponential backoff.
+            raise_for_empty_response (Literal[True]): Whether to raise an `EmptyResponseError` if the response is empty.
+
+        Returns:
+            (JSON): The JSON from the url. Throws on an empty response.
+        """
         ...
 
     @overload
@@ -355,8 +370,23 @@ class NetworkClient:
             forward_exceptions: bool = False,
             ssl: Optional[bool] = None,
             bypass_backoff: bool = False,
-            raise_for_empty_response: Literal[False] = False
+            raise_for_empty_response: Literal[False]
     ) -> Optional['JSON']:
+        """
+        Fetches JSON from a url.
+
+        Attributes:
+            url (str): The url to fetch JSON from.
+            encoding (str): The encoding to use.
+            headers (Optional[Headers]): The headers to send with the request.
+            forward_exceptions (bool): Whether to forward exceptions instead of suppressing them.
+            ssl (Optional[bool]): Whether to use ssl.
+            bypass_backoff (bool): Whether to bypass the exponential backoff.
+            raise_for_empty_response (Literal[False]): Whether to raise an `EmptyResponseError` if the response is empty.
+
+        Returns:
+            (Optional[JSON]): The JSON from the url, or None if the request failed.
+        """
         ...
 
     async def fetch_json(
@@ -384,7 +414,7 @@ class NetworkClient:
             raise_for_empty_response (bool): Whether to raise an `EmptyResponseError` if the response is empty.
 
         Returns:
-            (Optional[JSON]): The json from the url, or None if the request failed.
+            (Optional[JSON]): The JSON from the url, or None if the request failed.
         """
 
         return await self._request(
