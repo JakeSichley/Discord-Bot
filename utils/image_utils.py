@@ -26,26 +26,27 @@ from io import BytesIO
 from os import path
 from re import search
 from textwrap import wrap
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, TYPE_CHECKING
 
 import PIL.ImageOps
 import discord
 from PIL import Image, ImageDraw, ImageFont
-from aiohttp import ClientSession
 from discord.ext.commands import MissingRequiredArgument, BadArgument
 from discord.ext.commands import Parameter
 
-from utils.network.return_type import NetworkReturnType
-from utils.network.utils import network_request
+from utils.network.exceptions import EmptyResponseError
 from utils.utils import run_in_executor
 
+if TYPE_CHECKING:
+    from utils.network.client import NetworkClient
 
-async def extract_image_as_bytes(session: ClientSession, source: Union[discord.Message, str]) -> BytesIO:
+
+async def extract_image_as_bytes(network_client: 'NetworkClient', source: Union[discord.Message, str]) -> BytesIO:
     """
     A method that downloads an image from a url.
 
     Parameters:
-        session (aiohttp.ClientSession): The bot's current client session.
+        network_client (NetworkClient): The bot's network client.
         source (Union[discord.Message, str]): The image source. Could be an attachment or url.
 
     Returns:
@@ -62,13 +63,18 @@ async def extract_image_as_bytes(session: ClientSession, source: Union[discord.M
     elif isinstance(source, str) and search(r'.(webp|jpeg|jpg|png|bmp)', source):
         # if the user provided an embed, refresh to allow discord time to update the message
         buffer = BytesIO()
-        data = await network_request(session, source, return_type=NetworkReturnType.BYTES)
-        buffer.write(data)
-        buffer.seek(0)
-        if buffer.getbuffer().nbytes >= 8000000:
-            raise BufferSizeExceeded
-        else:
-            return buffer
+        try:
+            data = await network_client.fetch_bytes(source, raise_for_empty_response=True)
+            if data is None:
+                raise NoImage('source')
+            buffer.write(data)
+            buffer.seek(0)
+            if buffer.getbuffer().nbytes >= 8000000:
+                raise BufferSizeExceeded
+            else:
+                return buffer
+        except EmptyResponseError:
+            raise NoImage('source')
     else:
         raise NoImage('source')
 

@@ -37,7 +37,8 @@ from discord.ext import commands, tasks
 
 from dreambot import DreamBot
 from utils.context import Context
-from utils.network.utils import EmptyResponseError, ExponentialBackoff
+from utils.network.exceptions import EmptyResponseError
+from utils.network.exponential_backoff import ExponentialBackoff
 from utils.observability.loggers import bot_logger
 
 
@@ -470,7 +471,7 @@ class DDO(commands.Cog):
             # if we backoff for more than 5 minutes, invalidate all LFM data
             # this works out to roughly the 4th backoff
             # this is also when we care about start caring about log entries
-            self.backoff.next_backoff()
+            self.backoff.record_failure()
 
             if self.backoff.backoff_count >= 4:
                 self.api_data = {s: None for s in self.SERVERS}

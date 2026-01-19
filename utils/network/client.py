@@ -29,7 +29,8 @@ import aiohttp
 
 from utils.network.exponential_backoff import BackoffRule, ExponentialBackoffException
 from utils.network.return_type import JSON
-from utils.network.utils import Headers, EmptyResponseError
+from utils.network.exceptions import EmptyResponseError
+from utils.network.utils import Headers
 from utils.observability.loggers import bot_logger, make_debug_scope
 from utils.utils import short_random_id
 
