@@ -28,11 +28,10 @@ from contextlib import suppress
 from hashlib import sha256
 from itertools import chain
 from json.decoder import JSONDecodeError
-from typing import List, Optional, Dict, Literal, KeysView
+from typing import List, Optional, Dict, Literal, KeysView, Any
 
 import aiosqlite
 import discord
-from aiohttp import ClientError
 from aiosqlite import Error as aiosqliteError, IntegrityError
 from discord import app_commands, Interaction
 from discord.app_commands import Choice, Transform, Range
@@ -47,8 +46,7 @@ from utils.database.helpers import (
     decode_blob_to_integer_array, encode_integer_array_to_blob
 )
 from utils.database.table_dataclasses import RunescapeAlert
-from utils.network.return_type import NetworkReturnType
-from utils.network.utils import network_request, ExponentialBackoff
+from utils.network.exceptions import EmptyResponseError
 from utils.observability.loggers import bot_logger, make_debug_scope
 from utils.runescape.runescape_data_classes import (
     RunescapeItem, ItemMarketData, AlertEmbedFragment, RunescapeHerbComparison
@@ -84,7 +82,6 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         item_data (Dict[int, RunescapeItem]): A mapping of Runescape items.
         item_names_to_ids (Dict[str, int]): A lookup mapping of Runescape item names.
         alerts (Dict[int, Dict[int, RunescapeAlert]]): A mapping of user alerts for Runescape items.
-        backoff (ExponentialBackoff): Exponential Backoff calculator for network requests.
     """
 
     MAPPING_QUERY_INTERVAL = 60 * 60  # 1 hour
@@ -107,7 +104,6 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         self.item_ids_hash: Optional[str] = None
         self.item_names_to_ids: Dict[str, int] = {}  # [item_name: item_id]
         self.alerts: Dict[int, Dict[int, RunescapeAlert]] = defaultdict(dict)  # [user_id: [item_id: RunescapeAlert]]
-        self.backoff = ExponentialBackoff(3600 * 4)
         self.initial_mapping_data_event: Event = Event()
         self.query_mapping_data.start()
         self.query_market_data.start()
@@ -956,10 +952,9 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         """
 
         try:
-            mapping_response = await network_request(
-                self.bot.session,
+            mapping_response: List[Dict[str, Any]] = await self.bot.network_client.fetch_json(
                 'https://prices.runescape.wiki/api/v1/osrs/mapping',
-                return_type=NetworkReturnType.JSON
+                raise_for_empty_response=True
             )
 
             for raw_item in mapping_response:
@@ -979,11 +974,12 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                 except Exception as e:
                     bot_logger.warning(f'OSRS RunescapeItem Init Exception: {type(e)} - {e} - {raw_item=}')
 
-        except ClientError:
-            pass
-
         except (JSONDecodeError, UnicodeError) as e:
             bot_logger.warning(f'OSRS Mapping Query Error: {type(e)} - {e}')
+
+        except EmptyResponseError:
+            # TODO: checks for empty responses for all commands (top-level item-data, sub-level market-data)
+            bot_logger.warning(f'OSRS Mapping Query Empty Response Error')
 
         except Exception as e:
             bot_logger.error(f'OSRS Mapping Query Unhandled Exception: {type(e)} - {e}')
@@ -1007,27 +1003,27 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         """
 
         try:
-            market_response = await network_request(
-                self.bot.session,
+            market_response: Dict[str, Dict[str, Any]] = await self.bot.network_client.fetch_json(
                 'https://prices.runescape.wiki/api/v1/osrs/latest',
-                return_type=NetworkReturnType.JSON
+                raise_for_empty_response=True
             )
 
             for item_id in [item_id for item_id in market_response['data'] if int(item_id) in self.item_data]:
                 fragment = ItemMarketData(**market_response['data'][item_id])
                 self.item_data[int(item_id)].update_with_market_fragment(fragment)
 
-        except ClientError:
-            pass
-
         except TypeError as e:
             bot_logger.warning(f'OSRS RunescapeItem Init Error: {e}')
 
         except (JSONDecodeError, UnicodeError, TimeoutError) as e:
-            bot_logger.warning(f'OSRS Mapping Query Error: {type(e)} - {e}')
+            bot_logger.warning(f'OSRS Market Query Error: {type(e)} - {e}')
+
+        except EmptyResponseError:
+            # TODO: checks for empty responses for all commands (top-level item-data, sub-level market-data)
+            bot_logger.warning(f'OSRS Market Query Empty Response Error')
 
         except Exception as e:
-            bot_logger.error(f'OSRS Mapping Query Unhandled Exception: {type(e)} - {e}')
+            bot_logger.error(f'OSRS Market Query Unhandled Exception: {type(e)} - {e}')
             await self.bot.report_exception(e)
 
         else:
@@ -1063,7 +1059,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             An alert's low price (`low_price`) is the price a user wants to buy items for.
                 Therefore, trigger an alert if item.high (instant buy) <= alert.target_low.
 
-            An alerts high price (`high_price`) is the price a user wants to sell items for.
+            An alert's high price (`high_price`) is the price a user wants to sell items for.
                 Therefore, trigger an alert if item.low (instant sell) >= alert.target_high.
 
         Parameters:

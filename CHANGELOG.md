@@ -19,7 +19,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Improve match quality by prioritizing `token_set` > `partial_token_sort` > `QRatio`, followed by string length delta
   - Further improve autocomplete performance for `Runescape` by storing previously computed autocomplete results
 - Add `ScopedDebugFilter` to allow for toggleable debug logs
-- Create `NetworkClient` to allow for centralized error handling, ratelimiting, and more accurate typing
+- Network Client
+  - Create `NetworkClient` to allow for centralized error handling, ratelimiting, and more accurate typing
+  - Migrate existing `network_request` usages to `NetworkClient`
 ### Issues
 - Fix `RunescapeHerbComparison` using grimy values for min/max comparisons instead of grimy and clean
 

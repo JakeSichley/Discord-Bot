@@ -253,7 +253,7 @@ async def create_emojis(bot: DreamBot, ctx: Context, emojis: Union[EmojiComponen
     emoji_manager = EmojiManager(ctx.guild, emojis)
 
     try:
-        await emoji_manager.yoink(ctx, bot.session)
+        await emoji_manager.yoink(ctx, bot.network_client)
     except NoRemainingEmojiSlots:
         await ctx.send('You have no remaining emoji slots - cannot yoink any more emojis!')
         return

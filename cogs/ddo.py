@@ -37,8 +37,8 @@ from discord.ext import commands, tasks
 
 from dreambot import DreamBot
 from utils.context import Context
-from utils.network.return_type import NetworkReturnType
-from utils.network.utils import network_request, ExponentialBackoff
+from utils.network.exceptions import EmptyResponseError
+from utils.network.exponential_backoff import ExponentialBackoff
 from utils.observability.loggers import bot_logger
 
 
@@ -201,7 +201,16 @@ class DDO(commands.Cog):
         """
 
         url = 'https://ddowiki.com/page/Item:' + item.replace(' ', '_')
-        data = await network_request(self.bot.session, url)
+
+        try:
+            data = await self.bot.network_client.fetch_text(
+                url,
+                raise_for_empty_response=True
+            )
+        except EmptyResponseError:
+            await ctx.send('Failed to retrieve data for the specified item')
+            return
+
         soup = BeautifulSoup(data, features="html5lib")
         # Pull the main table
         table = soup.find_all('tr')
@@ -457,10 +466,12 @@ class DDO(commands.Cog):
                 None.
             """
 
+            # TODO: Rewrite backoff logic + pattern for backoff
+
             # if we backoff for more than 5 minutes, invalidate all LFM data
             # this works out to roughly the 4th backoff
             # this is also when we care about start caring about log entries
-            self.backoff.next_backoff()
+            self.backoff.record_failure()
 
             if self.backoff.backoff_count >= 4:
                 self.api_data = {s: None for s in self.SERVERS}
@@ -476,10 +487,11 @@ class DDO(commands.Cog):
         server = self.SERVERS[self.query_ddo_audit.current_loop % len(self.SERVERS)]
 
         try:
-            self.api_data[server] = await network_request(
-                self.bot.session,
+            self.api_data[server] = await self.bot.network_client.fetch_json(
                 f'https://api.ddoaudit.com/groups/{server.lower()}',
-                return_type=NetworkReturnType.JSON, ssl=False
+                ssl=False,
+                bypass_backoff=True,
+                raise_for_empty_response=True
             )
             self.backoff.reset()
 
@@ -488,6 +500,9 @@ class DDO(commands.Cog):
 
         except (JSONDecodeError, UnicodeError, TimeoutError) as e:
             bot_logger.warning(f'DDOAudit Query[{server}] Error: {type(e)} - {e}')
+            await backoff(server)
+
+        except EmptyResponseError:
             await backoff(server)
 
         except Exception as e:

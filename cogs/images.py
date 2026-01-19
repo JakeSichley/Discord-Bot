@@ -71,7 +71,7 @@ class Images(commands.Cog):
 
         async with ctx.channel.typing():
             try:
-                buffer = await image_utils.extract_image_as_bytes(self.bot.session, source)
+                buffer = await image_utils.extract_image_as_bytes(self.bot.network_client, source)
                 inverted = await image_utils.invert_object(buffer)
             except image_utils.NoImage:
                 await ctx.send('No image was provided.')

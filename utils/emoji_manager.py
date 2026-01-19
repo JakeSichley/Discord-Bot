@@ -27,11 +27,11 @@ from enum import Enum
 from typing import List, Optional, Union
 
 import discord
-from aiohttp import ClientSession, ClientError
+from aiohttp import ClientError
 
 from utils.context import Context
-from utils.network.return_type import NetworkReturnType
-from utils.network.utils import network_request
+from utils.network.exceptions import EmptyResponseError
+from utils.network.client import NetworkClient
 from utils.observability.loggers import bot_logger
 
 
@@ -288,7 +288,7 @@ class EmojiManager:
 
         return status
 
-    async def yoink(self, ctx: Context, session: ClientSession) -> None:
+    async def yoink(self, ctx: Context, network_client: NetworkClient) -> None:
         """
         Primary driver method. Performs all checks and required requests for creating emojis.
 
@@ -298,7 +298,7 @@ class EmojiManager:
 
         Parameters:
             ctx (Context): The invocation context.
-            session (ClientSession): The bot's current ClientSession.
+            network_client (NetworkClient): The bot's network client.
 
         Raises:
             NoEmojisFound (Directly)
@@ -314,7 +314,7 @@ class EmojiManager:
 
         self.__check_for_duplicate_emoji()
         self.__check_emojis_slots()
-        await self.__fetch_partial_emoji_content(session)
+        await self.__fetch_partial_emoji_content(network_client)
         await self.__create_emoji(ctx)
 
     def __check_for_duplicate_emoji(self) -> None:
@@ -376,12 +376,12 @@ class EmojiManager:
         if self.__no_viable_emoji:
             raise NoViableEmoji(FailureStage.NO_NETWORKING)
 
-    async def __fetch_partial_emoji_content(self, session: ClientSession) -> None:
+    async def __fetch_partial_emoji_content(self, network_client: NetworkClient) -> None:
         """
         Fetches the emoji's content from Discord's CDN.
 
         Parameters:
-            session (ClientSession): The bot's current ClientSession.
+            network_client (NetworkClient): The bot's network client.
 
         Raises:
             NoViableEmoji.
@@ -392,12 +392,11 @@ class EmojiManager:
 
         for emoji in filter(lambda x: not x.failed, self.__emojis):
             try:
-                emoji.content = await network_request(
-                    session,
+                emoji.content = await network_client.fetch_bytes(
                     f'https://cdn.discordapp.com/emojis/{emoji.id}.{emoji.extension}?size=96&quality=lossless',
-                    return_type=NetworkReturnType.BYTES
+                    raise_for_empty_response=True
                 )
-            except ClientError:
+            except (ClientError, EmptyResponseError):
                 emoji.set_failed(f'**{emoji.name}** failed with Error: `ContentDoesNotExist`')
 
         if self.__no_viable_emoji:

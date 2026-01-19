@@ -49,8 +49,8 @@ from utils.checks import ensure_git_credentials
 from utils.context import Context
 from utils.converters import StringConverter
 from utils.database.helpers import execute_query, retrieve_query
-from utils.network.return_type import NetworkReturnType
-from utils.network.utils import network_request, Headers
+from utils.network.exceptions import EmptyResponseError
+from utils.network.utils import Headers
 from utils.observability.loggers import bot_logger
 from utils.utils import pairs, run_in_subprocess, generate_activity, VERSION
 
@@ -648,19 +648,23 @@ class Admin(commands.Cog):
         users_url = f"https://api.github.com/users/{self.bot.git['git_user']}"
         commits_url = f"https://api.github.com/repos/{self.bot.git['git_user']}/{self.bot.git['git_repo']}/commits/"
 
-        branch_data = await network_request(
-            self.bot.session, branches_url, headers=headers, return_type=NetworkReturnType.JSON
-        )
-        user_data = await network_request(
-            self.bot.session, users_url, headers=headers, return_type=NetworkReturnType.JSON, raise_errors=False
-        )
-        latest_commit_data = {
-            branch['name']:
-                await network_request(
-                    self.bot.session, commits_url + branch['commit']['sha'], headers=headers,
-                    return_type=NetworkReturnType.JSON
-                ) for branch in branch_data[-5:]
-        }
+        try:
+            branch_data = await self.bot.network_client.fetch_json(
+                branches_url, headers=headers, raise_for_empty_response=True
+            )
+            user_data = await self.bot.network_client.fetch_json(
+                users_url, headers=headers, raise_for_empty_response=True
+            )
+            latest_commit_data = {
+                branch['name']:
+                    await self.bot.network_client.fetch_json(
+                        commits_url + branch['commit']['sha'], headers=headers,
+                        raise_for_empty_response=True
+                    ) for branch in branch_data[-5:]
+            }
+        except EmptyResponseError:
+            await ctx.send('Failed to fetch branch information.')
+            return
 
         try:
             thumbnail = user_data['avatar_url']
