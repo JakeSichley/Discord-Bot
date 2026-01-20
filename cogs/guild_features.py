@@ -23,18 +23,21 @@ SOFTWARE.
 """
 
 from contextlib import suppress
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from urllib.parse import urlparse
 
-import discord
 from aiosqlite import Error as aiosqliteError
-from discord import app_commands, Interaction
+from discord import app_commands, Permissions, Embed, AllowedMentions, HTTPException
 from discord.ext import commands
 
-from dreambot import DreamBot
 from utils.database.helpers import execute_query
 from utils.enums.guild_feature import GuildFeature, has_guild_feature, set_guild_feature
 from utils.observability.loggers import bot_logger
+
+if TYPE_CHECKING:
+    import discord
+    from discord import Interaction
+    from dreambot import DreamBot
 
 
 class GuildFeatures(commands.Cog):
@@ -48,11 +51,11 @@ class GuildFeatures(commands.Cog):
     feature_subgroup = app_commands.Group(
         name='guild_features',
         description='Commands for managing guild features',
-        default_permissions=discord.Permissions(manage_guild=True),
+        default_permissions=Permissions(manage_guild=True),
         guild_only=True
     )
 
-    def __init__(self, bot: DreamBot) -> None:
+    def __init__(self, bot: 'DreamBot') -> None:
         """
         The constructor for the GuildFeatures class.
 
@@ -67,7 +70,7 @@ class GuildFeatures(commands.Cog):
     """
 
     @feature_subgroup.command(name='status', description='Checks feature statuses for the current guild')
-    async def check_guild_features(self, interaction: Interaction[DreamBot]) -> None:
+    async def check_guild_features(self, interaction: 'Interaction[DreamBot]') -> None:
         """
         Retrieves feature statuses for the current guild.
 
@@ -83,7 +86,7 @@ class GuildFeatures(commands.Cog):
 
         features = self.bot.cache.guild_features.get(interaction.guild_id, 0)
 
-        embed = discord.Embed(
+        embed = Embed(
             title='Guild Features',
             description=f'Feature statuses for {interaction.guild.name}',
             color=0x00BD96,
@@ -106,7 +109,7 @@ class GuildFeatures(commands.Cog):
     )
     async def modify_guild_features(
             self,
-            interaction: Interaction[DreamBot],
+            interaction: 'Interaction[DreamBot]',
             direct_tag_invoke: Optional[bool] = None,
             alternative_twitter_embeds: Optional[bool] = None
     ) -> None:
@@ -152,7 +155,7 @@ class GuildFeatures(commands.Cog):
             self.bot.cache.guild_features[interaction.guild_id] = features
 
     @commands.Cog.listener()
-    async def on_message(self, message: discord.Message) -> None:
+    async def on_message(self, message: 'discord.Message') -> None:
         """
         Replaces Twitter (X) embeds with better ones and eliminates tracking parameters.
 
@@ -183,17 +186,17 @@ class GuildFeatures(commands.Cog):
             await message.edit(suppress=True)
             await message.reply(
                 content=parsed_url._replace(netloc='fixupx.com', query='', fragment='').geturl(),
-                allowed_mentions=discord.AllowedMentions.none(),
+                allowed_mentions=AllowedMentions.none(),
                 mention_author=False,
                 silent=True
             )
         # this is a low-priority operation, so at most we'll try to restore the original embed on any failure
-        except discord.HTTPException:
-            with suppress(discord.HTTPException):
+        except HTTPException:
+            with suppress(HTTPException):
                 await message.edit(suppress=False)
 
 
-async def setup(bot: DreamBot) -> None:
+async def setup(bot: 'DreamBot') -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

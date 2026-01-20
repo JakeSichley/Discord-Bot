@@ -27,14 +27,16 @@ from __future__ import annotations
 import io
 from asyncio import TimeoutError
 from contextlib import suppress
-from typing import Any, Union, Optional
+from typing import Any, Union, Optional, TYPE_CHECKING
 from uuid import uuid4
 
-import discord
+from discord import HTTPException, File, Member
 from discord.ext import commands
 
-# noinspection PyUnresolvedReferences
-import dreambot  # keep - needed for typehint, actual usage causes circular import
+if TYPE_CHECKING:
+    import dreambot
+    from discord import Emoji, Reaction, PartialEmoji, RawReactionActionEvent, Message
+
 from utils.observability.loggers import bot_logger
 
 
@@ -83,7 +85,7 @@ class Context(commands.Context['dreambot.DreamBot']):
 
     async def react(
             self,
-            emoji: Union[discord.Emoji, discord.Reaction, discord.PartialEmoji, str],
+            emoji: Union['Emoji', 'Reaction', 'PartialEmoji', str],
             *,
             raise_exceptions: bool = False
     ) -> None:
@@ -100,7 +102,7 @@ class Context(commands.Context['dreambot.DreamBot']):
 
         try:
             await self.message.add_reaction(emoji)
-        except discord.HTTPException as e:
+        except HTTPException as e:
             bot_logger.warning(f'Context React Error. {e.status}. {e.text}')
             if raise_exceptions:
                 raise
@@ -150,7 +152,7 @@ class Context(commands.Context['dreambot.DreamBot']):
         for emoji in confirmation_emojis:
             await prompt.add_reaction(emoji)
 
-        def reaction_check(pl: discord.RawReactionActionEvent) -> bool:
+        def reaction_check(pl: 'RawReactionActionEvent') -> bool:
             """
             Our check criteria for determining the result of the prompt.
 
@@ -182,11 +184,11 @@ class Context(commands.Context['dreambot.DreamBot']):
             result = str(payload.emoji) == '✅'
         finally:
             if ephemeral:
-                with suppress(discord.HTTPException):
+                with suppress(HTTPException):
                     await prompt.delete()
             return result
 
-    async def safe_send(self, content: Optional[str] = None, **kwargs: Any) -> discord.Message:
+    async def safe_send(self, content: Optional[str] = None, **kwargs: Any) -> 'Message':
         """
         Sends a message safely to the destination with the content given.
 
@@ -200,7 +202,7 @@ class Context(commands.Context['dreambot.DreamBot']):
         if content and len(content) > 2000:
             fp = io.BytesIO(content.encode())
             kwargs.pop('file', None)
-            return await self.send(file=discord.File(fp, filename='content.txt'), **kwargs)
+            return await self.send(file=File(fp, filename='content.txt'), **kwargs)
         else:
             return await self.send(content)
 
@@ -244,7 +246,7 @@ class Context(commands.Context['dreambot.DreamBot']):
         author_context += f'{indent * 2}ID: {self.author.id}\n'
         author_context += f'{indent * 2}Global Name: {self.author.global_name}\n'
         author_context += f'{indent * 2}Display Name: {self.author.display_name}\n'
-        if isinstance(self.author, discord.Member):
+        if isinstance(self.author, Member):
             author_context += f'{indent * 2}Permissions: {self.author.guild_permissions}\n'
 
         args_context = ''

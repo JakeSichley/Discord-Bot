@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Network Client
   - Create `NetworkClient` to allow for centralized error handling, ratelimiting, and more accurate typing
   - Migrate existing `network_request` usages to `NetworkClient`
+- Overhaul imports to only import types used for type-hinting when type checking
 ### Issues
 - Fix `RunescapeHerbComparison` using grimy values for min/max comparisons instead of grimy and clean
 

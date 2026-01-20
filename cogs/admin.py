@@ -34,25 +34,28 @@ from io import StringIO
 from re import finditer
 from textwrap import indent
 from traceback import format_exc, format_exception
-from typing import Union, List, Sequence, Annotated, Literal, Any
+from typing import Union, List, Sequence, Annotated, Literal, Any, TYPE_CHECKING
 
-import discord
 import pytz
 from aiosqlite import Error as aiosqliteError
-from discord.abc import Messageable
+from discord import Embed, HTTPException, AllowedMentions, Permissions, TextChannel, CategoryChannel, Thread
 from discord.ext import commands
 from discord.ext import tasks
 from discord.utils import format_dt
 
-from dreambot import DreamBot
 from utils.checks import ensure_git_credentials
-from utils.context import Context
 from utils.converters import StringConverter
 from utils.database.helpers import execute_query, retrieve_query
 from utils.network.exceptions import EmptyResponseError
 from utils.network.utils import Headers
 from utils.observability.loggers import bot_logger
 from utils.utils import pairs, run_in_subprocess, generate_activity, VERSION
+
+if TYPE_CHECKING:
+    from discord import Interaction, Member, User, Message, abc
+    from discord.abc import Messageable
+    from dreambot import DreamBot
+    from utils.context import Context
 
 ExtensionName = StringConverter(
     mutator=lambda x: x.strip().lower(),
@@ -69,7 +72,7 @@ class Admin(commands.Cog):
         _last_result (str): The value (if any) of the last exec command.
     """
 
-    def __init__(self, bot: DreamBot) -> None:
+    def __init__(self, bot: 'DreamBot') -> None:
         """
         The constructor for the Admin class.
 
@@ -84,7 +87,7 @@ class Admin(commands.Cog):
         self._last_result = None
         self.logging_line_break.start()
 
-    async def cog_check(self, ctx: Context) -> bool:  # type: ignore[override]
+    async def cog_check(self, ctx: 'Context') -> bool:  # type: ignore[override]
         """
         A method that registers a cog-wide check.
         Requires the invoking user to be the bot's owner.
@@ -99,7 +102,7 @@ class Admin(commands.Cog):
         return await self.bot.is_owner(ctx.author)
 
     @commands.command(name='admin_help', aliases=['ahelp', 'adminhelp'], hidden=True)
-    async def admin_help_command(self, ctx: Context) -> None:
+    async def admin_help_command(self, ctx: 'Context') -> None:
         """
         A command to generate help information for the Admin cog.
         The native help command will not generate information for the Admin cog, since all commands are hidden.
@@ -130,7 +133,7 @@ class Admin(commands.Cog):
         await ctx.send(help_string)
 
     @commands.command(name='reload', aliases=['load'], hidden=True)
-    async def reload(self, ctx: Context, module: Annotated[str, ExtensionName]) -> None:
+    async def reload(self, ctx: 'Context', module: Annotated[str, ExtensionName]) -> None:
         """
         A command to reload a module.
         If the reload fails, the previous state of module is maintained.
@@ -160,7 +163,7 @@ class Admin(commands.Cog):
             await ctx.send(f'Module `{module} does not exist.')
 
     @commands.command(name='unload', hidden=True)
-    async def unload(self, ctx: Context, module: Annotated[str, ExtensionName]) -> None:
+    async def unload(self, ctx: 'Context', module: Annotated[str, ExtensionName]) -> None:
         """
         A command to unload a module.
 
@@ -190,7 +193,7 @@ class Admin(commands.Cog):
             await ctx.send(f'Could Not Unload Module: `{module}`')
 
     @commands.command(name='sync')
-    async def sync_commands(self, ctx: Context, sync_type: Literal['global', 'local', 'guild', 'clear']) -> None:
+    async def sync_commands(self, ctx: 'Context', sync_type: Literal['global', 'local', 'guild', 'clear']) -> None:
         """
         Syncs application commands based on the specified sync type.
         Defaults to syncing to the local guild.
@@ -233,7 +236,7 @@ class Admin(commands.Cog):
         bot_logger.info(f'Synced {len(synced)} commands using sync type: {sync_type}.')
 
     @commands.command(name='logout', aliases=['shutdown'], hidden=True)
-    async def logout(self, ctx: Context) -> None:
+    async def logout(self, ctx: 'Context') -> None:
         """
         A command to stop (close/logout) the bot.
         The command must be confirmed to complete the logout.
@@ -256,7 +259,7 @@ class Admin(commands.Cog):
         await self.bot.close()
 
     @commands.command(name='eval', hidden=True)
-    async def _eval(self, ctx: Context, *, _ev: str) -> None:
+    async def _eval(self, ctx: 'Context', *, _ev: str) -> None:
         """
         A command to evaluate a python statement.
         Should the evaluation encounter an exception, the output will be the exception details.
@@ -284,7 +287,7 @@ class Admin(commands.Cog):
         await ctx.safe_send(output)
 
     @commands.command(name='sql', hidden=True)
-    async def sql(self, ctx: Context, *, query: str) -> None:
+    async def sql(self, ctx: 'Context', *, query: str) -> None:
         """
         A command to execute a sqlite3 statement.
         If the statement type is 'SELECT', successful executions will send the result.
@@ -328,7 +331,7 @@ class Admin(commands.Cog):
             await ctx.safe_send(f'```\n{formatted_exception}\n```')
 
     @commands.command(name='refresh', hidden=True)
-    async def reload_prefixes(self, ctx: Context) -> None:
+    async def reload_prefixes(self, ctx: 'Context') -> None:
         """
         A command to refresh the bot's table caches.
 
@@ -347,7 +350,7 @@ class Admin(commands.Cog):
         await ctx.send('Refreshed Table Caches.')
 
     @commands.command(name='resetcooldown', aliases=['rc'], hidden=True)
-    async def reset_cooldown(self, ctx: Context, command_name: str) -> None:
+    async def reset_cooldown(self, ctx: 'Context', command_name: str) -> None:
         """
         A command to reset the cooldown of a command.
 
@@ -372,7 +375,7 @@ class Admin(commands.Cog):
             await ctx.send(f'Failed to get Command: `{command_name}`')
 
     @commands.command(name='exec', aliases=['execute'], hidden=True)
-    async def _exec(self, ctx: Context, *, body: str) -> None:
+    async def _exec(self, ctx: 'Context', *, body: str) -> None:
         """
         A command to execute a Python code block and output the result, if any.
 
@@ -443,7 +446,7 @@ class Admin(commands.Cog):
 
     @ensure_git_credentials()
     @commands.group(name='git', hidden=True)
-    async def git(self, ctx: Context) -> None:
+    async def git(self, ctx: 'Context') -> None:
         """
         Parent command that handles git related commands.
 
@@ -458,7 +461,7 @@ class Admin(commands.Cog):
             await ctx.send_help('git')
 
     @git.command(name='pull', aliases=['p'], hidden=True)  # type: ignore[misc]
-    async def git_pull(self, ctx: Context) -> None:
+    async def git_pull(self, ctx: 'Context') -> None:
         """
         Pulls the latest changes from master.
 
@@ -519,7 +522,7 @@ class Admin(commands.Cog):
             'Library': library
         }
 
-        embed = discord.Embed(title='Git Pull Changes', color=0x00bbff)
+        embed = Embed(title='Git Pull Changes', color=0x00bbff)
         embed.url = f"https://github.com/{self.bot.git['git_user']}/{self.bot.git['git_repo']}"
 
         with suppress(AttributeError):
@@ -604,7 +607,7 @@ class Admin(commands.Cog):
         await ctx.safe_send(output)
 
     @git.command(name='dry_run', aliases=['dry', 'd'], hidden=True)  # type: ignore[misc]
-    async def dry_run(self, ctx: Context) -> None:
+    async def dry_run(self, ctx: 'Context') -> None:
         """
         Performs a dry run of git pull. Equivalent to git fetch && git diff --stat HEAD origin/master.
 
@@ -626,7 +629,7 @@ class Admin(commands.Cog):
         await ctx.send(f'**The following files would be updated:**\n```\n{output}```')
 
     @git.command(name='branches', aliases=['branch', 'b'], hidden=True)  # type: ignore[misc]
-    async def git_branches(self, ctx: Context) -> None:
+    async def git_branches(self, ctx: 'Context') -> None:
         """
         Fetches a list of branches from the bot's repository.
 
@@ -671,7 +674,7 @@ class Admin(commands.Cog):
         except (KeyError, TypeError):
             thumbnail = 'https://pbs.twimg.com/profile_images/1414990564408262661/r6YemvF9_400x400.jpg'
 
-        embed = discord.Embed(
+        embed = Embed(
             title=f"Overview of **{self.bot.git['git_repo']}**",
             colour=0x58a6ff,
             url=f"https://github.com/{self.bot.git['git_user']}/{self.bot.git['git_repo']}"
@@ -724,7 +727,7 @@ class Admin(commands.Cog):
 
     @commands.command(name='as', hidden=True)
     async def execute_command_as(
-            self, ctx: Context, invoker: Union[discord.Member, discord.User], *, command: str
+            self, ctx: 'Context', invoker: Union[Member, User], *, command: str
     ) -> None:
         """
         Executes a command as the specified user.
@@ -746,7 +749,7 @@ class Admin(commands.Cog):
 
     @commands.guild_only()
     @commands.command(name='archive', hidden=True)
-    async def archive(self, ctx: Context, target: int) -> None:
+    async def archive(self, ctx: 'Context', target: int) -> None:
         """
         Archives a channel as efficiently as possible. Places messages without attachments, files, or embeds into a
         buffer and sends the buffer when the message character limit is exceeded.
@@ -763,15 +766,15 @@ class Admin(commands.Cog):
 
         target_channel = self.bot.get_channel(target)
 
-        if target_channel is None or not isinstance(target_channel, (discord.TextChannel, discord.CategoryChannel)):
+        if target_channel is None or not isinstance(target_channel, (TextChannel, CategoryChannel)):
             await ctx.send("Couldn't fetch target channel.")
             return
 
         # try to create the new archive channel
         category = await ctx.guild.create_category(name=target_channel.name)
 
-        if isinstance(target_channel, discord.TextChannel):
-            channel_list: Sequence[discord.abc.GuildChannel] = [target_channel]
+        if isinstance(target_channel, TextChannel):
+            channel_list: Sequence[abc.GuildChannel] = [target_channel]
         else:
             channel_list = target_channel.channels
 
@@ -781,7 +784,7 @@ class Admin(commands.Cog):
 
         # otherwise, begin the archive process
         else:
-            for base_channel in [channel for channel in channel_list if isinstance(channel, discord.TextChannel)]:
+            for base_channel in [channel for channel in channel_list if isinstance(channel, TextChannel)]:
                 # reset buffer after each channel
                 buffer = ''
                 channel = await category.create_text_channel(name=base_channel.name)
@@ -793,7 +796,7 @@ class Admin(commands.Cog):
 
                         # check for attachments and if any, try to convert them to files for sending
                         if len(message.attachments) > 0:
-                            with suppress(discord.HTTPException):
+                            with suppress(HTTPException):
                                 attachments = [
                                     await attachment.to_file()
                                     for attachment in message.attachments
@@ -809,7 +812,7 @@ class Admin(commands.Cog):
 
                         # check for embeds and if any, save the first one (shouldn't have multiple embeds)
                         if len(message.embeds) > 0:
-                            with suppress(discord.HTTPException):
+                            with suppress(HTTPException):
                                 embeds = ([embed for embed in message.embeds])[0]
 
                         # case 1: attachments or embeds with a non-empty buffer
@@ -830,7 +833,7 @@ class Admin(commands.Cog):
                             # mypy incorrectly identifies send kwargs as non-optional
                             await channel.send(
                                 content=buffer, embed=embeds, files=attachments,  # type: ignore[arg-type]
-                                allowed_mentions=discord.AllowedMentions.none()
+                                allowed_mentions=AllowedMentions.none()
                             )
                             buffer = ''
 
@@ -844,14 +847,14 @@ class Admin(commands.Cog):
                             if len(buffer) <= 2000:
                                 await channel.send(
                                     content=buffer, embed=embeds, files=attachments,  # type: ignore[arg-type]
-                                    allowed_mentions=discord.AllowedMentions.none()
+                                    allowed_mentions=AllowedMentions.none()
                                 )
                             # otherwise, break up the buffer where appropriate, then send everything
                             else:
                                 buffer = await try_to_send_buffer(channel, buffer)
                                 await channel.send(
                                     content=buffer, embed=embeds, files=attachments,  # type: ignore[arg-type]
-                                    allowed_mentions=discord.AllowedMentions.none()
+                                    allowed_mentions=AllowedMentions.none()
                                 )
 
                             # reset the buffer
@@ -872,7 +875,7 @@ class Admin(commands.Cog):
                         await try_to_send_buffer(channel, buffer, True)
 
     @commands.Cog.listener()
-    async def on_message(self, message: discord.Message) -> None:
+    async def on_message(self, message: Message) -> None:
         """
         Adds all members of the forum to newly created threads.
 
@@ -886,7 +889,7 @@ class Admin(commands.Cog):
         if not message.guild or message.guild.id != 1084581614878728305:
             return
 
-        if not isinstance(message.channel, discord.Thread) or message.id != message.channel.id:
+        if not isinstance(message.channel, Thread) or message.id != message.channel.id:
             return
 
         members_to_add = [
@@ -915,7 +918,7 @@ class Admin(commands.Cog):
         bot_logger.info('Completed Unload for Cog: Admin')
 
 
-async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool = False) -> str:
+async def try_to_send_buffer(messagable: 'Messageable', buffer: str, force: bool = False) -> str:
     """
     Parses a string buffer and either sends or returns the buffer in an optimal break point.
 
@@ -931,7 +934,7 @@ async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool =
 
     # if the buffer is within our limit, no special calculations are needed
     if len(buffer) <= 2000:
-        await messagable.send(buffer, allowed_mentions=discord.AllowedMentions.none())
+        await messagable.send(buffer, allowed_mentions=AllowedMentions.none())
         return ''
 
     # default break index to 1800
@@ -953,17 +956,17 @@ async def try_to_send_buffer(messagable: Messageable, buffer: str, force: bool =
                 break
 
     # once all checks are performed, send the first portion of the buffer
-    await messagable.send(str(buffer[:break_index]), allowed_mentions=discord.AllowedMentions.none())
+    await messagable.send(str(buffer[:break_index]), allowed_mentions=AllowedMentions.none())
 
     # depending on parameters, either send or return the remaining portion of the buffer
     if force:
-        await messagable.send(str(buffer[break_index:]), allowed_mentions=discord.AllowedMentions.none())
+        await messagable.send(str(buffer[break_index:]), allowed_mentions=AllowedMentions.none())
         return ''
     else:
         return str(buffer[break_index:])
 
 
-async def setup(bot: DreamBot) -> None:
+async def setup(bot: 'DreamBot') -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

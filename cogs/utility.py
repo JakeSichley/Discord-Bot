@@ -24,22 +24,25 @@ SOFTWARE.
 
 import datetime
 from re import findall
-from typing import Optional, Union, List
+from typing import Optional, Union, List, TYPE_CHECKING
 
-import discord
 import pytz
+from discord import Embed, utils
 from discord.ext import commands
 from discord.utils import format_dt
 
-from dreambot import DreamBot
 from utils.checks import dynamic_cooldown
-from utils.context import Context
 from utils.defaults import MessageReply
 from utils.emoji_manager import (
     EmojiManager, EmojiComponent, NoViableEmoji, NoRemainingEmojiSlots, NoEmojisFound, FailureStage
 )
 from utils.observability.loggers import bot_logger
 from utils.utils import readable_flags
+
+if TYPE_CHECKING:
+    from dreambot import DreamBot
+    from utils.context import Context
+    import discord
 
 
 class Utility(commands.Cog):
@@ -50,7 +53,7 @@ class Utility(commands.Cog):
         bot (DreamBot): The Discord bot class.
     """
 
-    def __init__(self, bot: DreamBot) -> None:
+    def __init__(self, bot: 'DreamBot') -> None:
         """
         The constructor for the UtilityFunctions class.
 
@@ -63,7 +66,7 @@ class Utility(commands.Cog):
     @commands.command(name='time', help='Responds with the current time. Can be supplied with a timezone.\nFor a full '
                                         'list of supported timezones, see '
                                         'https://en.wikipedia.org/wiki/List_of_tz_database_time_zones')
-    async def current_time(self, ctx: Context, timezone: str = 'UTC') -> None:
+    async def current_time(self, ctx: 'Context', timezone: str = 'UTC') -> None:
         """
         A method to output the current time in a specified timezone.
 
@@ -86,7 +89,7 @@ class Utility(commands.Cog):
 
     @commands.command(name='devserver', help='Responds with an invite link to the development server. Useful for '
                                              'getting assistance with a bug, or requesting a new feature!')
-    async def dev_server(self, ctx: Context) -> None:
+    async def dev_server(self, ctx: 'Context') -> None:
         """
         A method to output a link to the DreamBot development server.
 
@@ -104,7 +107,7 @@ class Utility(commands.Cog):
                        '\nhttps://discord.gg/fgHEWdt')
 
     @commands.command(name='uptime', help='Returns current bot uptime.')
-    async def uptime(self, ctx: Context) -> None:
+    async def uptime(self, ctx: 'Context') -> None:
         """
         A method that outputs the uptime of the bot.
 
@@ -123,7 +126,7 @@ class Utility(commands.Cog):
     @commands.guild_only()
     @commands.command(name='userinfo', aliases=['ui'],
                       help='Generates an embed detailing information about the specified user')
-    async def user_info(self, ctx: Context, user: discord.Member = commands.Author) -> None:
+    async def user_info(self, ctx: 'Context', user: 'discord.Member' = commands.Author) -> None:
         """
         A method that outputs user information.
 
@@ -142,14 +145,14 @@ class Utility(commands.Cog):
 
         alias = user.nick or user.global_name
 
-        embed = discord.Embed(title=f'{str(user)}\'s User Information', color=0x1dcaff)
+        embed = Embed(title=f'{str(user)}\'s User Information', color=0x1dcaff)
         if alias is not None:
             embed.description = f'Known as **{alias}** round\' these parts'
         if user.avatar is not None:
             embed.set_thumbnail(url=user.avatar.url)
         embed.add_field(name='Account Created', value=format_dt(user.created_at, 'R'))
         embed.add_field(name='Joined Server', value=format_dt(user.joined_at, 'R')) if user.joined_at else 'Unknown'
-        members = sorted(ctx.guild.members, key=lambda x: x.joined_at or discord.utils.utcnow())
+        members = sorted(ctx.guild.members, key=lambda x: x.joined_at or utils.utcnow())
         embed.add_field(name='Join Position', value=str(members.index(user)))
         embed.add_field(name='User ID', value=str(user.id), inline=False)
         embed.add_field(name='User Flags', value=readable_flags(user.public_flags), inline=False)
@@ -160,7 +163,7 @@ class Utility(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name='unicodeemoji', aliases=['ue', 'eu'])
-    async def unicode_emoji(self, ctx: Context, emoji: str) -> None:
+    async def unicode_emoji(self, ctx: 'Context', emoji: str) -> None:
         """
         A method to convert emojis to their respective unicode string.
 
@@ -182,7 +185,7 @@ class Utility(commands.Cog):
     @dynamic_cooldown()
     @commands.command(name='raw_yoink', aliases=['rawyoink'], help='Yoinks an emoji based on its id.')
     async def raw_yoink_emoji(
-            self, ctx: Context, source: int, name: Optional[str] = None, animated: bool = False
+            self, ctx: 'Context', source: int, name: Optional[str] = None, animated: bool = False
     ) -> None:
         """
         A method to "yoink" an emoji. Retrieves the emoji as an asset and uploads it to the current guild.
@@ -209,7 +212,7 @@ class Utility(commands.Cog):
     @commands.bot_has_guild_permissions(manage_emojis=True)
     @dynamic_cooldown()
     @commands.command(name='yoink', help='Yoinks emojis from the specified message.')
-    async def yoink_emoji(self, ctx: Context, source: discord.Message = MessageReply) -> None:
+    async def yoink_emoji(self, ctx: 'Context', source: 'discord.Message' = MessageReply) -> None:
         """
         A method to "yoink" an emoji. Retrieves the emoji as an asset and uploads it to the current guild.
 
@@ -235,7 +238,7 @@ class Utility(commands.Cog):
         await create_emojis(self.bot, ctx, emojis)
 
 
-async def create_emojis(bot: DreamBot, ctx: Context, emojis: Union[EmojiComponent, List[EmojiComponent]]) -> None:
+async def create_emojis(bot: 'DreamBot', ctx: 'Context', emojis: Union[EmojiComponent, List[EmojiComponent]]) -> None:
     """
     Instantiates an EmojiManager instance, executes the driver `yoink` method, and handles resulting cases.
 
@@ -270,7 +273,7 @@ async def create_emojis(bot: DreamBot, ctx: Context, emojis: Union[EmojiComponen
     await ctx.send(emoji_manager.status_message())
 
 
-async def setup(bot: DreamBot) -> None:
+async def setup(bot: 'DreamBot') -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

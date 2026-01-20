@@ -28,18 +28,20 @@ from json.decoder import JSONDecodeError
 from random import seed, shuffle, randrange
 from re import search, findall
 from time import time
-from typing import List, no_type_check
+from typing import List, no_type_check, TYPE_CHECKING
 
 from aiohttp import ClientError
 from bs4 import BeautifulSoup
 from discord import Embed
 from discord.ext import commands, tasks
 
-from dreambot import DreamBot
-from utils.context import Context
 from utils.network.exceptions import EmptyResponseError
 from utils.network.exponential_backoff import ExponentialBackoff
 from utils.observability.loggers import bot_logger
+
+if TYPE_CHECKING:
+    from dreambot import DreamBot
+    from utils.context import Context
 
 
 class DDO(commands.Cog):
@@ -64,7 +66,7 @@ class DDO(commands.Cog):
     DIFFICULTIES = ('Casual', 'Normal', 'Hard', 'Elite', 'Reaper')
     QUERY_INTERVAL = 15
 
-    def __init__(self, bot: DreamBot) -> None:
+    def __init__(self, bot: 'DreamBot') -> None:
         """
         The constructor for the DDO class.
 
@@ -78,7 +80,7 @@ class DDO(commands.Cog):
         self.query_ddo_audit.start()
 
     @commands.command(name='roll', help='Simulates rolling dice. Syntax example: 9d6')
-    async def roll(self, ctx: Context, *, pattern: str) -> None:
+    async def roll(self, ctx: 'Context', *, pattern: str) -> None:
         """
         A method to simulate the rolling of dice.
 
@@ -184,7 +186,7 @@ class DDO(commands.Cog):
     @commands.is_owner()
     @commands.command(name='ddoitem', help='Pulls basic information about an item in Dungeons & Dragons Online '
                                            'from the wiki')
-    async def ddo_item(self, ctx: Context, *, item: str) -> None:
+    async def ddo_item(self, ctx: 'Context', *, item: str) -> None:
         """
         A method that outputs an embed detailing the properties of an item on the DDOWiki.
 
@@ -310,7 +312,7 @@ class DDO(commands.Cog):
                                         f' include Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis,'
                                         f' and Wayfinder\nInformation is populated from \'DDO Audit\' every '
                                         f'{QUERY_INTERVAL} seconds.')
-    async def ddo_lfms(self, ctx: Context, server: str = 'Khyber') -> None:
+    async def ddo_lfms(self, ctx: 'Context', server: str = 'Khyber') -> None:
         """
         A method that outputs a list of all active groups on a server.
 
@@ -365,7 +367,7 @@ class DDO(commands.Cog):
                                          f' server.\nValid servers include Argonnessen, Cannith, Ghallanda, Khyber,'
                                          f' Orien, Sarlona, Thelanis, Wayfinder, and Hardcore.\nInformation is '
                                          f'populated from \'DDO Audit\' every {QUERY_INTERVAL} seconds.')
-    async def ddo_filter_lfms(self, ctx: Context, *args: str) -> None:
+    async def ddo_filter_lfms(self, ctx: 'Context', *args: str) -> None:
         """
         A method that outputs a list of all active groups on a server that match the specified filters.
 
@@ -528,7 +530,7 @@ class DDO(commands.Cog):
         bot_logger.info('Completed Unload for Cog: DDO')
 
 
-async def setup(bot: DreamBot) -> None:
+async def setup(bot: 'DreamBot') -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
