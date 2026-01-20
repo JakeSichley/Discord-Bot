@@ -22,16 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Union
+from typing import Union, TYPE_CHECKING
 
-import discord
+from discord import HTTPException, File
 from discord.ext import commands
 
-from dreambot import DreamBot
 from utils import image_utils
-from utils.context import Context
 from utils.defaults import MessageReply
 from utils.observability.loggers import bot_logger
+
+if TYPE_CHECKING:
+    import discord
+    from dreambot import DreamBot
+    from utils.context import Context
 
 
 class Images(commands.Cog):
@@ -42,7 +45,7 @@ class Images(commands.Cog):
         bot (DreamBot): The Discord bot class.
     """
 
-    def __init__(self, bot: DreamBot) -> None:
+    def __init__(self, bot: 'DreamBot') -> None:
         """
         The constructor for the MemeCoin class.
 
@@ -53,7 +56,7 @@ class Images(commands.Cog):
         self.bot = bot
 
     @commands.command(name='invert')
-    async def invert(self, ctx: Context, source: Union[discord.Message, str] = MessageReply) -> None:
+    async def invert(self, ctx: 'Context', source: Union['discord.Message', str] = MessageReply) -> None:
         """
         A method that invokes image inversion from ImageUtils.
 
@@ -80,15 +83,15 @@ class Images(commands.Cog):
                 self.bot.report_command_failure(ctx)
                 await ctx.send('The supplied image is too large. Bots are limited to images of size < 8 Megabytes.')
                 return
-            except discord.HTTPException as e:
+            except HTTPException as e:
                 self.bot.report_command_failure(ctx)
                 bot_logger.error(f'File Download Failure. {e.status}. {e.text}')
                 await ctx.send(f'Could not download image. Details: [Status {e.status} | {e.text}]')
                 return
 
             try:
-                await ctx.send(file=discord.File(inverted, filename="inverted.png"))
-            except discord.HTTPException as e:
+                await ctx.send(file=File(inverted, filename="inverted.png"))
+            except HTTPException as e:
                 self.bot.report_command_failure(ctx)
                 bot_logger.error(f'File Send Failure. {e.status}. {e.text}')
                 await ctx.send(f'Could not send image. Details: [Status {e.status} | {e.text}]')
@@ -96,7 +99,7 @@ class Images(commands.Cog):
                 self.bot.reset_dynamic_cooldown(ctx)
 
     @commands.command(name='iasip', aliases=['sun', 'sunny', 'title'])
-    async def iasip_title_card(self, ctx: Context, *, title: str) -> None:
+    async def iasip_title_card(self, ctx: 'Context', *, title: str) -> None:
         """
         A method that invokes "It's Always Sunny In Philadelphia" title card generation from ImageUtils.
 
@@ -122,14 +125,14 @@ class Images(commands.Cog):
             buffer = await image_utils.title_card_generator(title)
 
             try:
-                await ctx.send(file=discord.File(buffer, filename="iasip.png"))
-            except discord.HTTPException as e:
+                await ctx.send(file=File(buffer, filename="iasip.png"))
+            except HTTPException as e:
                 bot_logger.error(f'File Send Failure. {e.status}. {e.text}')
                 await ctx.send(f'Could not send image. Details: [Status {e.status} | {e.text}]')
                 return
 
 
-async def setup(bot: DreamBot) -> None:
+async def setup(bot: 'DreamBot') -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

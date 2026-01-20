@@ -28,10 +28,10 @@ from datetime import datetime
 from os import getcwd, listdir, path
 from sys import stderr, exc_info
 from traceback import print_exception, format_exception
-from typing import Optional, List, Dict, Type, DefaultDict, TypedDict, Union, Any
+from typing import Optional, List, Dict, Type, DefaultDict, TypedDict, Union, Any, TYPE_CHECKING
 
-import discord
 from aiohttp import ClientSession
+from discord import ActivityType, Intents, Status
 from discord.ext import tasks
 from discord.ext.commands import ExtensionError, Bot, when_mentioned
 from google.cloud import errorreporting_v1beta1 as error_reporting
@@ -42,6 +42,9 @@ from utils.database.cache import TableCache
 from utils.network.client import NetworkClient
 from utils.observability.loggers import bot_logger
 from utils.utils import generate_activity
+
+if TYPE_CHECKING:
+    import discord
 
 GitOptionals = TypedDict(
     'GitOptionals',
@@ -55,7 +58,7 @@ GitOptionals = TypedDict(
 Optionals = TypedDict(
     'Optionals',
     {
-        'status_type': discord.ActivityType,
+        'status_type': ActivityType,
         'status_text': Optional[str],
         'disabled_cogs': List[str],
         'firebase_project': Optional[str],
@@ -103,8 +106,10 @@ class DreamBot(Bot):
             None.
         """
 
-        intents = discord.Intents(message_content=True, guilds=True, members=True, bans=True, emojis=True,
-                                  voice_states=True, messages=True, reactions=True)
+        intents = Intents(
+            message_content=True, guilds=True, members=True, bans=True, emojis=True, voice_states=True, messages=True,
+            reactions=True
+        )
 
         super().__init__(
             command_prefix=get_prefix, case_insensitive=True, owner_id=owner, max_messages=None, intents=intents
@@ -128,7 +133,7 @@ class DreamBot(Bot):
         # optionals
         options = options or dict()
         # noinspection PyTypeChecker
-        self._status_type = options.pop('status_type', discord.ActivityType(0))
+        self._status_type = options.pop('status_type', ActivityType(0))
         self._status_text = options.pop('status_text', None)
         self._disabled_cogs: List[str] = options.pop('disabled_cogs')
         self._firebase_project = options.pop('firebase_project', None)
@@ -245,7 +250,7 @@ class DreamBot(Bot):
 
         # presence is a member-only attribute, need any guild to get a member instance of Bot
         try:
-            bot_member: discord.Member = self.guilds[0].me
+            bot_member: 'discord.Member' = self.guilds[0].me
         except (IndexError, AttributeError) as e:
             bot_logger.error(f"Couldn't get a member instance of bot. Exception type: {type(e)}.")
             return
@@ -254,7 +259,7 @@ class DreamBot(Bot):
             return
 
         activity = await generate_activity(self._status_text, self._status_type)
-        await self.change_presence(status=discord.Status.online, activity=activity)
+        await self.change_presence(status=Status.online, activity=activity)
 
         logging_level = bot_logger.info if self.refresh_presence.current_loop == 0 else bot_logger.error
         logging_level(f'Bot presence was empty. Refreshed presence.')
@@ -271,7 +276,7 @@ class DreamBot(Bot):
         await self.wait_until_ready()
 
     async def get_context(  # type: ignore[override]
-            self, origin: Union[discord.Message, discord.Interaction['DreamBot']], /, *, cls: Type[Context] = Context
+            self, origin: Union['discord.Message', 'discord.Interaction[DreamBot]'], /, *, cls: Type[Context] = Context
     ) -> Context:
         """
         Creates a Context instance for the current command invocation.
@@ -303,7 +308,7 @@ class DreamBot(Bot):
             await self._reporting_client.report_error_event(payload)
 
 
-async def get_prefix(bot: DreamBot, message: discord.Message) -> List[str]:
+async def get_prefix(bot: DreamBot, message: 'discord.Message') -> List[str]:
     """
     A method that retrieves the prefix the bot should look for in a specified message.
 
