@@ -22,13 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from typing import TYPE_CHECKING
+
 from aiosqlite import Error as aiosqliteError
 from discord.ext import commands
 
-from dreambot import DreamBot
-from utils.context import Context
 from utils.database.helpers import execute_query
 from utils.observability.loggers import bot_logger
+
+if TYPE_CHECKING:
+    from utils.context import Context
+    from dreambot import DreamBot
 
 
 class Prefixes(commands.Cog):
@@ -39,7 +43,7 @@ class Prefixes(commands.Cog):
         bot (DreamBot): The Discord bot class.
     """
 
-    def __init__(self, bot: DreamBot) -> None:
+    def __init__(self, bot: 'DreamBot') -> None:
         """
         The constructor for the Prefixes class.
 
@@ -50,7 +54,7 @@ class Prefixes(commands.Cog):
         self.bot = bot
 
     @commands.group(name='prefix', aliases=['pre', 'prefixes'])
-    async def prefix(self, ctx: Context) -> None:
+    async def prefix(self, ctx: 'Context') -> None:
         """
         Parent command that handles prefix related commands.
 
@@ -69,7 +73,7 @@ class Prefixes(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
     @prefix.command(name='add', aliases=['set'])
-    async def add_prefix(self, ctx: Context, prefix: str) -> None:
+    async def add_prefix(self, ctx: 'Context', prefix: str) -> None:
         """
         A method to add a command prefix for the guild.
 
@@ -124,7 +128,7 @@ class Prefixes(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
     @prefix.command(name='remove', aliases=['delete', 'del'])
-    async def remove_prefix(self, ctx: Context, prefix: str) -> None:
+    async def remove_prefix(self, ctx: 'Context', prefix: str) -> None:
         """
         A method to remove a command prefix for the guild.
 
@@ -174,7 +178,7 @@ class Prefixes(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
     @prefix.command(name='replace', aliases=['swap', 'switch'])
-    async def replace_prefix(self, ctx: Context, old_prefix: str, new_prefix: str) -> None:
+    async def replace_prefix(self, ctx: 'Context', old_prefix: str, new_prefix: str) -> None:
         """
         A method to replace an existing command prefix for the guild.
 
@@ -227,7 +231,7 @@ class Prefixes(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
     @prefix.command(name='clear')
-    async def clear_prefixes(self, ctx: Context) -> None:
+    async def clear_prefixes(self, ctx: 'Context') -> None:
         """
         A method to remove all existing command prefixes for the guild.
 
@@ -272,7 +276,7 @@ class Prefixes(commands.Cog):
 
     @commands.cooldown(1, 2, commands.BucketType.guild)  # type: ignore[arg-type]
     @prefix.command(name='get')
-    async def get_prefix(self, ctx: Context) -> None:
+    async def get_prefix(self, ctx: 'Context') -> None:
         """
         A method that outputs the current prefixes for the guild.
 
@@ -307,7 +311,7 @@ class Prefixes(commands.Cog):
             )
 
 
-async def setup(bot: DreamBot) -> None:
+async def setup(bot: 'DreamBot') -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

@@ -24,7 +24,7 @@ SOFTWARE.
 
 from typing import Union, TYPE_CHECKING
 
-from discord import HTTPException, File
+from discord import HTTPException, File, Message
 from discord.ext import commands
 
 from utils import image_utils
@@ -32,7 +32,6 @@ from utils.defaults import MessageReply
 from utils.observability.loggers import bot_logger
 
 if TYPE_CHECKING:
-    import discord
     from dreambot import DreamBot
     from utils.context import Context
 
@@ -56,7 +55,7 @@ class Images(commands.Cog):
         self.bot = bot
 
     @commands.command(name='invert')
-    async def invert(self, ctx: 'Context', source: Union['discord.Message', str] = MessageReply) -> None:
+    async def invert(self, ctx: 'Context', source: Union[Message, str] = MessageReply) -> None:
         """
         A method that invokes image inversion from ImageUtils.
 

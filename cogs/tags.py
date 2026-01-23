@@ -23,14 +23,12 @@ SOFTWARE.
 """
 
 from datetime import datetime, timezone
-from typing import Optional, List, Union, Tuple, Annotated
+from typing import Optional, List, Union, Tuple, Annotated, TYPE_CHECKING
 
 import discord
 from aiosqlite import Error as aiosqliteError
 from discord.ext import commands
 
-from dreambot import DreamBot
-from utils.context import Context
 from utils.converters import StringConverter
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import Tag
@@ -38,6 +36,10 @@ from utils.enums.allowed_mentions_proxy import AllowedMentionsProxy
 from utils.observability.loggers import bot_logger
 from utils.prompts import prompt_user_for_content
 from utils.utils import cleanup, valid_content
+
+if TYPE_CHECKING:
+    from dreambot import DreamBot
+    from utils.context import Context
 
 # TODO: Add user profile picture to tag info
 # TODO: Make random tag embed?
@@ -62,7 +64,7 @@ class Tags(commands.Cog):
         bot (DreamBot): The Discord bot class.
     """
 
-    def __init__(self, bot: DreamBot) -> None:
+    def __init__(self, bot: 'DreamBot') -> None:
         """
         The constructor for the Tags class.
 
@@ -74,7 +76,9 @@ class Tags(commands.Cog):
 
     @commands.guild_only()
     @commands.group(name='tag', aliases=['tags'], invoke_without_command=True)
-    async def tag(self, ctx: Context, *, tag_name: Annotated[str, TagName] = None) -> None:  # type: ignore[assignment]
+    async def tag(
+            self, ctx: 'Context', *, tag_name: Annotated[str, TagName] = None  # type: ignore[assignment]
+    ) -> None:
         """
         Parent command that handles tag related commands.
 
@@ -95,7 +99,7 @@ class Tags(commands.Cog):
     @tag.command(  # type: ignore[arg-type]
         name='create', aliases=['add'], help='Tag names must be 3-100 characters long and cannot be a reserved tag.'
     )
-    async def create_tag(self, ctx: Context, *, tag_name: Annotated[str, TagName]) -> None:
+    async def create_tag(self, ctx: 'Context', *, tag_name: Annotated[str, TagName]) -> None:
         """
         Attempts to create a tag with the specified name.
 
@@ -145,7 +149,7 @@ class Tags(commands.Cog):
             await ctx.send('Tag content cannot be empty - please restart the command.')
 
     @tag.command(name='edit', aliases=['e'])  # type: ignore[arg-type]
-    async def edit_tag(self, ctx: Context, *, tag_name: Annotated[str, TagName]) -> None:
+    async def edit_tag(self, ctx: 'Context', *, tag_name: Annotated[str, TagName]) -> None:
         """
         Attempts to edit an existing tag.
         A user must either own the tag or have the ability to manage messages (guild-wide) to edit the tag.
@@ -197,7 +201,7 @@ class Tags(commands.Cog):
             await ctx.send('Tag content cannot be empty - please restart the command.')
 
     @tag.command(name='get', aliases=['fetch'])  # type: ignore[arg-type]
-    async def get_tag(self, ctx: Context, *, tag_name: Annotated[str, TagName]) -> None:
+    async def get_tag(self, ctx: 'Context', *, tag_name: Annotated[str, TagName]) -> None:
         """
         Attempts to fetch a tag with the specified name.
 
@@ -230,7 +234,7 @@ class Tags(commands.Cog):
             await ctx.send(f'Tag `{tag_name}` does not exist.')
 
     @tag.command(name='search', aliases=['s'])  # type: ignore[arg-type]
-    async def search_tags(self, ctx: Context, *, tag_name: Annotated[str, TagName]) -> None:
+    async def search_tags(self, ctx: 'Context', *, tag_name: Annotated[str, TagName]) -> None:
         """
         Attempts to search for tags with the specified name.
 
@@ -253,7 +257,7 @@ class Tags(commands.Cog):
             await ctx.send(f'No tags found with name `{tag_name}`.')
 
     @tag.command(name='info', aliases=['i'])  # type: ignore[arg-type]
-    async def tag_info(self, ctx: Context, *, tag_name: Annotated[str, TagName]) -> None:
+    async def tag_info(self, ctx: 'Context', *, tag_name: Annotated[str, TagName]) -> None:
         """
         Attempts to fetch information about a tag.
 
@@ -285,7 +289,7 @@ class Tags(commands.Cog):
             await ctx.send(f'Tag `{tag_name}` does not exist.')
 
     @tag.command(name='random', aliases=['r'])  # type: ignore[arg-type]
-    async def get_random_tag(self, ctx: Context) -> None:
+    async def get_random_tag(self, ctx: 'Context') -> None:
         """
         Attempts to fetch a random tag. Does not increase usage count.
 
@@ -309,7 +313,7 @@ class Tags(commands.Cog):
             await ctx.send(f'No tags exist for this guild.')
 
     @tag.command(name='delete', aliases=['remove', 'del'])  # type: ignore[arg-type]
-    async def delete_tag(self, ctx: Context, *, tag_name: Annotated[str, TagName]) -> None:
+    async def delete_tag(self, ctx: 'Context', *, tag_name: Annotated[str, TagName]) -> None:
         """
         Attempts to delete a tag with the specified name.
         A user must either own the tag or have the ability to manage messages (guild-wide) to delete the tag.
@@ -424,7 +428,7 @@ async def increment_tag_count(database: str, tag_name: str, guild_id: int) -> No
         pass
 
 
-async def setup(bot: DreamBot) -> None:
+async def setup(bot: 'DreamBot') -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

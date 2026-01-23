@@ -24,22 +24,26 @@ SOFTWARE.
 
 from contextlib import suppress
 from re import findall, sub
-from typing import Union, Optional, Literal
+from typing import Union, Optional, Literal, TYPE_CHECKING
 
-import discord
 from aiosqlite import Error as aiosqliteError
+from discord import (
+    Role, Member, TextChannel, CategoryChannel, VoiceChannel, Thread, StageChannel, HTTPException, AllowedMentions
+)
 from discord.ext import commands
 
-from dreambot import DreamBot
-from utils.context import Context
 from utils.converters import AggressiveDefaultMemberConverter
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.observability.loggers import bot_logger
 
-CHANNEL_OBJECT = Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]
-PERMISSIONS_PARENT = Union[discord.Role, discord.Member]
-PURGEABLE_INSTANCES = (discord.StageChannel, discord.TextChannel, discord.Thread, discord.VoiceChannel)
-PURGEABLE_TYPE = Union[discord.StageChannel, discord.TextChannel, discord.Thread, discord.VoiceChannel]
+if TYPE_CHECKING:
+    from dreambot import DreamBot
+    from utils.context import Context
+
+CHANNEL_OBJECT = Union[TextChannel, CategoryChannel, VoiceChannel]
+PERMISSIONS_PARENT = Union[Role, Member]
+PURGEABLE_INSTANCES = (StageChannel, TextChannel, Thread, VoiceChannel)
+PURGEABLE_TYPE = Union[StageChannel, TextChannel, Thread, VoiceChannel]
 
 
 class Moderation(commands.Cog):
@@ -50,7 +54,7 @@ class Moderation(commands.Cog):
         bot (DreamBot): The Discord bot class.
     """
 
-    def __init__(self, bot: DreamBot) -> None:
+    def __init__(self, bot: 'DreamBot') -> None:
         """
         The constructor for the Moderation class.
 
@@ -60,7 +64,7 @@ class Moderation(commands.Cog):
 
         self.bot = bot
 
-    async def cog_check(self, ctx: Context) -> bool:  # type: ignore[override]
+    async def cog_check(self, ctx: 'Context') -> bool:  # type: ignore[override]
         """
         A method that registers a cog-wide check.
         Requires these commands be used in a guild only.
@@ -80,7 +84,7 @@ class Moderation(commands.Cog):
         name='purge',
         help='Purges n+1 messages from the current channel. Specify `all` to completely clear the channel.'
     )
-    async def purge(self, ctx: Context, limit: Union[int, Literal['all']]) -> None:
+    async def purge(self, ctx: 'Context', limit: Union[int, Literal['all']]) -> None:
         """
         A method to purge messages from a channel.
         Should a user ID be supplied, any messages from that user in the last (limit) messages will be deleted.
@@ -112,7 +116,7 @@ class Moderation(commands.Cog):
             await ctx.channel.purge(limit=limit + 1)
             return
 
-        if isinstance(ctx.channel, discord.Thread):
+        if isinstance(ctx.channel, Thread):
             await ctx.channel.purge(limit=ctx.channel.message_count + 1)
         else:
             position = ctx.channel.position
@@ -124,7 +128,7 @@ class Moderation(commands.Cog):
     @commands.bot_has_guild_permissions(manage_channels=True)
     @commands.command(name='duplicate_permissions', aliases=['dp'])
     async def duplicate_channel_permissions(
-            self, ctx: Context, base_channel: CHANNEL_OBJECT, base_permission_owner: PERMISSIONS_PARENT,
+            self, ctx: 'Context', base_channel: CHANNEL_OBJECT, base_permission_owner: PERMISSIONS_PARENT,
             target_channel: CHANNEL_OBJECT, target_permission_owner: PERMISSIONS_PARENT
     ) -> None:
         """
@@ -136,13 +140,13 @@ class Moderation(commands.Cog):
 
         Parameters:
             ctx (Context): The invocation context.
-            base_channel (Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]): The base channel
+            base_channel (Union[TextChannel, CategoryChannel, VoiceChannel]): The base channel
                 to source permissions from.
-            base_permission_owner (Union[discord.Role, discord.Member]): The role or member whose permissions should
+            base_permission_owner (Union[Role, Member]): The role or member whose permissions should
                 be copied.
-            target_channel (Union[discord.TextChannel, discord.CategoryChannel, discord.VoiceChannel]): The target
+            target_channel (Union[TextChannel, CategoryChannel, VoiceChannel]): The target
                 channel to duplicate permissions to.
-            target_permission_owner (Union[discord.Role, discord.Member]): The role or member the permissions should be
+            target_permission_owner (Union[Role, Member]): The role or member the permissions should be
                 copied to.
 
         Returns:
@@ -166,7 +170,7 @@ class Moderation(commands.Cog):
     @commands.has_guild_permissions(manage_roles=True)
     @commands.bot_has_guild_permissions(manage_roles=True)
     @commands.command(name='bulkadd', enabled=False)
-    async def bulk_add_roles(self, ctx: Context, role: discord.Role, *, members: str) -> None:
+    async def bulk_add_roles(self, ctx: 'Context', role: Role, *, members: str) -> None:
         """
         Special Note:
             If you are passing strictly IDs or Name#Discriminator arguments, these arguments can be seperated by only
@@ -182,15 +186,15 @@ class Moderation(commands.Cog):
 
         Parameters:
             ctx (Context): The invocation context.
-            role (discord.Role): The role to add to the members.
+            role (Role): The role to add to the members.
             members (str): A variadic argument representing the members to add the role to.
 
         Returns:
             None.
         """
 
-        assert isinstance(ctx.me, discord.Member)  # guild only
-        assert isinstance(ctx.author, discord.Member)  # guild only
+        assert isinstance(ctx.me, Member)  # guild only
+        assert isinstance(ctx.author, Member)  # guild only
 
         bot_role = ctx.me.top_role
         invoker_role = ctx.author.top_role
@@ -211,10 +215,10 @@ class Moderation(commands.Cog):
             success, failed = [], []
 
             for member in converted:
-                if isinstance(member, discord.Member):
+                if isinstance(member, Member):
                     try:
                         await member.add_roles(role, reason=f'Bulk Added by {str(ctx.author)}')
-                    except discord.HTTPException:
+                    except HTTPException:
                         failed.append(str(member))
                     else:
                         success.append(str(member))
@@ -227,12 +231,12 @@ class Moderation(commands.Cog):
             if failed:
                 summary += f'Failed to add {role.mention} to the following members:\n```{", ".join(failed)}```'
 
-            await ctx.send(summary, allowed_mentions=discord.AllowedMentions.none())
+            await ctx.send(summary, allowed_mentions=AllowedMentions.none())
 
     @commands.has_guild_permissions(manage_roles=True)
     @commands.command(name='getdefaultrole', aliases=['gdr'],
                       help='Displays the role (if any) users are auto-granted on joining the guild.')
-    async def get_default_role(self, ctx: Context) -> None:
+    async def get_default_role(self, ctx: 'Context') -> None:
         """
         A method for checking which role (if any) will be auto-granted to new users joining the guild.
 
@@ -271,7 +275,7 @@ class Moderation(commands.Cog):
                       help='Sets the role users are auto-granted on joining.'
                            '\nTo remove the default role, simply call this command without passing a role.'
                            '\nNote: The role selected must be lower than the bot\'s role and lower than your role.')
-    async def set_default_role(self, ctx: Context, role: Optional[discord.Role] = None) -> None:
+    async def set_default_role(self, ctx: 'Context', role: Optional[Role] = None) -> None:
         """
         A method for checking which role (if any) will be auto-granted to new users joining the guild.
 
@@ -282,7 +286,7 @@ class Moderation(commands.Cog):
 
         Parameters:
             ctx (Context): The invocation context.
-            role (discord.Role): The role to set as the default role. Could be None.
+            role (Role): The role to set as the default role. Could be None.
 
         Output:
             Success: A confirmation message detailing the new default role.
@@ -292,8 +296,8 @@ class Moderation(commands.Cog):
             None.
         """
 
-        assert isinstance(ctx.me, discord.Member)  # guild only
-        assert isinstance(ctx.author, discord.Member)  # guild only
+        assert isinstance(ctx.me, Member)  # guild only
+        assert isinstance(ctx.author, Member)  # guild only
         assert ctx.guild is not None  # guild only
 
         bot_role = ctx.me.top_role
@@ -336,7 +340,7 @@ class Moderation(commands.Cog):
                     await ctx.send('Failed to set the default role for the guild.')
 
     @commands.Cog.listener()
-    async def on_member_join(self, member: discord.Member) -> None:
+    async def on_member_join(self, member: Member) -> None:
         """
         A commands.Cog listener event that is called whenever a new user joins a guild.
 
@@ -344,7 +348,7 @@ class Moderation(commands.Cog):
             If a default role is set, add the default role to the new member.
 
         Parameters:
-            member (discord.Member): The member that joined the guild.
+            member (Member): The member that joined the guild.
 
         Returns:
             None.
@@ -356,7 +360,7 @@ class Moderation(commands.Cog):
         await add_default_role(self.bot, member)
 
     @commands.Cog.listener()
-    async def on_member_update(self, before: discord.Member, after: discord.Member) -> None:
+    async def on_member_update(self, before: Member, after: Member) -> None:
         """
         A commands.Cog listener event that is called whenever a member is updated.
 
@@ -364,8 +368,8 @@ class Moderation(commands.Cog):
             If a default role is set, add the default role to the new member after membership screening is complete.
 
         Parameters:
-            before (discord.Member): The initial state of the updated member.
-            after (discord.Member): The new state of the updated member.
+            before (Member): The initial state of the updated member.
+            after (Member): The new state of the updated member.
 
         Returns:
             None.
@@ -375,13 +379,13 @@ class Moderation(commands.Cog):
             await add_default_role(self.bot, after, True)
 
 
-async def add_default_role(bot: DreamBot, member: discord.Member, gate: bool = False) -> None:
+async def add_default_role(bot: 'DreamBot', member: Member, gate: bool = False) -> None:
     """
     Adds the default role (if applicable) to a member.
 
     Parameters:
         bot (DreamBot): The Discord bot.
-        member (discord.Member): The member to add the default role to.
+        member (Member): The member to add the default role to.
         gate (bool): Whether the invocation guild has the `MEMBER_VERIFICATION_GATE_ENABLED` flag.
 
     Returns:
@@ -389,9 +393,9 @@ async def add_default_role(bot: DreamBot, member: discord.Member, gate: bool = F
     """
 
     if (
-        member.guild.unavailable or
-        member.guild.id not in bot.cache.default_roles or
-        not member.guild.me.guild_permissions.manage_roles
+            member.guild.unavailable or
+            member.guild.id not in bot.cache.default_roles or
+            not member.guild.me.guild_permissions.manage_roles
     ):
         return
 
@@ -405,17 +409,17 @@ async def add_default_role(bot: DreamBot, member: discord.Member, gate: bool = F
             resolved_role,
             reason=f'Default Role{" [Membership Screening] " if gate else " "}Assignment'
         )
-    except discord.HTTPException as e:
+    except HTTPException as e:
         bot_logger.error(f'Role Addition Failure. {e.status}. {e.text}')
 
         if sys_channel := member.guild.system_channel:
             try:
                 await sys_channel.send(f'Failed to add the default role to `{str(member)}`.')
-            except discord.HTTPException as e:
+            except HTTPException as e:
                 bot_logger.error(f'Role Addition Alert Failure. {e.status}. {e.text}')
 
 
-async def setup(bot: DreamBot) -> None:
+async def setup(bot: 'DreamBot') -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

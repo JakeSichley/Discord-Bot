@@ -23,20 +23,23 @@ SOFTWARE.
 """
 
 from asyncio import sleep
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, TYPE_CHECKING
 
-import discord
 from aiosqlite import Error as aiosqliteError
+from discord import Role, VoiceChannel, HTTPException, Forbidden, Member, VoiceState
 from discord.ext import commands
 
-from dreambot import DreamBot
-from utils.context import Context
 from utils.database.helpers import execute_query, typed_retrieve_query
 from utils.database.table_dataclasses import VoiceRole
 from utils.expiring_dict import ExpiringDict
 from utils.observability.loggers import bot_logger
 from utils.prompts import prompt_user_for_voice_channel, prompt_user_for_role
 from utils.utils import cleanup
+
+if TYPE_CHECKING:
+    import discord
+    from dreambot import DreamBot
+    from utils.context import Context
 
 
 class VoiceRoles(commands.Cog):
@@ -53,7 +56,7 @@ class VoiceRoles(commands.Cog):
 
     CACHE_TTL = 3
 
-    def __init__(self, bot: DreamBot) -> None:
+    def __init__(self, bot: 'DreamBot') -> None:
         """
         The constructor for the ReactionRoles class.
 
@@ -66,7 +69,7 @@ class VoiceRoles(commands.Cog):
 
     @commands.guild_only()
     @commands.group(name='voicerole', aliases=['vr', 'voiceroles'])
-    async def voice_role(self, ctx: Context) -> None:
+    async def voice_role(self, ctx: 'Context') -> None:
         """
         Parent command that handles the reaction role commands.
 
@@ -90,7 +93,7 @@ class VoiceRoles(commands.Cog):
                                          ' use this method to change the role of an existing voice role channel.'
                                          ' Specify the same channel and simply supply a new role!')
     async def add_voice_role(
-            self, ctx: Context, channel: Optional[discord.VoiceChannel] = None, role: Optional[discord.Role] = None
+            self, ctx: 'Context', channel: Optional[VoiceChannel] = None, role: Optional[Role] = None
     ) -> None:
         """
         Adds a voice role to a specified channel.
@@ -104,8 +107,8 @@ class VoiceRoles(commands.Cog):
             None.
         """
 
-        assert isinstance(ctx.me, discord.Member)  # guild only
-        assert isinstance(ctx.author, discord.Member)  # guild only
+        assert isinstance(ctx.me, Member)  # guild only
+        assert isinstance(ctx.author, Member)  # guild only
         assert ctx.guild is not None
 
         cleanup_messages: List[discord.Message] = []
@@ -177,7 +180,7 @@ class VoiceRoles(commands.Cog):
                                             ' command without a supplying a channel, you will be prompted for one.\nIf'
                                             ' you wish to change the role associated with a specific channel, consider'
                                             ' using "add" instead!')
-    async def remove_voice_role(self, ctx: Context, channel: Optional[discord.VoiceChannel] = None) -> None:
+    async def remove_voice_role(self, ctx: 'Context', channel: Optional[VoiceChannel] = None) -> None:
         """
         Removes a voice role from a specified channel.
 
@@ -236,7 +239,7 @@ class VoiceRoles(commands.Cog):
 
     @commands.has_permissions(manage_roles=True)  # type: ignore[arg-type]
     @voice_role.command(name='check', help='Checks a channel for an existing voice role.')
-    async def check_voice_role(self, ctx: Context, channel: Optional[discord.VoiceChannel] = None) -> None:
+    async def check_voice_role(self, ctx: 'Context', channel: Optional[VoiceChannel] = None) -> None:
         """
         Checks for a voice role for a specified channel.
 
@@ -283,7 +286,7 @@ class VoiceRoles(commands.Cog):
     # noinspection PyUnusedLocal
     @commands.Cog.listener()
     async def on_voice_state_update(
-            self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState
+            self, member: Member, before: VoiceState, after: VoiceState
     ) -> None:
         """
         A listener method that is called whenever a VoiceState is modified.
@@ -336,8 +339,8 @@ class VoiceRoles(commands.Cog):
 
         try:
             await member.edit(roles=updated_roles, reason=reason)
-        except discord.HTTPException as e:
-            if not isinstance(e, discord.Forbidden):
+        except HTTPException as e:
+            if not isinstance(e, Forbidden):
                 bot_logger.error(
                     f'Voice Role - Role Edit Error. {e.status}. {e.text}. '
                     f'GuildId={member.guild.id}, Available={not member.guild.unavailable}, MemberId={member.id}, '
@@ -346,7 +349,7 @@ class VoiceRoles(commands.Cog):
                 )
 
 
-async def setup(bot: DreamBot) -> None:
+async def setup(bot: 'DreamBot') -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
