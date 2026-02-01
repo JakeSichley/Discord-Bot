@@ -68,7 +68,7 @@ MAX_ALERTS = 2_147_483_647
 # autocomplete namespaces result in a lot of duplicated code
 # noinspection DuplicatedCode
 # noinspection PyUnusedLocal
-class Runescape(commands.GroupCog, group_name='runescape', group_description='Commands for Old School Runescape'):
+class Runescape(commands.GroupCog, group_name='runescape', group_description='Commands for Old School RuneScape'):
     """
     A Cogs class that contains Old School Runescape commands.
 
@@ -171,15 +171,15 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         )
         embed.set_thumbnail(url=f'https://static.runelite.net/cache/item/icon/{item_id}.png')
 
-        embed.add_field(name='Buy Price', value=f'{item.high:,} coins' if item.high else 'N/A')
-        embed.add_field(name='Sell Price', value=f'{item.low:,} coins' if item.low else 'N/A')
-        embed.add_field(name='Buy Limit', value=f'{item.limit:,}' if item.limit else 'N/A')
-        embed.add_field(name='Buy Time', value=format_unix_dt(item.highTime, 'R') if item.highTime else 'N/A')
-        embed.add_field(name='Sell Time', value=format_unix_dt(item.lowTime, 'R') if item.lowTime else 'N/A')
+        embed.add_field(name='Buy Price', value=f'{item.high:,} coins' if item.high else '-')
+        embed.add_field(name='Sell Price', value=f'{item.low:,} coins' if item.low else '-')
+        embed.add_field(name='Buy Limit', value=f'{item.limit:,}' if item.limit else '-')
+        embed.add_field(name='Buy Time', value=format_unix_dt(item.highTime, 'R') if item.highTime else '-')
+        embed.add_field(name='Sell Time', value=format_unix_dt(item.lowTime, 'R') if item.lowTime else '-')
         embed.add_field(name='​', value='​')
-        embed.add_field(name='High Alch', value=f'{item.highalch:,} coins' if item.highalch else 'N/A')
-        embed.add_field(name='Low Alch', value=f'{item.lowalch:,} coins' if item.lowalch else 'N/A')
-        embed.add_field(name='Value', value=f'{item.value:,} coins' if item.value else 'N/A')
+        embed.add_field(name='High Alch', value=f'{item.highalch:,} coins' if item.highalch else '-')
+        embed.add_field(name='Low Alch', value=f'{item.lowalch:,} coins' if item.lowalch else '-')
+        embed.add_field(name='Value', value=f'{item.value:,} coins' if item.value else '-')
         embed.set_footer(text='Please report any issues to my owner!')
 
         await interaction.response.send_message(embed=embed)
@@ -215,7 +215,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         patches_pluralized = 'patch' if patches == 1 else 'patches'
 
         embed = Embed(
-            title="Old School Runescape Herb Profitability Comparison",
+            title="Old School RuneScape Herb Profitability Comparison",
             description=f"**{patches} {patches_pluralized}** with an average of **{average_herbs} herbs** per patch "
                         f"based on current market data",
             color=0x971212
@@ -431,12 +431,12 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         )
         embed.set_thumbnail(url=f'https://static.runelite.net/cache/item/icon/{item_id}.png')
 
-        embed.add_field(name='Alert Buy Price', value=f'{alert.target_high:,} coins' if alert.target_high else 'N/A')
-        embed.add_field(name='Alert Sell Price', value=f'{alert.target_low:,} coins' if alert.target_low else 'N/A')
+        embed.add_field(name='Alert Buy Price', value=f'{alert.target_high:,} coins' if alert.target_high else '-')
+        embed.add_field(name='Alert Sell Price', value=f'{alert.target_low:,} coins' if alert.target_low else '-')
         embed.add_field(name='​', value='​')
-        embed.add_field(name='Initial Buy Price', value=f'{alert.initial_low:,} coins' if alert.initial_low else 'N/A')
+        embed.add_field(name='Initial Buy Price', value=f'{alert.initial_low:,} coins' if alert.initial_low else '-')
         embed.add_field(
-            name='Initial Sell Price', value=f'{alert.initial_high:,} coins' if alert.initial_high else 'N/A'
+            name='Initial Sell Price', value=f'{alert.initial_high:,} coins' if alert.initial_high else '-'
         )
         embed.add_field(name='​', value='​')
         embed.add_field(name='Alert Frequency', value=format_timespan(alert.frequency) if alert.frequency else 'None')
@@ -1155,7 +1155,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             return
 
         embed = Embed(
-            title="Old School Runescape Market Alerts",
+            title="Old School RuneScape Market Alerts",
             description="The following items had their market prices exceed your alert thresholds!",
             color=0x971212
         )
