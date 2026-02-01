@@ -406,6 +406,9 @@ class Admin(commands.Cog):
 
         env.update(globals())
 
+        # discord starting including non-printable characters in our messages for some reason
+        body = ''.join(char for char in body if char.isprintable() or char.isspace())
+
         # strip discord code block formatting from body
         if body.startswith('```') and body.endswith('```'):
             body = '\n'.join(body.split('\n')[1:-1])
