@@ -25,6 +25,7 @@ SOFTWARE.
 from asyncio import Event, TimeoutError
 from collections import defaultdict
 from contextlib import suppress
+from datetime import timedelta
 from hashlib import sha256
 from itertools import chain
 from json.decoder import JSONDecodeError
@@ -33,7 +34,7 @@ from typing import List, Optional, Dict, Literal, KeysView, Any, TYPE_CHECKING
 import aiosqlite
 from aiosqlite import Error as aiosqliteError, IntegrityError
 from discord import app_commands, Embed, HTTPException
-from discord.app_commands import Choice, Transform, Range
+from discord.app_commands import Choice, Transform, Range, CheckFailure
 from discord.ext import commands, tasks
 from discord.utils import utcnow
 from humanfriendly import format_timespan
@@ -54,6 +55,7 @@ from utils.transformers import RunescapeNumberTransformer, HumanDatetimeDuration
 from utils.utils import format_unix_dt, plural
 
 if TYPE_CHECKING:
+    from datetime import datetime
     from discord import Interaction
     from dreambot import DreamBot
 
@@ -61,8 +63,10 @@ FIVE_MINUTES = 300
 ONE_YEAR = 31_556_926
 MIN_ALERTS = 1
 MAX_ALERTS = 2_147_483_647
+MARKET_DATA_REQUIRED_EXTRAS_KEY = 'market_data_required'
 
 
+# TODO: Use pluralization helper for things like herb(s), patch(es)
 # TODO: Add frequently accessed item_id's (global? user?) for /runescape_item
 
 # autocomplete namespaces result in a lot of duplicated code
@@ -88,8 +92,10 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
     MAPPING_QUERY_INTERVAL = 60 * 60  # 1 hour
     MARKET_QUERY_INTERVAL = 60  # 1 minute
+    MARKET_DATA_TTL = timedelta(minutes=4, seconds=30)  # this accounts for any processing time (effectively 5 minutes)
 
     ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE = make_debug_scope('runescape_item_id_autocomplete')
+    MARKET_DATA_REQUIRED_EXTRAS = {MARKET_DATA_REQUIRED_EXTRAS_KEY: True}
 
     alert_subgroup = app_commands.Group(name='alert', description='Commands for managing item alerts')
 
@@ -107,12 +113,47 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         self.item_names_to_ids: Dict[str, int] = {}  # [item_name: item_id]
         self.alerts: Dict[int, Dict[int, RunescapeAlert]] = defaultdict(dict)  # [user_id: [item_id: RunescapeAlert]]
         self.initial_mapping_data_event: Event = Event()
+        self.last_market_data_fetch_time: Optional[datetime] = None
         self.query_mapping_data.start()
         self.query_market_data.start()
 
+    def interaction_check(self, interaction: 'Interaction[DreamBot]', /) -> bool:  # type: ignore[override]
+        """
+        A special method that registers as a check for every app command and subcommand in this cog.
+
+        Notes:
+            This _normally_ expects `False` for failed interactions, but this doesn't allow us to attach context to the
+            failure. By raising `CheckFailure`, we can attach context that `Cog::Exceptions` can display to the user.
+
+        Parameters:
+            interaction (Interaction): The invocation interaction.
+
+        Raises:
+            CheckFailure: The interaction may not proceed.
+
+        Returns:
+            (bool): Whether the interaction may proceed.
+        """
+
+        assert interaction.command is not None
+
+        # if there's no item data, don't process the interaction
+        if not self.item_data:
+            raise CheckFailure('RuneScape Item Data is currently unavailable - please try again later.')
+
+        # if we don't need market data, process the interaction
+        if not interaction.command.extras.get(MARKET_DATA_REQUIRED_EXTRAS_KEY, False):
+            return True
+
+        # if we've never fetched market data or the market data is expired, don't process the interaction
+        if not self.last_market_data_fetch_time or utcnow() > self.last_market_data_fetch_time + self.MARKET_DATA_TTL:
+            raise CheckFailure('RuneScape Market Data is currently unavailable - please try again later.')
+
+        return True
+
     async def cog_load(self) -> None:
         """
-        A special method that acts as a cog local post-invoke hook.
+        A special method that is called when the cog gets loaded.
 
         Parameters:
             None.
@@ -142,7 +183,10 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     MARK: - App Commands
     """
 
-    @app_commands.command(name='item', description='Returns basic data and market information for a given item')
+    @app_commands.command(
+        name='item',
+        description='Returns basic data and market information for a given item'
+    )
     @app_commands.describe(item_id='The item to retrieve data for')
     @app_commands.rename(item_id='item')
     async def runescape_item(self, interaction: 'Interaction[DreamBot]', item_id: int) -> None:
@@ -184,7 +228,11 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name='herb_comparison', description='Compares profitability for herb farming')
+    @app_commands.command(
+        name='herb_comparison',
+        description='Compares profitability for herb farming',
+        extras=MARKET_DATA_REQUIRED_EXTRAS
+    )
     @app_commands.describe(patches='The number of herb patches (Default: 10)')
     @app_commands.describe(average_herbs='The average number of herbs harvested per patch (Default: 8)')
     async def runescape_herb_comparison(
@@ -233,7 +281,11 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     MARK: - Alerts
     """
 
-    @alert_subgroup.command(name='add', description='Registers an item for market alerts')
+    @alert_subgroup.command(
+        name='add',
+        description='Registers an item for market alerts',
+        extras=MARKET_DATA_REQUIRED_EXTRAS
+    )
     @app_commands.describe(
         item_id='The item to receive alerts for',
         low_price='Optional: Trigger an alert if the instant buy price goes below this value',
@@ -980,7 +1032,6 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             bot_logger.warning(f'OSRS Mapping Query Error: {type(e)} - {e}')
 
         except EmptyResponseError:
-            # TODO: checks for empty responses for all commands (top-level item-data, sub-level market-data)
             bot_logger.warning(f'OSRS Mapping Query Empty Response Error')
 
         except Exception as e:
@@ -1021,7 +1072,6 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             bot_logger.warning(f'OSRS Market Query Error: {type(e)} - {e}')
 
         except EmptyResponseError:
-            # TODO: checks for empty responses for all commands (top-level item-data, sub-level market-data)
             bot_logger.warning(f'OSRS Market Query Empty Response Error')
 
         except Exception as e:
@@ -1029,7 +1079,21 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             await self.bot.report_exception(e)
 
         else:
+            self.last_market_data_fetch_time = utcnow()
             await self.check_alerts()
+
+        finally:
+            # successful fetches will always set `last_market_data_fetch_time` = now
+            # otherwise, all other blocks will allow time since `last_market_data_fetch_time` to elapse,
+            # which we compare and eventually clear market data if needed
+
+            if self.last_market_data_fetch_time and utcnow() > self.last_market_data_fetch_time + self.MARKET_DATA_TTL:
+                bot_logger.warning(f'OSRS Market Query Data is stale - clearing market data from item data')
+                self.last_market_data_fetch_time = None
+
+                # mypy thinks this shadows the above loop
+                for item_id_key in self.item_data.keys():
+                    self.item_data[item_id_key].update_with_market_fragment(ItemMarketData())
 
     @query_market_data.before_loop
     async def wait_for_item_data(self) -> None:
