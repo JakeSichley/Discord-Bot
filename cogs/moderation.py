@@ -393,9 +393,9 @@ async def add_default_role(bot: 'DreamBot', member: Member, gate: bool = False) 
     """
 
     if (
-            member.guild.unavailable or
-            member.guild.id not in bot.cache.default_roles or
-            not member.guild.me.guild_permissions.manage_roles
+        member.guild.unavailable or
+        member.guild.id not in bot.cache.default_roles or
+        not member.guild.me.guild_permissions.manage_roles
     ):
         return
 

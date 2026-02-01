@@ -167,9 +167,9 @@ class GuildFeatures(commands.Cog):
         """
 
         if (
-                message.guild is None
-                or message.author.bot
-                or not self.bot.cache.guild_feature_enabled(message.guild.id, GuildFeature.ALTERNATIVE_TWITTER_EMBEDS)
+            message.guild is None
+            or message.author.bot
+            or not self.bot.cache.guild_feature_enabled(message.guild.id, GuildFeature.ALTERNATIVE_TWITTER_EMBEDS)
         ):
             return
 
