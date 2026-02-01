@@ -27,7 +27,7 @@ from re import findall
 from typing import Optional, Union, List, TYPE_CHECKING
 
 import pytz
-from discord import Embed, utils
+from discord import Embed, utils, Member, Message
 from discord.ext import commands
 from discord.utils import format_dt
 
@@ -42,7 +42,6 @@ from utils.utils import readable_flags
 if TYPE_CHECKING:
     from dreambot import DreamBot
     from utils.context import Context
-    import discord
 
 
 class Utility(commands.Cog):
@@ -126,7 +125,7 @@ class Utility(commands.Cog):
     @commands.guild_only()
     @commands.command(name='userinfo', aliases=['ui'],
                       help='Generates an embed detailing information about the specified user')
-    async def user_info(self, ctx: 'Context', user: 'discord.Member' = commands.Author) -> None:
+    async def user_info(self, ctx: 'Context', user: Member = commands.Author) -> None:
         """
         A method that outputs user information.
 
@@ -212,7 +211,7 @@ class Utility(commands.Cog):
     @commands.bot_has_guild_permissions(manage_emojis=True)
     @dynamic_cooldown()
     @commands.command(name='yoink', help='Yoinks emojis from the specified message.')
-    async def yoink_emoji(self, ctx: 'Context', source: 'discord.Message' = MessageReply) -> None:
+    async def yoink_emoji(self, ctx: 'Context', source: Message = MessageReply) -> None:
         """
         A method to "yoink" an emoji. Retrieves the emoji as an asset and uploads it to the current guild.
 

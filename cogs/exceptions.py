@@ -212,6 +212,10 @@ class Exceptions(commands.Cog):
             await interaction.response.send_message(error, ephemeral=True)
             return
 
+        if isinstance(error, app_commands.CheckFailure):
+            await interaction.response.send_message(f'{error}', ephemeral=True)
+            return
+
         if isinstance(error, app_commands.TransformerError):
             await interaction.response.send_message(f'{error}', ephemeral=True)
             return

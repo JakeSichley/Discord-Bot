@@ -38,7 +38,7 @@ from typing import Union, List, Sequence, Annotated, Literal, Any, TYPE_CHECKING
 
 import pytz
 from aiosqlite import Error as aiosqliteError
-from discord import Embed, HTTPException, AllowedMentions, Permissions, TextChannel, CategoryChannel, Thread
+from discord import Embed, HTTPException, AllowedMentions, TextChannel, CategoryChannel, Thread, Member, User, Message
 from discord.ext import commands
 from discord.ext import tasks
 from discord.utils import format_dt
@@ -52,7 +52,7 @@ from utils.observability.loggers import bot_logger
 from utils.utils import pairs, run_in_subprocess, generate_activity, VERSION
 
 if TYPE_CHECKING:
-    from discord import Interaction, Member, User, Message, abc
+    from discord import abc
     from discord.abc import Messageable
     from dreambot import DreamBot
     from utils.context import Context
@@ -405,6 +405,9 @@ class Admin(commands.Cog):
         }
 
         env.update(globals())
+
+        # discord starting including non-printable characters in our messages for some reason
+        body = ''.join(char for char in body if char.isprintable() or char.isspace())
 
         # strip discord code block formatting from body
         if body.startswith('```') and body.endswith('```'):
@@ -918,12 +921,12 @@ class Admin(commands.Cog):
         bot_logger.info('Completed Unload for Cog: Admin')
 
 
-async def try_to_send_buffer(messagable: 'Messageable', buffer: str, force: bool = False) -> str:
+async def try_to_send_buffer(messageable: 'Messageable', buffer: str, force: bool = False) -> str:
     """
     Parses a string buffer and either sends or returns the buffer in an optimal break point.
 
     Parameters:
-        messagable (discord.abc.Messageable): The channel to send the buffer to.
+        messageable (discord.abc.Messageable): The channel to send the buffer to.
         buffer (str): The contents of the buffer.
         force (bool): Whether to forcibly send the remaining buffer contents or return them. Default: False.
 
@@ -934,7 +937,7 @@ async def try_to_send_buffer(messagable: 'Messageable', buffer: str, force: bool
 
     # if the buffer is within our limit, no special calculations are needed
     if len(buffer) <= 2000:
-        await messagable.send(buffer, allowed_mentions=AllowedMentions.none())
+        await messageable.send(buffer, allowed_mentions=AllowedMentions.none())
         return ''
 
     # default break index to 1800
@@ -956,11 +959,11 @@ async def try_to_send_buffer(messagable: 'Messageable', buffer: str, force: bool
                 break
 
     # once all checks are performed, send the first portion of the buffer
-    await messagable.send(str(buffer[:break_index]), allowed_mentions=AllowedMentions.none())
+    await messageable.send(str(buffer[:break_index]), allowed_mentions=AllowedMentions.none())
 
     # depending on parameters, either send or return the remaining portion of the buffer
     if force:
-        await messagable.send(str(buffer[break_index:]), allowed_mentions=AllowedMentions.none())
+        await messageable.send(str(buffer[break_index:]), allowed_mentions=AllowedMentions.none())
         return ''
     else:
         return str(buffer[break_index:])

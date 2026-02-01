@@ -25,17 +25,16 @@ SOFTWARE.
 from collections import defaultdict
 from contextlib import suppress
 from random import choice as random_choice
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, TYPE_CHECKING
 
 import aiosqlite
 import discord
 from aiosqlite import Error as aiosqliteError, IntegrityError
-from discord import app_commands, Interaction
+from discord import app_commands
 from discord.app_commands import Choice, Range, Transform
 from discord.ext import commands
 from discord.utils import utcnow
 
-from dreambot import DreamBot
 from utils.autocomplete import generate_autocomplete_choices
 from utils.checks import InvocationCheckFailure
 from utils.database.helpers import execute_query, typed_retrieve_query
@@ -44,6 +43,10 @@ from utils.intermediate_models.composite_group import CompositeGroup
 from utils.observability.loggers import bot_logger
 from utils.transformers import StringTransformer
 from utils.utils import format_unix_dt
+
+if TYPE_CHECKING:
+    from discord import Interaction
+    from dreambot import DreamBot
 
 # TODO: Groups v3 -> edit group (max_members); needs components for confirmation when new max_members < current_members
 
@@ -67,12 +70,12 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         bot (DreamBot): The Discord bot class.
     """
 
-    def __init__(self, bot: DreamBot) -> None:
+    def __init__(self, bot: 'DreamBot') -> None:
         """
         The constructor for the Groups class.
 
         Parameters:
-            bot (DreamBot): The Discord bot.
+            bot ('DreamBot'): The Discord bot.
         """
 
         self.bot = bot
@@ -118,7 +121,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @app_commands.rename(ephemeral_updates='silent_updates')
     async def create_group(
             self,
-            interaction: Interaction[DreamBot],
+            interaction: 'Interaction[DreamBot]',
             group_name: Transform[str, GroupName],
             max_members: Optional[Range[int, 1, 2_500_000]] = None,
             ephemeral_updates: bool = False
@@ -177,7 +180,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
     @app_commands.command(name='delete', description='Deletes an existing group')
     @app_commands.describe(group_name="The name of the group you'd like to delete")
-    async def delete_group(self, interaction: Interaction[DreamBot], group_name: Transform[str, GroupName]) -> None:
+    async def delete_group(self, interaction: 'Interaction[DreamBot]', group_name: Transform[str, GroupName]) -> None:
         """
         Deletes an existing group from the guild.
         You can only delete your own groups unless you are a moderator (`manage_messages`).
@@ -221,7 +224,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
     @app_commands.command(name='join', description='Joins an existing group')
     @app_commands.describe(group_name="The name of the group you'd like to join")
-    async def join_group(self, interaction: Interaction[DreamBot], group_name: Transform[str, GroupName]) -> None:
+    async def join_group(self, interaction: 'Interaction[DreamBot]', group_name: Transform[str, GroupName]) -> None:
         """
         Joins an existing group.
         Must not already be a member of the group and the group must not be at maximum capacity.
@@ -273,7 +276,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
     @app_commands.command(name='leave', description="Leaves a group you're an existing member of")
     @app_commands.describe(group_name="The name of the group you'd like to leave")
-    async def leave_group(self, interaction: Interaction[DreamBot], group_name: Transform[str, GroupName]) -> None:
+    async def leave_group(self, interaction: 'Interaction[DreamBot]', group_name: Transform[str, GroupName]) -> None:
         """
         Leaves an existing group.
         Must already be a member of the group.
@@ -320,7 +323,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @app_commands.describe(group_name="The name of the group you'd like to remove a member from")
     @app_commands.describe(member="The member to remove")
     async def kick_from_group(
-            self, interaction: Interaction[DreamBot], group_name: Transform[str, GroupName], member: discord.Member
+            self, interaction: 'Interaction[DreamBot]', group_name: Transform[str, GroupName], member: discord.Member
     ) -> None:
         """
         Kicks a member from a group.
@@ -381,7 +384,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @app_commands.describe(group_name="The name of the group you'd like to transfer ownership of")
     @app_commands.describe(member="The member to give ownership to")
     async def transfer_group(
-            self, interaction: Interaction[DreamBot], group_name: Transform[str, GroupName], member: discord.Member
+            self, interaction: 'Interaction[DreamBot]', group_name: Transform[str, GroupName], member: discord.Member
     ) -> None:
         """
         Transfers group ownership to a new member.
@@ -431,7 +434,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
     @app_commands.command(name='view', description='View an existing group')
     @app_commands.describe(group_name="The name of the group you'd like to view")
-    async def view_group(self, interaction: Interaction[DreamBot], group_name: Transform[str, GroupName]) -> None:
+    async def view_group(self, interaction: 'Interaction[DreamBot]', group_name: Transform[str, GroupName]) -> None:
         """
         Views an existing group.
 
@@ -508,7 +511,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @kick_from_group.autocomplete('group_name')
     @transfer_group.autocomplete('group_name')
     async def existing_group_name_autocomplete(
-            self, interaction: Interaction[DreamBot], current: str
+            self, interaction: 'Interaction[DreamBot]', current: str
     ) -> List[Choice[str]]:
         """
         Autocompletes group names for the current guild.
@@ -552,7 +555,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             options = [
                 x for x in groups
                 if not self.groups[interaction.guild_id][x].is_full
-                   and interaction.user.id not in self.groups[interaction.guild_id][x].members
+                and interaction.user.id not in self.groups[interaction.guild_id][x].members
             ]
         elif interaction.command.name == 'leave':
             options = [x for x in groups if interaction.user.id in self.groups[interaction.guild_id][x].members]
@@ -784,7 +787,7 @@ def enhanced_autocomplete_description(group: CompositeGroup, guild: Optional[dis
         return f'{group.name}{formatted_description}'
 
 
-async def setup(bot: DreamBot) -> None:
+async def setup(bot: 'DreamBot') -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

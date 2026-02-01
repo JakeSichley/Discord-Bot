@@ -11,7 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 ### Features
-- Enhance `Runescape` autocomplete descriptions for user-provided values
+- `Runescape`
+  - Enhance autocomplete descriptions for user-provided values
+  - Update `RunescapeHerbComparison` to include Huasca
+  - Update user-facing instances to properly capitalize 'RuneScape'
 - Add `GuildFeature` support for alternative Twitter embeds (via 'fixupx.com')
 ### Internal
 - Autocomplete
@@ -25,6 +28,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Overhaul imports to only import types used for type-hinting when type checking
 ### Issues
 - Fix `RunescapeHerbComparison` using grimy values for min/max comparisons instead of grimy and clean
+- Update `Admin::exec` to strip non-printable characters from `Message.content` (thanks Discord)
 
 ## 2.18.5
 ### Internal

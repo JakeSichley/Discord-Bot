@@ -22,11 +22,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from discord import app_commands, Interaction
+from typing import TYPE_CHECKING
+
+from discord import app_commands
 from discord.ext import commands
 
-from dreambot import DreamBot
 from utils.observability.loggers import bot_logger
+
+if TYPE_CHECKING:
+    from discord import Interaction
+    from dreambot import DreamBot
 
 
 class LostArk(commands.Cog):
@@ -37,7 +42,7 @@ class LostArk(commands.Cog):
         bot (DreamBot): The Discord bot class.
     """
 
-    def __init__(self, bot: DreamBot) -> None:
+    def __init__(self, bot: 'DreamBot') -> None:
         """
         The constructor for the LostArk class.
 
@@ -52,7 +57,7 @@ class LostArk(commands.Cog):
     @app_commands.describe(party_size='The size of your party, including you')
     async def loot_auction_split(
             self,
-            interaction: Interaction[DreamBot],
+            interaction: 'Interaction[DreamBot]',
             market_price: app_commands.Range[int, 1, None],
             party_size: app_commands.Range[int, 1, None]
     ) -> None:
@@ -84,7 +89,7 @@ class LostArk(commands.Cog):
         )
 
 
-async def setup(bot: DreamBot) -> None:
+async def setup(bot: 'DreamBot') -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 

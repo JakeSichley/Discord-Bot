@@ -32,6 +32,7 @@ ALL_HERBS = [
     RunescapeHerb('Dwarf weed', '<:dwarf_weed:1208996506271752302>', 5303, 267, 217),
     RunescapeHerb('Guam', '<:guam:1208996507357806682>', 5291, 249, 199),
     RunescapeHerb('Harralander', '<:harralander:1208996508297334794>', 5294, 255, 205),
+    RunescapeHerb('Huasca', '<:huasca:1464213161350533365>', 30088, 30097, 30094),
     RunescapeHerb('Irit', '<:irit:1208996509379469332>', 5297, 259, 209),
     RunescapeHerb('Kwuarm', '<:kwuarm:1208996546285150232>', 5299, 263, 213),
     RunescapeHerb('Lantadyme', '<:lantadyme:1208996547639902259>', 5302, 2481, 2485),

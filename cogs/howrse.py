@@ -22,13 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from typing import TYPE_CHECKING
+
 import discord
 from discord.ext import commands
 
-from dreambot import DreamBot
 from utils.checks import guild_only
 from utils.context import Context
 from utils.observability.loggers import bot_logger
+
+if TYPE_CHECKING:
+    from dreambot import DreamBot
 
 
 class Howrse(commands.Cog):
@@ -41,7 +45,7 @@ class Howrse(commands.Cog):
         bot (DreamBot): The Discord bot class.
     """
 
-    def __init__(self, bot: DreamBot) -> None:
+    def __init__(self, bot: 'DreamBot') -> None:
         """
         The constructor for the Howrse class.
 
@@ -158,7 +162,7 @@ class Howrse(commands.Cog):
         await ctx.send(content=content, embed=embed)
 
 
-async def setup(bot: DreamBot) -> None:
+async def setup(bot: 'DreamBot') -> None:
     """
     A setup function that allows the cog to be treated as an extension.
 
