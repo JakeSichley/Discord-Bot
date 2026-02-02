@@ -92,11 +92,11 @@ class GuildFeatures(commands.Cog):
             color=0x00BD96,
         )
 
-        for feature in GuildFeature:
-            embed.add_field(
-                name=f'{feature.name}', value='Enabled' if has_guild_feature(features, feature) else 'Disabled'
-            )
-
+        embed.add_field(name='Feature', value='\n'.join(x.display_name for x in GuildFeature))
+        embed.add_field(
+            name='Status',
+            value='\n'.join('✅' if has_guild_feature(features, x) else '❌' for x in GuildFeature)
+        )
         embed.set_footer(text='Please report any issues to my owner!')
 
         await interaction.response.send_message(embed=embed)
@@ -126,17 +126,19 @@ class GuildFeatures(commands.Cog):
         """
 
         assert interaction.guild_id is not None
+        assert interaction.guild is not None
 
         feature_mapping = {
             GuildFeature.TAG_DIRECT_INVOKE: direct_tag_invoke,
-            GuildFeature.ALTERNATIVE_TWITTER_EMBEDS: alternative_twitter_embeds
+            GuildFeature.ALTERNATIVE_TWITTER_EMBEDS: alternative_twitter_embeds,
         }
 
         if all(x is None for x in feature_mapping.values()):
             await interaction.response.send_message('No guild features were modified.', ephemeral=True)
             return
 
-        features = self.bot.cache.guild_features.get(interaction.guild_id, 0)
+        existing_features = self.bot.cache.guild_features.get(interaction.guild_id, 0)
+        features = existing_features
 
         for feature, value in feature_mapping.items():
             features = set_guild_feature(features, feature, value)
@@ -151,8 +153,28 @@ class GuildFeatures(commands.Cog):
         except aiosqliteError:
             await interaction.response.send_message('Failed to modify guild features as requested.', ephemeral=True)
         else:
-            await interaction.response.send_message('Successfully modified guild features.', ephemeral=True)
             self.bot.cache.guild_features[interaction.guild_id] = features
+
+            modifications = features ^ existing_features
+
+            embed = Embed(
+                title='Guild Features',
+                description=f'Feature Modifications for {interaction.guild.name}',
+                color=0x00BD96,
+            )
+
+            embed_fields = [
+                (feature.display_name, has_guild_feature(existing_features, feature),
+                 has_guild_feature(features, feature))
+                for feature in GuildFeature if has_guild_feature(modifications, feature)
+            ]
+
+            embed.add_field(name='Feature Name', value='\n'.join((x[0]) for x in embed_fields))
+            embed.add_field(name='Old', value='\n'.join('Enabled' if x[1] else 'Disabled' for x in embed_fields))
+            embed.add_field(name='New', value='\n'.join('Enabled' if x[2] else 'Disabled' for x in embed_fields))
+            embed.set_footer(text='Please report any issues to my owner!')
+
+            await interaction.response.send_message(embed=embed)
 
     @commands.Cog.listener()
     async def on_message(self, message: 'discord.Message') -> None:

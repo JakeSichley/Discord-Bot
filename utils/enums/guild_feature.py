@@ -31,8 +31,27 @@ class GuildFeature(IntFlag):
     An Enum class that represents variables toggleable features for a guild.
     """
 
-    TAG_DIRECT_INVOKE = 1
-    ALTERNATIVE_TWITTER_EMBEDS = 2
+    TAG_DIRECT_INVOKE = 2 ** 0
+    ALTERNATIVE_TWITTER_EMBEDS = 2 ** 1
+
+    @property
+    def display_name(self) -> str:
+        """
+        Human-readable display name.
+
+        Parameters:
+            None.
+
+        Returns:
+            str.
+        """
+
+        mapping = {
+            GuildFeature.TAG_DIRECT_INVOKE: 'Direct Tag Invokes',
+            GuildFeature.ALTERNATIVE_TWITTER_EMBEDS: 'Alternative Twitter Embeds',
+        }
+
+        return mapping.get(self, 'Unknown')
 
 
 def has_guild_feature(features: int, feature: GuildFeature) -> bool:
