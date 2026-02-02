@@ -315,8 +315,8 @@ class Admin(commands.Cog):
                 await ctx.safe_send(str(result))
             except aiosqliteError as e:
                 await ctx.send(f'Error: {e}')
-            finally:
-                return
+
+            return
 
         if self.bot.environment == 'PROD':
             if not await ctx.confirmation_prompt('Confirm potentially mutating statement?'):

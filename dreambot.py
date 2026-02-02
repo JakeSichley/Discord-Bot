@@ -46,26 +46,17 @@ from utils.utils import generate_activity
 if TYPE_CHECKING:
     import discord
 
-GitOptionals = TypedDict(
-    'GitOptionals',
-    {
-        'git_user': Optional[str],
-        'git_repo': Optional[str],
-        'git_token': Optional[str]
-    }
-)
+class GitOptionals(TypedDict):
+    git_user: Optional[str]
+    git_repo: Optional[str]
+    git_token: Optional[str]
 
-Optionals = TypedDict(
-    'Optionals',
-    {
-        'status_type': ActivityType,
-        'status_text': Optional[str],
-        'disabled_cogs': List[str],
-        'firebase_project': Optional[str],
-        'git': Optional[GitOptionals]
-    },
-    total=False
-)
+class Optionals(TypedDict, total=False):
+    status_type: ActivityType
+    status_text: Optional[str]
+    disabled_cogs: List[str]
+    firebase_project: Optional[str]
+    git: Optional[GitOptionals]
 
 
 class DreamBot(Bot):

@@ -83,9 +83,9 @@ class LostArk(commands.Cog):
         bidding_breakpoint = int((.95 * market_price * party_size) / (1 + .95 * party_size))
 
         await interaction.response.send_message(
-            f'For an item with a market value of {"{:,}".format(market_price)} and a party size of {party_size + 1}, '
+            f'For an item with a market value of {market_price:,} and a party size of {party_size + 1}, '
             f'you should continue to bid while the next minimum bid price is less than '
-            f'**{"{:,}".format(bidding_breakpoint)}**.'
+            f'**{bidding_breakpoint:,}**.'
         )
 
 

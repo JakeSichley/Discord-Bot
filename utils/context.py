@@ -22,7 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from __future__ import annotations
 
 import io
 from asyncio import TimeoutError
@@ -186,7 +185,8 @@ class Context(commands.Context['dreambot.DreamBot']):
             if ephemeral:
                 with suppress(HTTPException):
                     await prompt.delete()
-            return result
+
+        return result
 
     async def safe_send(self, content: Optional[str] = None, **kwargs: Any) -> 'Message':
         """

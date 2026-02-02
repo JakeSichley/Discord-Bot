@@ -317,8 +317,8 @@ class Moderation(commands.Cog):
                 await ctx.send('Cleared the default role for the guild.')
             except aiosqliteError:
                 await ctx.send('Failed to clear the default role for the guild.')
-            finally:
-                return
+
+            return
 
         # ensure all roles are fetched
         if all((role, bot_role, invoker_role)):

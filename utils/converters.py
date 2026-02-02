@@ -32,7 +32,7 @@ from discord.ext import commands
 from dreambot import DreamBot
 from utils.context import Context
 
-ForbiddenCharacterSet = set('_~#/\`><@*')
+ForbiddenCharacterSet = set(r'_~#/\`><@*')
 
 
 class ForbiddenCharacters(commands.BadArgument):

@@ -25,7 +25,7 @@ SOFTWARE.
 from enum import Enum
 from typing import Any
 
-from typing_extensions import TypeAlias
+from typing import TypeAlias
 
 JSON: TypeAlias = Any
 

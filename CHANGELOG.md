@@ -93,7 +93,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Prevent edge case where a confirmation prompt coroutine was created and never used
   - Prevent zero or negative limit values
 
-## 2.16.1
+## 2.16.1 (03 Apr 2024)
 ### Features
 - `Runescape`
   - Increase default herb patches for Varlamore 
@@ -185,7 +185,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Internal
 - Bump mypy version to 1.3.0
 
-## 2.10.4
+## 2.10.4 (30 Jun 2023)
 ### Internal
 - Bump discord.py version to 2.3.1
 
@@ -204,10 +204,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 # 2.10.0 (13 Mar 2023)
 ### Features
 - Add Grand Exchange Market Alerts to `Runescape` Cog
-
 ### Internal
 - Add custom implementation for Expiring Dictionary; drop untyped third-party dependency
-
 ### Issues
 - Add `VoiceRoles::on_voice_state_update` permissions check for role updates
 
@@ -233,6 +231,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Report exceptions intercepted via `Client::on_error` to Reporting Dashboard
 - Add `Runescape` Cog
 
+# 2.7.2 (08 Dec 2022)
+### Internal
+* Remove logging from `v2.7.1` -> `command` is `None` when prefix is used without a valid command name
+
+# 2.7.1 (08 Dec 2022)
+### Internal
+* Add logging to identify cases where `on_command_error->command` is `None`
+
 # 2.7.0 (05 Dec 2022)
 ### Internal
 - Add mypy type checking to the project
@@ -244,7 +250,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## 2.6.2 (29 Nov 2022)
 ### Internal
 - Add typing to database retrieval queries
-
 ### Issues
 - Fix several `VoiceRole` prompts
 
@@ -271,11 +276,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## 2.4.0 (14 Nov 2022)
 ### Features
 - Overhaul `Yoink` commands to use a new `EmojiManager` class
-
 ### Internal
 - Insert logging line break at the start of every day
 - Bump discord.py version to `2.1.0`
-
 ### Issues
 - Fix `avatar_url` -> `avatar.url` in Utility::UserInfo
 
@@ -321,4 +324,5 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Bump discord.py version to `2.0.1`
 
 ## 1.0.0 (15 Jul 2022)
+### Internal
 - Base `discord.ext.commands` Bot
