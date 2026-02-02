@@ -126,6 +126,7 @@ class GuildFeatures(commands.Cog):
         """
 
         assert interaction.guild_id is not None
+        assert interaction.guild is not None
 
         feature_mapping = {
             GuildFeature.TAG_DIRECT_INVOKE: direct_tag_invoke,

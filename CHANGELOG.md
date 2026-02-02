@@ -15,7 +15,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Enhance autocomplete descriptions for user-provided values
   - Update `RunescapeHerbComparison` to include Huasca
   - Update user-facing instances to properly capitalize 'RuneScape'
-- Add `GuildFeature` support for alternative Twitter embeds (via 'fixupx.com')
+- `GuildFeature`
+  - Add support for alternative Twitter embeds (via 'fixupx.com')
+  - Improve modification dialogue output and make output non-ephemeral
 ### Internal
 - Autocomplete
   - Switch from `fuzzywuzzy` to `RapidFuzz` for increased performance
