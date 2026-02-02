@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Bump Python version to `3.14.2`
 - Update CHANGELOG types
   - 'Features' -> 'Added' / 'Removed'; Include 'Security'
+- Add `ruff` for additional linting and automatic formatting
 ### Issues
 ### Security
 
