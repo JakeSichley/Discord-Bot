@@ -9,7 +9,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
       with:
-        python-version: "3.9"
+        python-version: '3.14'
     - run: pip install --upgrade pip
     - run: pip install -r requirements.txt --use-deprecated=legacy-resolver
     - run: pip install types-aiofiles types-Pillow types-beautifulsoup4 types-pytz types-humanfriendly
