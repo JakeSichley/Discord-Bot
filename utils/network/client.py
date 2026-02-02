@@ -153,7 +153,7 @@ class NetworkClient:
             *,
             headers: Optional['Headers'],
             forward_exceptions: bool,
-            ssl: Optional[bool],
+            ssl: bool,
             bypass_backoff: bool,
             raise_for_empty_response: bool
     ) -> Optional[ReturnType]:
@@ -165,7 +165,7 @@ class NetworkClient:
             handler (Callable[[aiohttp.ClientResponse], Awaitable[ReturnType]]): The handler for the response.
             headers (Optional[Headers]): The headers to send with the request.
             forward_exceptions (bool): Whether to forward exceptions instead of suppressing them.
-            ssl (Optional[bool]): Whether to use ssl.
+            ssl (bool): Whether to use ssl.
             bypass_backoff (bool): Whether to bypass the exponential backoff.
             raise_for_empty_response (bool): Whether to raise an `EmptyResponseError` if the response is empty.
 
@@ -198,7 +198,10 @@ class NetworkClient:
                 raise ExponentialBackoffException(url, matched_rule)
 
             async with self._session.get(
-                    url, headers=headers, ssl=ssl, raise_for_status=True
+                    url,
+                    headers=headers,  # type: ignore[arg-type] # we'll always treat this as Mapping[str, str]
+                    ssl=ssl,
+                    raise_for_status=True
             ) as r:
                 # anything in this context manager implicitly means the request was successful
                 # and no exceptions were raised by either the request or the handler
@@ -301,7 +304,7 @@ class NetworkClient:
             *,
             headers: Optional['Headers'] = None,
             forward_exceptions: bool = False,
-            ssl: Optional[bool] = None,
+            ssl: bool = True,
             bypass_backoff: bool = False,
             raise_for_empty_response: bool = False
     ) -> Optional[bytes]:
@@ -312,7 +315,7 @@ class NetworkClient:
             url (str): The url to fetch bytes from.
             headers (Optional[Headers]): The headers to send with the request.
             forward_exceptions (bool): Whether to forward exceptions instead of suppressing them.
-            ssl (Optional[bool]): Whether to use ssl.
+            ssl (bool): Whether to use ssl.
             bypass_backoff (bool): Whether to bypass the exponential backoff.
             raise_for_empty_response (bool): Whether to raise an `EmptyResponseError` if the response is empty.
 
@@ -339,7 +342,7 @@ class NetworkClient:
             encoding: str = 'utf-8',
             headers: Optional['Headers'] = None,
             forward_exceptions: bool = False,
-            ssl: Optional[bool] = None,
+            ssl: bool = True,
             bypass_backoff: bool = False,
             raise_for_empty_response: Literal[True]
     ) -> 'JSON':
@@ -351,7 +354,7 @@ class NetworkClient:
             encoding (str): The encoding to use.
             headers (Optional[Headers]): The headers to send with the request.
             forward_exceptions (bool): Whether to forward exceptions instead of suppressing them.
-            ssl (Optional[bool]): Whether to use ssl.
+            ssl (bool): Whether to use ssl.
             bypass_backoff (bool): Whether to bypass the exponential backoff.
             raise_for_empty_response (Literal[True]): Whether to raise an `EmptyResponseError` if the response is empty.
 
@@ -369,7 +372,7 @@ class NetworkClient:
             encoding: str = 'utf-8',
             headers: Optional['Headers'] = None,
             forward_exceptions: bool = False,
-            ssl: Optional[bool] = None,
+            ssl: bool = True,
             bypass_backoff: bool = False,
             raise_for_empty_response: Literal[False]
     ) -> Optional['JSON']:
@@ -381,7 +384,7 @@ class NetworkClient:
             encoding (str): The encoding to use.
             headers (Optional[Headers]): The headers to send with the request.
             forward_exceptions (bool): Whether to forward exceptions instead of suppressing them.
-            ssl (Optional[bool]): Whether to use ssl.
+            ssl (bool): Whether to use ssl.
             bypass_backoff (bool): Whether to bypass the exponential backoff.
             raise_for_empty_response (Literal[False]): Whether to raise an `EmptyResponseError` if the response is empty.
 
@@ -398,7 +401,7 @@ class NetworkClient:
             encoding: str = 'utf-8',
             headers: Optional['Headers'] = None,
             forward_exceptions: bool = False,
-            ssl: Optional[bool] = None,
+            ssl: bool = True,
             bypass_backoff: bool = False,
             raise_for_empty_response: bool = False
     ) -> Optional['JSON']:
@@ -410,7 +413,7 @@ class NetworkClient:
             encoding (str): The encoding to use.
             headers (Optional[Headers]): The headers to send with the request.
             forward_exceptions (bool): Whether to forward exceptions instead of suppressing them.
-            ssl (Optional[bool]): Whether to use ssl.
+            ssl (bool): Whether to use ssl.
             bypass_backoff (bool): Whether to bypass the exponential backoff.
             raise_for_empty_response (bool): Whether to raise an `EmptyResponseError` if the response is empty.
 
@@ -436,7 +439,7 @@ class NetworkClient:
             encoding: str = 'utf-8',
             headers: Optional['Headers'] = None,
             forward_exceptions: bool = False,
-            ssl: Optional[bool] = None,
+            ssl: bool = True,
             bypass_backoff: bool = False,
             raise_for_empty_response: bool = False
     ) -> Optional[str]:
@@ -448,7 +451,7 @@ class NetworkClient:
             encoding (str): The encoding to use.
             headers (Optional[Headers]): The headers to send with the request.
             forward_exceptions (bool): Whether to forward exceptions instead of suppressing them.
-            ssl (Optional[bool]): Whether to use ssl.
+            ssl (bool): Whether to use ssl.
             bypass_backoff (bool): Whether to bypass the exponential backoff.
             raise_for_empty_response (bool): Whether to raise an `EmptyResponseError` if the response is empty.
 

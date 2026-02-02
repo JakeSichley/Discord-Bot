@@ -5,11 +5,22 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 **Types of Changes**
-- Features
-- Internal
-- Issues
+- Added (New external facing functionality)
+- Removed (Removed external facing functionality)
+- Internal (Added or removed, generally architecture or infrastructure)
+- Issues (internal or external)
+- Security (internal)
 
 ## Unreleased
+### Added
+### Removed
+### Internal
+- Bump Python version to `3.14.2`
+- Update CHANGELOG types
+### Issues
+### Security
+
+## 2.19.0
 ### Features
 - `Runescape`
   - Enhance autocomplete descriptions for user-provided values

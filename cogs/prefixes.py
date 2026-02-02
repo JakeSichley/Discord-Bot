@@ -69,10 +69,10 @@ class Prefixes(commands.Cog):
             # noinspection PyTypeChecker
             await ctx.invoke(self.get_prefix)
 
-    @commands.cooldown(1, 2, commands.BucketType.guild)  # type: ignore[arg-type]
+    @commands.cooldown(1, 2, commands.BucketType.guild)
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
-    @prefix.command(name='add', aliases=['set'])
+    @prefix.command(name='add', aliases=['set'])  # type: ignore[arg-type]
     async def add_prefix(self, ctx: 'Context', prefix: str) -> None:
         """
         A method to add a command prefix for the guild.
@@ -124,10 +124,10 @@ class Prefixes(commands.Cog):
 
             await ctx.send(f'Added `{prefix}` as a prefix for this guild.')
 
-    @commands.cooldown(1, 2, commands.BucketType.guild)  # type: ignore[arg-type]
+    @commands.cooldown(1, 2, commands.BucketType.guild)
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
-    @prefix.command(name='remove', aliases=['delete', 'del'])
+    @prefix.command(name='remove', aliases=['delete', 'del'])  # type: ignore[arg-type]
     async def remove_prefix(self, ctx: 'Context', prefix: str) -> None:
         """
         A method to remove a command prefix for the guild.
@@ -174,10 +174,10 @@ class Prefixes(commands.Cog):
 
             await ctx.send(f'Removed `{prefix}` as a prefix for this guild.')
 
-    @commands.cooldown(1, 2, commands.BucketType.guild)  # type: ignore[arg-type]
+    @commands.cooldown(1, 2, commands.BucketType.guild)
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
-    @prefix.command(name='replace', aliases=['swap', 'switch'])
+    @prefix.command(name='replace', aliases=['swap', 'switch'])  # type: ignore[arg-type]
     async def replace_prefix(self, ctx: 'Context', old_prefix: str, new_prefix: str) -> None:
         """
         A method to replace an existing command prefix for the guild.
@@ -227,10 +227,10 @@ class Prefixes(commands.Cog):
 
             await ctx.send(f'Replaced `{old_prefix}` with `{new_prefix}` as a prefix for this guild.')
 
-    @commands.cooldown(1, 2, commands.BucketType.guild)  # type: ignore[arg-type]
+    @commands.cooldown(1, 2, commands.BucketType.guild)
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
-    @prefix.command(name='clear')
+    @prefix.command(name='clear')  # type: ignore[arg-type]
     async def clear_prefixes(self, ctx: 'Context') -> None:
         """
         A method to remove all existing command prefixes for the guild.
@@ -274,8 +274,8 @@ class Prefixes(commands.Cog):
 
             await ctx.send(f'Cleared all prefixes for the guild.')
 
-    @commands.cooldown(1, 2, commands.BucketType.guild)  # type: ignore[arg-type]
-    @prefix.command(name='get')
+    @commands.cooldown(1, 2, commands.BucketType.guild)
+    @prefix.command(name='get')  # type: ignore[arg-type]
     async def get_prefix(self, ctx: 'Context') -> None:
         """
         A method that outputs the current prefixes for the guild.

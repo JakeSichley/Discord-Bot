@@ -53,7 +53,7 @@ class DatabaseDataclass:
     """
     A `dataclass` used to enforce type-safety for type-specified database retrievals.
 
-    This class no attributes of its own, and is meant to be subclassed.
+    This class has no attributes of its own, and is meant to be subclassed.
     """
 
     def __post_init__(self) -> None:
@@ -74,7 +74,7 @@ class DatabaseDataclass:
 
         for field in dataclasses.fields(self):
             value = getattr(self, field.name)
-            if not isinstance(value, expand_optional_types(field.type)):
+            if not isinstance(value, expand_optional_types(field.type)):  # type: ignore[arg-type]
                 raise ValueError(f'Expected {field.name} to be {field.type}, got {type(value)}')
 
     def unpack(self) -> Tuple[Any, ...]:

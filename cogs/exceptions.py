@@ -152,7 +152,8 @@ class Exceptions(commands.Cog):
         elif isinstance(error, (ClientResponseError, ServerConnectionError)):
             await ctx.send(
                 f'`{ctx.command}` encountered a network error: '
-                f'`{error.message} ({error.status})`'  # type: ignore[attr-defined]
+                f'`{getattr(error, 'message', 'Message Unavailable')} '
+                f'{getattr(error, 'status', 'Status Unavailable')}`'
             )
             return
 
@@ -185,7 +186,7 @@ class Exceptions(commands.Cog):
         # Reloading an extension that currently has errors
         elif isinstance(error, commands.ExtensionError):
             formatted_error = ''.join(
-                format_exception(type(error), error, error.__traceback__)  # type: ignore[attr-defined]
+                format_exception(type(error), error, error.__traceback__)
             )
             await ctx.send(f'```py\n{formatted_error}```')
 

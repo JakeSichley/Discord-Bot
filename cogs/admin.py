@@ -431,7 +431,7 @@ class Admin(commands.Cog):
         # noinspection PyBroadException
         try:
             with redirect_stdout(stdout):
-                ret = await func()  # type: ignore[operator]
+                ret = await func()  # type: ignore[operator, misc]
 
         except Exception:
             value = stdout.getvalue()
@@ -463,7 +463,7 @@ class Admin(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send_help('git')
 
-    @git.command(name='pull', aliases=['p'], hidden=True)  # type: ignore[misc]
+    @git.command(name='pull', aliases=['p'], hidden=True)  # type: ignore[untyped-decorator]
     async def git_pull(self, ctx: 'Context') -> None:
         """
         Pulls the latest changes from master.
@@ -507,7 +507,7 @@ class Admin(commands.Cog):
         cogs = re.findall(r'(?<=cogs/)([A-z]+)(?=\.py)', changes, re.MULTILINE)
         utils = re.findall(r'(?<=utils/)([A-z]+)(?=\.py)', changes, re.MULTILINE)
         core = [match.group() for match in re.finditer(r'^(?:(?!/).)*[A-z]+(?=\.py)', changes, re.MULTILINE)]
-        library = []
+        library: List[str] = []
 
         if 'requirements.txt' in changes:
             pip_message = await ctx.send('Performing `pip install` now.')
@@ -609,7 +609,7 @@ class Admin(commands.Cog):
             )
         await ctx.safe_send(output)
 
-    @git.command(name='dry_run', aliases=['dry', 'd'], hidden=True)  # type: ignore[misc]
+    @git.command(name='dry_run', aliases=['dry', 'd'], hidden=True)  # type: ignore[untyped-decorator]
     async def dry_run(self, ctx: 'Context') -> None:
         """
         Performs a dry run of git pull. Equivalent to git fetch && git diff --stat HEAD origin/master.
@@ -631,7 +631,7 @@ class Admin(commands.Cog):
         output = '\n'.join(x.decode() for x in actual_result)
         await ctx.send(f'**The following files would be updated:**\n```\n{output}```')
 
-    @git.command(name='branches', aliases=['branch', 'b'], hidden=True)  # type: ignore[misc]
+    @git.command(name='branches', aliases=['branch', 'b'], hidden=True)  # type: ignore[untyped-decorator]
     async def git_branches(self, ctx: 'Context') -> None:
         """
         Fetches a list of branches from the bot's repository.

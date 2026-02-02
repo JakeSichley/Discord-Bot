@@ -83,15 +83,16 @@ class VoiceRoles(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send_help('voicerole')
 
-    @commands.bot_has_permissions(manage_roles=True)  # type: ignore[arg-type]
+    @commands.bot_has_permissions(manage_roles=True)
     @commands.has_permissions(manage_roles=True)
-    @voice_role.command(name='add', help='Begins the process of setting up a Voice Role.\nYou can invoke this command '
-                                         'without any arguments to go through the entire setup process.\nAlternatively,'
-                                         ' you can pass just a voice channel ID, or both a voice channel ID and a role'
-                                         ' name or role ID. If you choose to pass a role name, you need to quote the'
-                                         ' role name in order for it to be properly parsed ("my role").\nYou can also'
-                                         ' use this method to change the role of an existing voice role channel.'
-                                         ' Specify the same channel and simply supply a new role!')
+    @voice_role.command(  # type: ignore[arg-type]
+        name='add',
+        help='Begins the process of setting up a Voice Role.\nYou can invoke this command without any arguments to go '
+             'through the entire setup process.\nAlternatively, you can pass just a voice channel ID, or both a voice '
+             'channel ID and a role name or role ID. If you choose to pass a role name, you need to quote the role '
+             'name in order for it to be properly parsed ("my role").\nYou can also use this method to change the '
+             'role of an existing voice role channel. Specify the same channel and simply supply a new role!'
+    )
     async def add_voice_role(
             self, ctx: 'Context', channel: Optional[VoiceChannel] = None, role: Optional[Role] = None
     ) -> None:
@@ -174,12 +175,14 @@ class VoiceRoles(commands.Cog):
         finally:
             await cleanup(cleanup_messages, ctx.channel)
 
-    @commands.bot_has_permissions(manage_roles=True)  # type: ignore[arg-type]
+    @commands.bot_has_permissions(manage_roles=True)
     @commands.has_permissions(manage_roles=True)
-    @voice_role.command(name='remove', help='Begins the process of removing an existing Voice Role.\nIf you invoke this'
-                                            ' command without a supplying a channel, you will be prompted for one.\nIf'
-                                            ' you wish to change the role associated with a specific channel, consider'
-                                            ' using "add" instead!')
+    @voice_role.command(  # type: ignore[arg-type]
+        name='remove',
+        help='Begins the process of removing an existing Voice Role.\nIf you invoke this command without a supplying '
+             'a channel, you will be prompted for one.\nIf you wish to change the role associated with a specific '
+             'channel, consider using "add" instead!'
+    )
     async def remove_voice_role(self, ctx: 'Context', channel: Optional[VoiceChannel] = None) -> None:
         """
         Removes a voice role from a specified channel.
@@ -237,8 +240,8 @@ class VoiceRoles(commands.Cog):
         else:
             await ctx.send('Could not find any voice roles associated with the specified channel.')
 
-    @commands.has_permissions(manage_roles=True)  # type: ignore[arg-type]
-    @voice_role.command(name='check', help='Checks a channel for an existing voice role.')
+    @commands.has_permissions(manage_roles=True)
+    @voice_role.command(name='check', help='Checks a channel for an existing voice role.')  # type: ignore[arg-type]
     async def check_voice_role(self, ctx: 'Context', channel: Optional[VoiceChannel] = None) -> None:
         """
         Checks for a voice role for a specified channel.

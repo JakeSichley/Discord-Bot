@@ -89,15 +89,16 @@ class ReactionRoles(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send_help('reactionrole')
 
-    @commands.bot_has_permissions(manage_roles=True)  # type: ignore[arg-type]
+    @commands.bot_has_permissions(manage_roles=True)
     @commands.has_permissions(manage_roles=True)
-    @reaction_role.command(name='add', help='Begins the process of setting up a Reaction Role.\nYou can invoke this '
-                                            'command without any arguments to go through the entire setup process.\n'
-                                            'Alternatively, you can pass just a message ID, or both a message ID and a '
-                                            'role name or role ID. If you choose to pass a role name, you need to quote'
-                                            ' the role name in order for it to be properly parsed ("my role").\nYou can'
-                                            ' also use this method to change the role of an existing reaction. Specify'
-                                            ' the same message and reaction and simply supply a new role!')
+    @reaction_role.command(  # type: ignore[arg-type]
+        name='add',
+        help='Begins the process of setting up a Reaction Role.\nYou can invoke this command without any arguments to '
+             'go through the entire setup process.\nAlternatively, you can pass just a message ID, or both a message '
+             'ID and a role name or role ID. If you choose to pass a role name, you need to quotethe role name in '
+             'order for it to be properly parsed ("my role").\nYou canalso use this method to change the role of an '
+             'existing reaction. Specifythe same message and reaction and simply supply a new role!'
+    )
     async def add_reaction_role(
             self, ctx: 'Context', message: Optional[Message] = None, role: Optional[Role] = None
     ) -> None:
@@ -218,14 +219,15 @@ class ReactionRoles(commands.Cog):
                        f"{payload.emoji}, I'll assign them the **{role.name}** role!")
         await cleanup(cleanup_messages, ctx.channel)
 
-    @commands.bot_has_permissions(manage_roles=True)  # type: ignore[arg-type]
+    @commands.bot_has_permissions(manage_roles=True)
     @commands.has_permissions(manage_roles=True)
-    @reaction_role.command(name='remove', help='Begins the process of removing an existing Reaction Role.\nIf you '
-                                               'invoke this command without a supplying a message, you will be '
-                                               'prompted for one.\nIf you wish to change the role associated with a '
-                                               'specific reaction, consider using "add" instead!\nIf you wish to '
-                                               'remove all reaction roles from a message, consider using "clear" '
-                                               'instead!')
+    @reaction_role.command(  # type: ignore[arg-type]
+        name='remove',
+        help='Begins the process of removing an existing Reaction Role.\nIf you invoke this command without a '
+             'supplying a message, you will be prompted for one.\nIf you wish to change the role associated with a '
+             'specific reaction, consider using "add" instead!\nIf you wish to remove all reaction roles from a '
+             'message, consider using "clear" instead!'
+    )
     async def remove_reaction_role(self, ctx: 'Context', message: Optional[Message] = None) -> None:
         """
         Removes a reaction role from a specified message.
@@ -363,12 +365,14 @@ class ReactionRoles(commands.Cog):
 
         await cleanup(cleanup_messages, ctx.channel)
 
-    @commands.bot_has_permissions(manage_roles=True)  # type: ignore[arg-type]
+    @commands.bot_has_permissions(manage_roles=True)
     @commands.has_permissions(manage_roles=True)
-    @reaction_role.command(name='clear', help='Begins the process of clearing all existing Reaction Roles.\nIf you'
-                                              ' invoke this command without a supplying a message, you will be prompted'
-                                              ' for one.\nIf you wish to remove only a single reaction role, consider'
-                                              ' using "remove" instead!')
+    @reaction_role.command(  # type: ignore[arg-type]
+        name='clear',
+        help='Begins the process of clearing all existing Reaction Roles.\nIf you invoke this command without a '
+             'supplying a message, you will be promptedfor one.\nIf you wish to remove only a single reaction role, '
+             'considerusing "remove" instead!'
+    )
     async def clear_reaction_roles(self, ctx: 'Context', message: Optional[Message] = None) -> None:
         """
         Clears all reaction roles from a specified message.
@@ -456,9 +460,11 @@ class ReactionRoles(commands.Cog):
 
         await cleanup(cleanup_messages, ctx.channel)
 
-    @commands.has_permissions(manage_roles=True)  # type: ignore[arg-type]
-    @reaction_role.command(name='check', help='Generates a breakdown of reaction roles for the given scope. Valid '
-                                              'scopes: Guild, Channel, Message.')
+    @commands.has_permissions(manage_roles=True)
+    @reaction_role.command(  # type: ignore[arg-type]
+        name='check',
+        help='Generates a breakdown of reaction roles for the given scope. Valid scopes: Guild, Channel, Message.'
+    )
     async def check_reaction_roles(
             self, ctx: 'Context', source: Union[Guild, TextChannel, Message]
     ) -> None:
