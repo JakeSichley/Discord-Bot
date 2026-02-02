@@ -31,6 +31,7 @@ from utils.observability.loggers import bot_logger
 
 if TYPE_CHECKING:
     from discord import Interaction
+
     from dreambot import DreamBot
 
 
@@ -56,10 +57,10 @@ class LostArk(commands.Cog):
     @app_commands.describe(market_price='The market price of the item')
     @app_commands.describe(party_size='The size of your party, including you')
     async def loot_auction_split(
-            self,
-            interaction: 'Interaction[DreamBot]',
-            market_price: app_commands.Range[int, 1, None],
-            party_size: app_commands.Range[int, 1, None]
+        self,
+        interaction: 'Interaction[DreamBot]',
+        market_price: app_commands.Range[int, 1, None],
+        party_size: app_commands.Range[int, 1, None],
     ) -> None:
         """
         A method to calculate the bidding breakpoint for a loot auction item in Lost Ark.
@@ -80,7 +81,7 @@ class LostArk(commands.Cog):
 
         party_size -= 1  # split does not include winning bidder
 
-        bidding_breakpoint = int((.95 * market_price * party_size) / (1 + .95 * party_size))
+        bidding_breakpoint = int((0.95 * market_price * party_size) / (1 + 0.95 * party_size))
 
         await interaction.response.send_message(
             f'For an item with a market value of {market_price:,} and a party size of {party_size + 1}, '

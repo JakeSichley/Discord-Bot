@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 import logging
-from typing import Tuple, Set
+from typing import Set, Tuple
 
 gray = '\x1b[38;5;15m'
 cyan = '\x1b[36m'
@@ -113,7 +113,7 @@ class StreamLoggingFormatter(logging.Formatter):
             logging.INFO: colors[1] + basic_format + reset,
             logging.WARNING: colors[2] + detailed_format + reset,
             logging.ERROR: colors[3] + detailed_format + reset,
-            logging.CRITICAL: colors[4] + detailed_format + reset
+            logging.CRITICAL: colors[4] + detailed_format + reset,
         }
 
     def format(self, record: logging.LogRecord) -> str:

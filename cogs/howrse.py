@@ -28,11 +28,11 @@ import discord
 from discord.ext import commands
 
 from utils.checks import guild_only
-from utils.context import Context
 from utils.observability.loggers import bot_logger
 
 if TYPE_CHECKING:
     from dreambot import DreamBot
+    from utils.context import Context
 
 
 class Howrse(commands.Cog):

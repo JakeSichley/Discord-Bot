@@ -22,9 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from collections import defaultdict
 from copy import deepcopy
 from typing import Dict, List, Tuple, DefaultDict
+from collections import defaultdict
 
 from aiosqlite import Error as aiosqliteError
 
@@ -143,9 +143,7 @@ class TableCache:
 
         try:
             self.voice_roles.clear()
-            voice_roles = await typed_retrieve_query(
-                self.database, TableDC.VoiceRole, 'SELECT * FROM VOICE_ROLES'
-            )
+            voice_roles = await typed_retrieve_query(self.database, TableDC.VoiceRole, 'SELECT * FROM VOICE_ROLES')
 
             for row in voice_roles:
                 self.voice_roles[row.guild_id].append(row)
@@ -198,9 +196,7 @@ class TableCache:
 
         try:
             self.guild_features.clear()
-            features = await typed_retrieve_query(
-                self.database, TableDC.GuildFeatures, 'SELECT * FROM GUILD_FEATURES'
-            )
+            features = await typed_retrieve_query(self.database, TableDC.GuildFeatures, 'SELECT * FROM GUILD_FEATURES')
 
             self.guild_features = {row.guild_id: row.features for row in features}
 

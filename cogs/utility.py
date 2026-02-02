@@ -24,20 +24,25 @@ SOFTWARE.
 
 import datetime
 from re import findall
-from typing import Optional, Union, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Union, Optional
 
 import pytz
-from discord import Embed, utils, Member, Message
+from discord import Embed, Member, Message, utils
 from discord.ext import commands
 from discord.utils import format_dt
 
+from utils.utils import readable_flags
 from utils.checks import dynamic_cooldown
 from utils.defaults import MessageReply
 from utils.emoji_manager import (
-    EmojiManager, EmojiComponent, NoViableEmoji, NoRemainingEmojiSlots, NoEmojisFound, FailureStage
+    EmojiManager,
+    FailureStage,
+    EmojiComponent,
+    NoEmojisFoundError,
+    NoViableEmojiError,
+    NoRemainingEmojiSlotsError,
 )
 from utils.observability.loggers import bot_logger
-from utils.utils import readable_flags
 
 if TYPE_CHECKING:
     from dreambot import DreamBot
@@ -62,9 +67,12 @@ class Utility(commands.Cog):
 
         self.bot = bot
 
-    @commands.command(name='time', help='Responds with the current time. Can be supplied with a timezone.\nFor a full '
-                                        'list of supported timezones, see '
-                                        'https://en.wikipedia.org/wiki/List_of_tz_database_time_zones')
+    @commands.command(
+        name='time',
+        help='Responds with the current time. Can be supplied with a timezone.\nFor a full '
+        'list of supported timezones, see '
+        'https://en.wikipedia.org/wiki/List_of_tz_database_time_zones',
+    )
     async def current_time(self, ctx: 'Context', timezone: str = 'UTC') -> None:
         """
         A method to output the current time in a specified timezone.
@@ -83,11 +91,14 @@ class Utility(commands.Cog):
         if timezone not in pytz.all_timezones:
             timezone = 'UTC'
         today = datetime.datetime.now(pytz.timezone(timezone))
-        printable_format = today.strftime("%I:%M %p on %A, %B %d, %Y (%Z)")
+        printable_format = today.strftime('%I:%M %p on %A, %B %d, %Y (%Z)')
         await ctx.send(f'{ctx.author.mention}, the current time is {printable_format}')
 
-    @commands.command(name='devserver', help='Responds with an invite link to the development server. Useful for '
-                                             'getting assistance with a bug, or requesting a new feature!')
+    @commands.command(
+        name='devserver',
+        help='Responds with an invite link to the development server. Useful for '
+        'getting assistance with a bug, or requesting a new feature!',
+    )
     async def dev_server(self, ctx: 'Context') -> None:
         """
         A method to output a link to the DreamBot development server.
@@ -102,8 +113,9 @@ class Utility(commands.Cog):
             None.
         """
 
-        await ctx.send('_Need help with bugs or want to request a feature? Join the Discord!_'
-                       '\nhttps://discord.gg/fgHEWdt')
+        await ctx.send(
+            '_Need help with bugs or want to request a feature? Join the Discord!_\nhttps://discord.gg/fgHEWdt'
+        )
 
     @commands.command(name='uptime', help='Returns current bot uptime.')
     async def uptime(self, ctx: 'Context') -> None:
@@ -123,8 +135,9 @@ class Utility(commands.Cog):
         await ctx.send(format_dt(self.bot.uptime, 'R'))
 
     @commands.guild_only()
-    @commands.command(name='userinfo', aliases=['ui'],
-                      help='Generates an embed detailing information about the specified user')
+    @commands.command(
+        name='userinfo', aliases=['ui'], help='Generates an embed detailing information about the specified user'
+    )
     async def user_info(self, ctx: 'Context', user: Member = commands.Author) -> None:
         """
         A method that outputs user information.
@@ -144,9 +157,9 @@ class Utility(commands.Cog):
 
         alias = user.nick or user.global_name
 
-        embed = Embed(title=f'{str(user)}\'s User Information', color=0x1dcaff)
+        embed = Embed(title=f"{str(user)}'s User Information", color=0x1DCAFF)
         if alias is not None:
-            embed.description = f'Known as **{alias}** round\' these parts'
+            embed.description = f"Known as **{alias}** round' these parts"
         if user.avatar is not None:
             embed.set_thumbnail(url=user.avatar.url)
         embed.add_field(name='Account Created', value=format_dt(user.created_at, 'R'))
@@ -157,7 +170,7 @@ class Utility(commands.Cog):
         embed.add_field(name='User Flags', value=readable_flags(user.public_flags), inline=False)
         roles = ', '.join(str(x) for x in (user.roles[::-1])[:-1])
         embed.add_field(name='Roles', value=roles if roles else 'None', inline=False)
-        embed.set_footer(text="Please report any issues to my owner!")
+        embed.set_footer(text='Please report any issues to my owner!')
 
         await ctx.send(embed=embed)
 
@@ -177,14 +190,14 @@ class Utility(commands.Cog):
             None.
         """
 
-        await ctx.send(f"`{emoji.encode('unicode-escape').decode('ASCII')}`")
+        await ctx.send(f'`{emoji.encode("unicode-escape").decode("ASCII")}`')
 
     @commands.has_guild_permissions(manage_emojis=True)
     @commands.bot_has_guild_permissions(manage_emojis=True)
     @dynamic_cooldown()
     @commands.command(name='raw_yoink', aliases=['rawyoink'], help='Yoinks an emoji based on its id.')
     async def raw_yoink_emoji(
-            self, ctx: 'Context', source: int, name: Optional[str] = None, animated: bool = False
+        self, ctx: 'Context', source: int, name: Optional[str] = None, animated: bool = False
     ) -> None:
         """
         A method to "yoink" an emoji. Retrieves the emoji as an asset and uploads it to the current guild.
@@ -199,11 +212,7 @@ class Utility(commands.Cog):
             None.
         """
 
-        emoji = EmojiComponent(
-            animated=animated,
-            name=name if name else str(source),
-            id=source
-        )
+        emoji = EmojiComponent(animated=animated, name=name if name else str(source), id=source)
 
         await create_emojis(self.bot, ctx, emoji)
 
@@ -228,10 +237,9 @@ class Utility(commands.Cog):
 
         emojis = [
             EmojiComponent(
-                animated=bool(x[0] or default.animated),
-                name=x[1] or default.name,
-                id=int(x[2]) or default.id
-            ) for x in raw_emojis
+                animated=bool(x[0] or default.animated), name=x[1] or default.name, id=int(x[2]) or default.id
+            )
+            for x in raw_emojis
         ]
 
         await create_emojis(self.bot, ctx, emojis)
@@ -256,13 +264,13 @@ async def create_emojis(bot: 'DreamBot', ctx: 'Context', emojis: Union[EmojiComp
 
     try:
         await emoji_manager.yoink(ctx, bot.network_client)
-    except NoRemainingEmojiSlots:
+    except NoRemainingEmojiSlotsError:
         await ctx.send('You have no remaining emoji slots - cannot yoink any more emojis!')
         return
-    except NoEmojisFound:
+    except NoEmojisFoundError:
         await ctx.send('I could not find any emojis in the specified message!')
         return
-    except NoViableEmoji as e:
+    except NoViableEmojiError as e:
         # this is currently the only exception that may be raised with a networking stage
         if e.stage == FailureStage.NETWORKING:
             bot.report_command_failure(ctx)

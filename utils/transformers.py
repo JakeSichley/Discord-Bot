@@ -23,16 +23,16 @@ SOFTWARE.
 """
 
 import re
-from datetime import datetime
 from math import ceil
-from typing import Optional, Union, Any, Callable
+from typing import Any, Union, Callable, Optional
+from datetime import datetime
 
 import parsedatetime  # type: ignore[import-untyped]
-from discord import app_commands, Interaction
 from pytz import utc
+from discord import Interaction, app_commands
 
 from dreambot import DreamBot
-from utils.converters import check_for_forbidden_characters, ForbiddenCharacterSet, ForbiddenCharacters
+from utils.converters import ForbiddenCharacters, ForbiddenCharacterSet, check_for_forbidden_characters
 
 
 # noinspection PyAbstractClass
@@ -136,11 +136,11 @@ class HumanDatetimeDuration(SentinelTransformer):
     """
 
     def __init__(
-            self,
-            minimum_seconds: Optional[int] = None,
-            maximum_seconds: Optional[int] = None,
-            *,
-            sentinel_value: Optional[Union[str, int, float]] = None
+        self,
+        minimum_seconds: Optional[int] = None,
+        maximum_seconds: Optional[int] = None,
+        *,
+        sentinel_value: Optional[Union[str, int, float]] = None,
     ) -> None:
         """
         The constructor for the HumanDatetimeDuration class.
@@ -223,13 +223,7 @@ class SentinelRange(SentinelTransformer):
     Allows users to enter numbers within a range, including a special sentinel value that is outside of the range.
     """
 
-    def __init__(
-            self,
-            minimum: Optional[int] = None,
-            maximum: Optional[int] = None,
-            *,
-            sentinel_value: int
-    ) -> None:
+    def __init__(self, minimum: Optional[int] = None, maximum: Optional[int] = None, *, sentinel_value: int) -> None:
         """
         The constructor for the SentinelRange class.
 
@@ -307,11 +301,11 @@ class StringTransformer(app_commands.Transformer[DreamBot]):
     """
 
     def __init__(
-            self,
-            *,
-            mutator: Optional[Callable[[str], str]] = None,
-            constraint: Optional[Callable[[str], bool]] = None,
-            allow_forbidden_characters: bool = False
+        self,
+        *,
+        mutator: Optional[Callable[[str], str]] = None,
+        constraint: Optional[Callable[[str], bool]] = None,
+        allow_forbidden_characters: bool = False,
     ) -> None:
         """
         The constructor for the StringTransformer class.
@@ -347,8 +341,7 @@ class StringTransformer(app_commands.Transformer[DreamBot]):
 
             if not self.constraint or (self.constraint is not None and self.constraint(result)):
                 return result
-            else:
-                raise app_commands.TransformerError(value, self.type, self)
+            raise app_commands.TransformerError(value, self.type, self)
 
         except (AttributeError, ForbiddenCharacters):
             raise app_commands.TransformerError(value, self.type, self)
@@ -367,5 +360,4 @@ class StringTransformer(app_commands.Transformer[DreamBot]):
 
         if self.allow_forbidden_characters:
             return 'String'
-        else:
-            return f'String (Forbidden Characters: {", ".join(ForbiddenCharacterSet)})'
+        return f'String (Forbidden Characters: {", ".join(ForbiddenCharacterSet)})'

@@ -23,9 +23,7 @@ SOFTWARE.
 """
 
 from enum import Enum
-from typing import Any
-
-from typing import TypeAlias
+from typing import Any, TypeAlias
 
 JSON: TypeAlias = Any
 

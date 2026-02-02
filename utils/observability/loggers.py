@@ -22,17 +22,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import datetime
-import logging
 import os
-from contextlib import suppress
+import logging
+import datetime
 from typing import Dict
+from contextlib import suppress
 
 import discord
 
 from utils.observability.formatters import (
-    StreamLoggingFormatter, FileLoggingFormatter, NoResumeFilter, ScopedDebugFilter as ScopedDebugFilter,
-    gray, cyan, yellow, blue, red
+    NoResumeFilter,
+    ScopedDebugFilter,
+    FileLoggingFormatter,
+    StreamLoggingFormatter,
+    red,
+    blue,
+    cyan,
+    gray,
+    yellow,
 )
 
 bot_logger: logging.Logger = logging.getLogger('DreamBot')
@@ -65,7 +72,7 @@ def setup_loggers() -> None:
     """
 
     file_path = os.path.join(os.getcwd(), 'logs')
-    file_time_name = f"{str(datetime.datetime.today()).replace(':', '-').replace(' ', '-')}.txt"
+    file_time_name = f'{str(datetime.datetime.today()).replace(":", "-").replace(" ", "-")}.txt'
 
     with suppress(FileExistsError):
         os.mkdir(file_path)
@@ -80,7 +87,7 @@ def setup_loggers() -> None:
         StreamLoggingFormatter(
             '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s)',
             '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)',
-            (gray, cyan, yellow, red, red)
+            (gray, cyan, yellow, red, red),
         )
     )
     logger.addHandler(handler)
@@ -91,7 +98,7 @@ def setup_loggers() -> None:
     bot_file_handler.setFormatter(
         FileLoggingFormatter(
             '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s)',
-            '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
+            '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)',
         )
     )
     logger.addHandler(bot_file_handler)
@@ -104,10 +111,10 @@ def setup_loggers() -> None:
         formatter=StreamLoggingFormatter(
             '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s)',
             '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)',
-            (gray, blue, yellow, red, red)
+            (gray, blue, yellow, red, red),
         ),
         handler=discord_handler,
-        root=False
+        root=False,
     )
     discord_logger = logging.getLogger('discord')
 
@@ -116,7 +123,7 @@ def setup_loggers() -> None:
     discord_file_handler.setFormatter(
         FileLoggingFormatter(
             '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s)',
-            '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)'
+            '%(asctime)s: %(levelname)s [discord.py] - %(message)s (%(filename)s:%(funcName)s:%(lineno)d)',
         )
     )
 

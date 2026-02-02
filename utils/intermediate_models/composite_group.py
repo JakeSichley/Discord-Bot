@@ -22,10 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from dataclasses import dataclass, field
-from typing import Set, Optional
+from typing import TYPE_CHECKING, Set, Optional
+from dataclasses import field, dataclass
 
-from utils.database.table_dataclasses import Group
+if TYPE_CHECKING:
+    from utils.database.table_dataclasses import Group
 
 
 @dataclass

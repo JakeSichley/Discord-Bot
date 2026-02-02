@@ -22,22 +22,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from math import ceil
+from typing import TYPE_CHECKING, List, Tuple, Union, Optional
 from asyncio import TimeoutError
 from contextlib import suppress
-from math import ceil
-from typing import Union, Optional, List, Tuple, TYPE_CHECKING
 
-from discord import Role, TextChannel, Guild, Message, Member, HTTPException, RawReactionActionEvent
+import discord
+from discord import Role, Guild, Member, Message, TextChannel, HTTPException, RawReactionActionEvent
 from discord.ext import commands
 
-from utils.database.helpers import execute_query, typed_retrieve_query
-from utils.database.table_dataclasses import ReactionRole
-from utils.observability.loggers import bot_logger
-from utils.prompts import prompt_user_for_role, prompt_user_for_discord_message
 from utils.utils import cleanup
+from utils.prompts import prompt_user_for_role, prompt_user_for_discord_message
+from utils.database.helpers import execute_query, typed_retrieve_query
+from utils.observability.loggers import bot_logger
+from utils.database.table_dataclasses import ReactionRole
 
 if TYPE_CHECKING:
-    import discord
     from dreambot import DreamBot
     from utils.context import Context
 
@@ -94,13 +94,13 @@ class ReactionRoles(commands.Cog):
     @reaction_role.command(  # type: ignore[arg-type]
         name='add',
         help='Begins the process of setting up a Reaction Role.\nYou can invoke this command without any arguments to '
-             'go through the entire setup process.\nAlternatively, you can pass just a message ID, or both a message '
-             'ID and a role name or role ID. If you choose to pass a role name, you need to quotethe role name in '
-             'order for it to be properly parsed ("my role").\nYou canalso use this method to change the role of an '
-             'existing reaction. Specifythe same message and reaction and simply supply a new role!'
+        'go through the entire setup process.\nAlternatively, you can pass just a message ID, or both a message '
+        'ID and a role name or role ID. If you choose to pass a role name, you need to quotethe role name in '
+        'order for it to be properly parsed ("my role").\nYou canalso use this method to change the role of an '
+        'existing reaction. Specifythe same message and reaction and simply supply a new role!',
     )
     async def add_reaction_role(
-            self, ctx: 'Context', message: Optional[Message] = None, role: Optional[Role] = None
+        self, ctx: 'Context', message: Optional[Message] = None, role: Optional[Role] = None
     ) -> None:
         """
         Adds a reaction role to a specified message.
@@ -129,9 +129,11 @@ class ReactionRoles(commands.Cog):
             return
 
         if not message:
-            initial_message = 'Please specify the message you want to set up Reaction Roles for!\nYou can right ' \
-                              'click on a message and send either the Message ID or you can also send the entire ' \
-                              'Message Link!'
+            initial_message = (
+                'Please specify the message you want to set up Reaction Roles for!\nYou can right '
+                'click on a message and send either the Message ID or you can also send the entire '
+                'Message Link!'
+            )
             cleanup_messages, message = await prompt_user_for_discord_message(self.bot, ctx, initial_message)
 
             if not message:
@@ -150,13 +152,19 @@ class ReactionRoles(commands.Cog):
         # reaction role setup should have the base message. Check role properties now.
         # if the user passed in a role at the start, check the hierarchy
         if role and (role >= bot_role or role >= invoker_role):
-            cleanup_messages.append(await ctx.send("You specified a role equal to or higher than mine or your top role."
-                                                   " Please select a role we both have permission to add!"))
+            cleanup_messages.append(
+                await ctx.send(
+                    'You specified a role equal to or higher than mine or your top role.'
+                    ' Please select a role we both have permission to add!'
+                )
+            )
             role = None
 
         if not role:
-            initial_message = 'Please specify the role you want to set up Reaction Roles for!\nYou can send the Role ' \
-                              'Name, Role ID, or even mention the Role!'
+            initial_message = (
+                'Please specify the role you want to set up Reaction Roles for!\nYou can send the Role '
+                'Name, Role ID, or even mention the Role!'
+            )
 
             messages, role = await prompt_user_for_role(self.bot, ctx, bot_role, invoker_role, initial_message)
             cleanup_messages.extend(messages)
@@ -171,8 +179,10 @@ class ReactionRoles(commands.Cog):
 
         # reaction role setup should have the base message and a role
         # if the user passed in a role at the start, check the hierarchy
-        reaction_message = await ctx.send('Please specify the reaction you want to set up Reaction Roles for!'
-                                          '\nYou can react to this message with the reaction!')
+        reaction_message = await ctx.send(
+            'Please specify the reaction you want to set up Reaction Roles for!'
+            '\nYou can react to this message with the reaction!'
+        )
         cleanup_messages.append(reaction_message)
 
         def reaction_check(pl: discord.RawReactionActionEvent) -> bool:
@@ -201,22 +211,30 @@ class ReactionRoles(commands.Cog):
                 await message.add_reaction(payload.emoji)
             except discord.HTTPException as e:
                 bot_logger.warning(f'Reaction Role Reaction Addition Error. {e.status}. {e.text}')
-                cleanup_messages.append(await ctx.send("I wasn't able to add the reaction to the base message. If you"
-                                                       " have not already done so, please add the reaction for me!"))
+                cleanup_messages.append(
+                    await ctx.send(
+                        "I wasn't able to add the reaction to the base message. If you"
+                        ' have not already done so, please add the reaction for me!'
+                    )
+                )
         except TimeoutError:
             await ctx.send("Didn't receive a response in time. You can restart the command whenever you're ready!")
             return await cleanup(cleanup_messages, ctx.channel)
 
         # we should have all pieces for a reaction role now
-        await execute_query(self.bot.database,
-                            'INSERT INTO REACTION_ROLES (GUILD_ID, CHANNEL_ID, MESSAGE_ID, REACTION, ROLE_ID) '
-                            'VALUES (?, ?, ?, ?, ?) '
-                            'ON CONFLICT(MESSAGE_ID, REACTION) DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID',
-                            (message.guild.id, message.channel.id, message.id, str(payload.emoji), role.id))
+        await execute_query(
+            self.bot.database,
+            'INSERT INTO REACTION_ROLES (GUILD_ID, CHANNEL_ID, MESSAGE_ID, REACTION, ROLE_ID) '
+            'VALUES (?, ?, ?, ?, ?) '
+            'ON CONFLICT(MESSAGE_ID, REACTION) DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID',
+            (message.guild.id, message.channel.id, message.id, str(payload.emoji), role.id),
+        )
         self.bot.cache.reaction_roles[message.id, str(payload.emoji)] = role.id
 
-        await ctx.send(f"Awesome! Whenever a user reacts to the message {message.jump_url} with the reaction "
-                       f"{payload.emoji}, I'll assign them the **{role.name}** role!")
+        await ctx.send(
+            f'Awesome! Whenever a user reacts to the message {message.jump_url} with the reaction '
+            f"{payload.emoji}, I'll assign them the **{role.name}** role!"
+        )
         await cleanup(cleanup_messages, ctx.channel)
 
     @commands.bot_has_permissions(manage_roles=True)
@@ -224,9 +242,9 @@ class ReactionRoles(commands.Cog):
     @reaction_role.command(  # type: ignore[arg-type]
         name='remove',
         help='Begins the process of removing an existing Reaction Role.\nIf you invoke this command without a '
-             'supplying a message, you will be prompted for one.\nIf you wish to change the role associated with a '
-             'specific reaction, consider using "add" instead!\nIf you wish to remove all reaction roles from a '
-             'message, consider using "clear" instead!'
+        'supplying a message, you will be prompted for one.\nIf you wish to change the role associated with a '
+        'specific reaction, consider using "add" instead!\nIf you wish to remove all reaction roles from a '
+        'message, consider using "clear" instead!',
     )
     async def remove_reaction_role(self, ctx: 'Context', message: Optional[Message] = None) -> None:
         """
@@ -246,9 +264,11 @@ class ReactionRoles(commands.Cog):
         cleanup_messages: List[Message] = []
 
         if not message:
-            initial_message = 'Please specify the message you want to remove a Reaction Role for!\nYou can right ' \
-                              'click on a message and send either the Message ID or you can also send the entire ' \
-                              'Message Link!'
+            initial_message = (
+                'Please specify the message you want to remove a Reaction Role for!\nYou can right '
+                'click on a message and send either the Message ID or you can also send the entire '
+                'Message Link!'
+            )
             cleanup_messages, message = await prompt_user_for_discord_message(self.bot, ctx, initial_message)
 
             if not message:
@@ -262,10 +282,7 @@ class ReactionRoles(commands.Cog):
 
         # once we have a message id, proceed with deletion confirmation
         if reaction_roles := await typed_retrieve_query(
-                self.bot.database,
-                ReactionRole,
-                'SELECT * FROM REACTION_ROLES WHERE MESSAGE_ID=?',
-                (message.id,)
+            self.bot.database, ReactionRole, 'SELECT * FROM REACTION_ROLES WHERE MESSAGE_ID=?', (message.id,)
         ):
             # roles contain reactions, roles
             # build embed
@@ -297,9 +314,11 @@ class ReactionRoles(commands.Cog):
                 if reaction_role_pagination.message is None or reaction_role_pagination.active_reactions is None:
                     return False
 
-                return pl.message_id == reaction_role_pagination.message.id and \
-                    pl.member == ctx.author and \
-                    str(pl.emoji) in reaction_role_pagination.active_reactions
+                return (
+                    pl.message_id == reaction_role_pagination.message.id
+                    and pl.member == ctx.author
+                    and str(pl.emoji) in reaction_role_pagination.active_reactions
+                )
 
             while reaction_role_pagination.active:
                 try:
@@ -324,26 +343,32 @@ class ReactionRoles(commands.Cog):
 
             try:
                 # noinspection PyUnboundLocalVariable
-                confirmation = await ctx.send(f'Please confirm that you want to remove the role `{to_remove[1]}` '
-                                              f'paired with the reaction `{to_remove[0]}` by reacting to this message.')
+                confirmation = await ctx.send(
+                    f'Please confirm that you want to remove the role `{to_remove[1]}` '
+                    f'paired with the reaction `{to_remove[0]}` by reacting to this message.'
+                )
                 cleanup_messages.append(confirmation)
                 await confirmation.add_reaction('\u2705')
                 await confirmation.add_reaction('\u274c')
 
                 # noinspection PyMissingOrEmptyDocstring
                 def reaction_check(pl: discord.RawReactionActionEvent) -> bool:
-                    return pl.message_id == confirmation.id and \
-                        pl.member == ctx.author and \
-                        str(pl.emoji) in ['\u2705', '\u274c']
+                    return (
+                        pl.message_id == confirmation.id
+                        and pl.member == ctx.author
+                        and str(pl.emoji) in ['\u2705', '\u274c']
+                    )
 
                 # confirm that the user wants to remove the reaction role
                 payload = await self.bot.wait_for('raw_reaction_add', timeout=30.0, check=reaction_check)
 
                 if str(payload.emoji) == '\u2705':
                     # try to remove the deleted reaction
-                    await execute_query(self.bot.database,
-                                        'DELETE FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
-                                        (message.id, str(to_remove[0])))
+                    await execute_query(
+                        self.bot.database,
+                        'DELETE FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
+                        (message.id, str(to_remove[0])),
+                    )
 
                     with suppress(KeyError):
                         del self.bot.cache.reaction_roles[message.id, str(to_remove[0])]
@@ -370,8 +395,8 @@ class ReactionRoles(commands.Cog):
     @reaction_role.command(  # type: ignore[arg-type]
         name='clear',
         help='Begins the process of clearing all existing Reaction Roles.\nIf you invoke this command without a '
-             'supplying a message, you will be promptedfor one.\nIf you wish to remove only a single reaction role, '
-             'considerusing "remove" instead!'
+        'supplying a message, you will be promptedfor one.\nIf you wish to remove only a single reaction role, '
+        'considerusing "remove" instead!',
     )
     async def clear_reaction_roles(self, ctx: 'Context', message: Optional[Message] = None) -> None:
         """
@@ -390,9 +415,11 @@ class ReactionRoles(commands.Cog):
         cleanup_messages: List[Message] = []
 
         if not message:
-            initial_message = 'Please specify the message you want to clear Reaction Roles for!\nYou can right ' \
-                              'click on a message and send either the Message ID or you can also send the entire ' \
-                              'Message Link!'
+            initial_message = (
+                'Please specify the message you want to clear Reaction Roles for!\nYou can right '
+                'click on a message and send either the Message ID or you can also send the entire '
+                'Message Link!'
+            )
             cleanup_messages, message = await prompt_user_for_discord_message(self.bot, ctx, initial_message)
 
             if not message:
@@ -406,10 +433,7 @@ class ReactionRoles(commands.Cog):
 
         # once we have a message id, proceed with deletion confirmation
         if reaction_roles := await typed_retrieve_query(
-                self.bot.database,
-                ReactionRole,
-                'SELECT * FROM REACTION_ROLES WHERE MESSAGE_ID=?',
-                (message.id,)
+            self.bot.database, ReactionRole, 'SELECT * FROM REACTION_ROLES WHERE MESSAGE_ID=?', (message.id,)
         ):
             response = await ctx.send(
                 f'Are you sure want to remove **{len(reaction_roles)}** reaction roles from '
@@ -433,9 +457,7 @@ class ReactionRoles(commands.Cog):
 
                 if str(payload.emoji) == '✅':
                     await execute_query(
-                        self.bot.database,
-                        'DELETE FROM REACTION_ROLES WHERE MESSAGE_ID=?',
-                        (message.id,)
+                        self.bot.database, 'DELETE FROM REACTION_ROLES WHERE MESSAGE_ID=?', (message.id,)
                     )
                     for reaction_role in reaction_roles:
                         with suppress(KeyError):
@@ -463,11 +485,9 @@ class ReactionRoles(commands.Cog):
     @commands.has_permissions(manage_roles=True)
     @reaction_role.command(  # type: ignore[arg-type]
         name='check',
-        help='Generates a breakdown of reaction roles for the given scope. Valid scopes: Guild, Channel, Message.'
+        help='Generates a breakdown of reaction roles for the given scope. Valid scopes: Guild, Channel, Message.',
     )
-    async def check_reaction_roles(
-            self, ctx: 'Context', source: Union[Guild, TextChannel, Message]
-    ) -> None:
+    async def check_reaction_roles(self, ctx: 'Context', source: Union[Guild, TextChannel, Message]) -> None:
         """
         Generates a breakdown of reaction roles for the given scope. Valid scopes: Guild, Channel, Message.
         This method defines sub-methods that generate a breakdown for their given scopes.
@@ -500,21 +520,18 @@ class ReactionRoles(commands.Cog):
             assert ctx.guild is not None  # guild only
 
             if reaction_roles := await typed_retrieve_query(
-                    self.bot.database,
-                    ReactionRole,
-                    'SELECT * FROM REACTION_ROLES WHERE MESSAGE_ID=?',
-                    (message_id,)
+                self.bot.database, ReactionRole, 'SELECT * FROM REACTION_ROLES WHERE MESSAGE_ID=?', (message_id,)
             ):
                 details = ('\t' * indent_level) + f'Reaction Roles for **Message:** <{reaction_roles[0].jump_url}>\n'
 
                 for data in reaction_roles:
                     role_name = ctx.guild.get_role(data.role_id)
-                    details += ('\t' * (indent_level + 2)) + f'{data.reaction} ' \
-                                                             f'{role_name if role_name else "Invalid Role"}\n'
+                    details += (
+                        '\t' * (indent_level + 2)
+                    ) + f'{data.reaction} {role_name if role_name else "Invalid Role"}\n'
 
                 return details
-            else:
-                return None
+            return None
 
         async def channel_selection(channel_id: int, indent_level: int = 0) -> Optional[str]:
             """
@@ -529,10 +546,10 @@ class ReactionRoles(commands.Cog):
             """
 
             if messages := await typed_retrieve_query(
-                    self.bot.database,
-                    int,
-                    'SELECT DISTINCT MESSAGE_ID FROM REACTION_ROLES WHERE CHANNEL_ID=?',
-                    (channel_id,)
+                self.bot.database,
+                int,
+                'SELECT DISTINCT MESSAGE_ID FROM REACTION_ROLES WHERE CHANNEL_ID=?',
+                (channel_id,),
             ):
                 details = ('\t' * indent_level) + f'Reaction Roles for **Channel:** <#{channel_id}>\n'
 
@@ -541,8 +558,7 @@ class ReactionRoles(commands.Cog):
                     details += ('\t' * indent_level) + message_details + '\n' if message_details is not None else 'None'
 
                 return details
-            else:
-                return None
+            return None
 
         async def guild_selection(guild_id: int) -> Optional[str]:
             """
@@ -558,10 +574,7 @@ class ReactionRoles(commands.Cog):
             assert ctx.guild is not None  # guild only
 
             if channels := await typed_retrieve_query(
-                    self.bot.database,
-                    int,
-                    'SELECT DISTINCT CHANNEL_ID FROM REACTION_ROLES WHERE GUILD_ID=?',
-                    (guild_id,)
+                self.bot.database, int, 'SELECT DISTINCT CHANNEL_ID FROM REACTION_ROLES WHERE GUILD_ID=?', (guild_id,)
             ):
                 details = f'Reaction Roles for **Guild: {ctx.guild.name}**\n'
 
@@ -570,12 +583,11 @@ class ReactionRoles(commands.Cog):
                     details += channel_details if channel_details is not None else 'None'
 
                 return details
-            else:
-                return None
+            return None
 
-        source_id = source.guild.id if isinstance(
-            source, (TextChannel, Message)
-        ) and source.guild is not None else source.id
+        source_id = (
+            source.guild.id if isinstance(source, (TextChannel, Message)) and source.guild is not None else source.id
+        )
 
         if source_id != ctx.guild.id:
             await ctx.send("That object doesn't belong to this guild.")
@@ -593,12 +605,14 @@ class ReactionRoles(commands.Cog):
             breakdown = await guild_selection(source.id)
             await ctx.send(breakdown) if breakdown else await ctx.send('No Reaction Roles for the specified guild.')
         else:
-            await ctx.send("Invalid object was passed - couldn't fetch reaction roles.\n"
-                           "```Messages: If the message is in the channel, you can pass the Message ID. If the message "
-                           "is in another channel, you can pass the Channel-Message ID (shift-click on 'Copy ID'). "
-                           "Otherwise, passing the entire message link works.\n"
-                           "Channels: You can pass the Channel ID, Channel Name, or mention the channel.\n"
-                           "Guilds: You can pass the Guild ID or Guild Name.```")
+            await ctx.send(
+                "Invalid object was passed - couldn't fetch reaction roles.\n"
+                '```Messages: If the message is in the channel, you can pass the Message ID. If the message '
+                "is in another channel, you can pass the Channel-Message ID (shift-click on 'Copy ID'). "
+                'Otherwise, passing the entire message link works.\n'
+                'Channels: You can pass the Channel ID, Channel Name, or mention the channel.\n'
+                'Guilds: You can pass the Guild ID or Guild Name.```'
+            )
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent) -> None:
@@ -622,10 +636,10 @@ class ReactionRoles(commands.Cog):
             return
 
         if roles := await typed_retrieve_query(
-                self.bot.database,
-                int,
-                'SELECT ROLE_ID FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
-                (payload.message_id, str(payload.emoji))
+            self.bot.database,
+            int,
+            'SELECT ROLE_ID FROM REACTION_ROLES WHERE MESSAGE_ID=? AND REACTION=?',
+            (payload.message_id, str(payload.emoji)),
         ):
             # if there's a role for the given message + reaction, attempt to fetch the guild
             if guild := self.bot.get_guild(payload.guild_id):
@@ -635,9 +649,7 @@ class ReactionRoles(commands.Cog):
                 # if we fetched all our prerequisites, attempt to add the role to the member
                 if role and member:
                     try:
-                        await member.add_roles(
-                            role, reason=f'Reaction Roles - Add [Message ID: {payload.message_id}]'
-                        )
+                        await member.add_roles(role, reason=f'Reaction Roles - Add [Message ID: {payload.message_id}]')
                     except HTTPException as e:
                         bot_logger.error(f'Reaction Role - Role Addition Failure. {e.status}. {e.text}')
 
@@ -699,12 +711,12 @@ class ReactionRolePagination:
 
     PAGE_SIZE = 6
     EMOJI_TO_INT = {
-        u'1\ufe0f\u20e3': 1,
-        u'2\ufe0f\u20e3': 2,
-        u'3\ufe0f\u20e3': 3,
-        u'4\ufe0f\u20e3': 4,
-        u'5\ufe0f\u20e3': 5,
-        u'6\ufe0f\u20e3': 6
+        '1\ufe0f\u20e3': 1,
+        '2\ufe0f\u20e3': 2,
+        '3\ufe0f\u20e3': 3,
+        '4\ufe0f\u20e3': 4,
+        '5\ufe0f\u20e3': 5,
+        '6\ufe0f\u20e3': 6,
     }
 
     def __init__(self, ctx: 'Context', data: List[Tuple[str, Optional[Role]]]) -> None:
@@ -739,9 +751,12 @@ class ReactionRolePagination:
             None.
         """
 
-        embed = discord.Embed(title=f'\U0001f6e0\ufe0f Reaction Roles for Message ID: {message.id} \U0001f6e0\ufe0f',
-                              url=message.jump_url, color=0x69d7f2,
-                              description="React with the corresponding reaction to remove a reaction role.")
+        embed = discord.Embed(
+            title=f'\U0001f6e0\ufe0f Reaction Roles for Message ID: {message.id} \U0001f6e0\ufe0f',
+            url=message.jump_url,
+            color=0x69D7F2,
+            description='React with the corresponding reaction to remove a reaction role.',
+        )
         embed.set_footer(text='Please report any issues to my owner!')
         self.embed = embed
         await self._paginate()
@@ -789,8 +804,9 @@ class ReactionRolePagination:
         end = start + ReactionRolePagination.PAGE_SIZE
 
         for i, data in enumerate(self.data[start:end]):
-            self.embed.add_field(name=f'{i + 1}\ufe0f\u20e3 {data[1].name if data[1] else "N/A"}', value=data[0],
-                                 inline=False)
+            self.embed.add_field(
+                name=f'{i + 1}\ufe0f\u20e3 {data[1].name if data[1] else "N/A"}', value=data[0], inline=False
+            )
 
         await self.refresh_embed()
 

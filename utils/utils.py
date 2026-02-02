@@ -25,14 +25,14 @@ SOFTWARE.
 import asyncio
 import functools
 import subprocess
-from datetime import datetime
-from random import choice as random_choice
 from re import search
-from string import ascii_letters, digits
-from typing import List, Sequence, Any, Iterator, Tuple, Callable, Awaitable, Optional, Literal, TypeVar, Union
+from random import choice as random_choice
+from string import digits, ascii_letters
+from typing import Any, List, Tuple, Union, Literal, TypeVar, Callable, Iterator, Optional, Sequence, Awaitable
+from datetime import datetime
 
-import discord
 import pytz
+import discord
 from discord.utils import format_dt
 
 from utils.observability.loggers import bot_logger
@@ -102,8 +102,7 @@ def readable_flags(flags: discord.PublicUserFlags) -> str:
 
     if flag_strings:
         return ', '.join(flag_strings)
-    else:
-        return 'None'
+    return 'None'
 
 
 def run_in_executor(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
@@ -178,7 +177,7 @@ async def generate_activity(status_text: str, status_type: discord.ActivityType)
         return discord.Activity(name=status_text, type=status_type)
     else:
         git_text = f'Version {VERSION} ({git_commit}) - {git_description}'
-        padding = "\u3000" * (126 - len(status_text) - len(git_text))
+        padding = '\u3000' * (126 - len(status_text) - len(git_text))
         return discord.Activity(name=f'{status_text}\n{padding}{git_text}', type=status_type)
 
 

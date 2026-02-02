@@ -22,21 +22,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from typing import TYPE_CHECKING
 from datetime import datetime, timedelta
 from traceback import format_exception
 
 from aiohttp import ClientResponseError, ServerConnectionError
-from discord import HTTPException, Interaction
-from discord import app_commands
+from discord import Interaction, HTTPException, app_commands
 from discord.ext import commands
 from discord.utils import format_dt
 
-from dreambot import DreamBot
 from utils.checks import InvocationCheckFailure
-from utils.context import Context
 from utils.converters import ForbiddenCharacters
 from utils.enums.guild_feature import GuildFeature
 from utils.observability.loggers import bot_logger
+
+if TYPE_CHECKING:
+    from dreambot import DreamBot
+    from utils.context import Context
 
 
 class Exceptions(commands.Cog):
@@ -86,9 +88,15 @@ class Exceptions(commands.Cog):
             error = error.__cause__  # type: ignore[assignment]
 
         not_logged = (
-            commands.CommandNotFound, commands.UserInputError, commands.CheckFailure, ClientResponseError,
-            commands.CommandOnCooldown, commands.DisabledCommand, ServerConnectionError, ForbiddenCharacters,
-            commands.ExtensionError
+            commands.CommandNotFound,
+            commands.UserInputError,
+            commands.CheckFailure,
+            ClientResponseError,
+            commands.CommandOnCooldown,
+            commands.DisabledCommand,
+            ServerConnectionError,
+            ForbiddenCharacters,
+            commands.ExtensionError,
         )
 
         # TODO: should probably be _some_ feedback for commands.BadArgument.. Ex: tag create (name > 100 char)
@@ -97,7 +105,7 @@ class Exceptions(commands.Cog):
             bot_logger.warning(
                 f"Encountered exception in command '{ctx.command.qualified_name}'",
                 exc_info=(type(error), error, error.__traceback__),
-                extra={'context': ctx.dump()}
+                extra={'context': ctx.dump()},
             )
 
             await self.bot.report_exception(error)
@@ -111,7 +119,7 @@ class Exceptions(commands.Cog):
             await ctx.send(f'`{ctx.command}` has been disabled.')
             return
 
-        elif isinstance(error, commands.NoPrivateMessage):
+        if isinstance(error, commands.NoPrivateMessage):
             try:
                 await ctx.author.send(f'{ctx.command} can not be used in Private Messages.')
                 return
@@ -132,9 +140,7 @@ class Exceptions(commands.Cog):
                 retry_after = int(error.retry_after)
                 cooldown_expiration = datetime.now() + timedelta(seconds=error.retry_after)
 
-                await ctx.send(
-                    f'{ctx.author.mention}, you can use this command {format_dt(cooldown_expiration, "R")}.'
-                )
+                await ctx.send(f'{ctx.author.mention}, you can use this command {format_dt(cooldown_expiration, "R")}.')
 
                 if retry_after > 21600:  # 6 hours
                     bot_logger.warning(
@@ -152,15 +158,16 @@ class Exceptions(commands.Cog):
         elif isinstance(error, (ClientResponseError, ServerConnectionError)):
             await ctx.send(
                 f'`{ctx.command}` encountered a network error: '
-                f'`{getattr(error, 'message', 'Message Unavailable')} '
-                f'{getattr(error, 'status', 'Status Unavailable')}`'
+                f'`{getattr(error, "message", "Message Unavailable")} '
+                f'{getattr(error, "status", "Status Unavailable")}`'
             )
             return
 
         # Check failure
         elif isinstance(error, commands.CheckFailure):
-            await ctx.send(f'One or more checks failed during the invocation of command: '
-                           f'`{ctx.command.qualified_name}`.')
+            await ctx.send(
+                f'One or more checks failed during the invocation of command: `{ctx.command.qualified_name}`.'
+            )
             return
 
         # Calling a command without the required role
@@ -173,25 +180,26 @@ class Exceptions(commands.Cog):
 
         # Calling a command currently at max concurrency
         elif isinstance(error, commands.MaxConcurrencyReached):
-            await ctx.send(f'{ctx.message.author.mention}, the maximum concurrency for this command has been reached. '
-                           f'It can be used a maximum of {error.number} time(s) per {error.per.name} concurrently.')
+            await ctx.send(
+                f'{ctx.message.author.mention}, the maximum concurrency for this command has been reached. '
+                f'It can be used a maximum of {error.number} time(s) per {error.per.name} concurrently.'
+            )
             return
 
         # Bot cannot execute command due to insufficient permissions
         elif isinstance(error, commands.MissingPermissions):
-            await ctx.send(f'{ctx.message.author.mention}, I lack the {error}\n{error.__dict__}'
-                           f' permissions for this command')
+            await ctx.send(
+                f'{ctx.message.author.mention}, I lack the {error}\n{error.__dict__} permissions for this command'
+            )
             return
 
         # Reloading an extension that currently has errors
         elif isinstance(error, commands.ExtensionError):
-            formatted_error = ''.join(
-                format_exception(type(error), error, error.__traceback__)
-            )
+            formatted_error = ''.join(format_exception(type(error), error, error.__traceback__))
             await ctx.send(f'```py\n{formatted_error}```')
 
     async def on_app_command_error(
-            self, interaction: Interaction[DreamBot], error: app_commands.AppCommandError
+        self, interaction: Interaction[DreamBot], error: app_commands.AppCommandError
     ) -> None:
         """
         A listener method that is called whenever an app command encounters an error.
@@ -227,9 +235,9 @@ class Exceptions(commands.Cog):
 
         bot_logger.warning(
             f"Encountered exception in slash command '{interaction.command.qualified_name}'. "
-            f"User: `{interaction.user} ({interaction.user.id})` "
-            f"Guild: `{interaction.guild.id if interaction.guild is not None else 'None'}`",
-            exc_info=(type(error), error, error.__traceback__)
+            f'User: `{interaction.user} ({interaction.user.id})` '
+            f'Guild: `{interaction.guild.id if interaction.guild is not None else "None"}`',
+            exc_info=(type(error), error, error.__traceback__),
         )
 
         # TODO: dump interaction fully
@@ -255,11 +263,7 @@ class Exceptions(commands.Cog):
         tag_cog = self.bot.get_cog('Tags')
         direct_invoke_enabled = self.bot.cache.guild_feature_enabled(ctx.guild.id, GuildFeature.TAG_DIRECT_INVOKE)
 
-        if (
-            tag_cog is None or
-            not direct_invoke_enabled or
-            not hasattr(tag_cog, 'get_tag')
-        ):
+        if tag_cog is None or not direct_invoke_enabled or not hasattr(tag_cog, 'get_tag'):
             return
 
         potential_tag = ctx.message.content.removeprefix(ctx.prefix or self.bot.default_prefix)

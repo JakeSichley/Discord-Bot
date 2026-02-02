@@ -22,11 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from dataclasses import dataclass, field
-from typing import Generic, TypeVar, Union, Any, Tuple, List, Iterable
+from typing import Any, List, Tuple, Union, Generic, TypeVar, Iterable
+from dataclasses import field, dataclass
 
-from discord.app_commands import Choice
 from rapidfuzz import fuzz
+from discord.app_commands import Choice
 
 ChoiceT = TypeVar('ChoiceT', str, int, float, Union[str, int, float])
 
@@ -180,7 +180,7 @@ class AutocompleteFitness:
             (str).
         """
 
-        return f"AutocompleteFitness({self.fuzz_ratio=}, {self.length_ratio=})"
+        return f'AutocompleteFitness({self.fuzz_ratio=}, {self.length_ratio=})'
 
 
 @dataclass
@@ -239,8 +239,7 @@ class AutocompleteModel(Generic[ChoiceT]):
             return AutocompleteFitness(100.0, length_ratio)
 
         return AutocompleteFitness(
-            fuzz.QRatio(casefolded_name, casefolded_current, score_cutoff=self.score_cutoff),
-            length_ratio
+            fuzz.QRatio(casefolded_name, casefolded_current, score_cutoff=self.score_cutoff), length_ratio
         )
 
     def to_choice(self) -> Choice[ChoiceT]:
@@ -284,11 +283,7 @@ class AutocompleteModel(Generic[ChoiceT]):
 
 
 def generate_autocomplete_choices(
-        current: str,
-        items: Iterable[Tuple[str, ChoiceT]],
-        *,
-        limit: int = 25,
-        minimum_threshold: float = 0.0
+    current: str, items: Iterable[Tuple[str, ChoiceT]], *, limit: int = 25, minimum_threshold: float = 0.0
 ) -> List[Choice[ChoiceT]]:
     """
     Generator that yields pairs of items in a sequence

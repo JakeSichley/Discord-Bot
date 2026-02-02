@@ -24,43 +24,39 @@ SOFTWARE.
 
 import re
 import sys
-from asyncio import sleep
-from contextlib import redirect_stdout
-from contextlib import suppress
-from copy import copy
-from datetime import datetime, timedelta
-from importlib import reload
 from io import StringIO
 from re import finditer
+from copy import copy
+from typing import TYPE_CHECKING, Any, List, Union, Literal, Sequence, Annotated
+from asyncio import sleep
+from datetime import datetime, timedelta
 from textwrap import indent
+from importlib import reload
 from traceback import format_exc, format_exception
-from typing import Union, List, Sequence, Annotated, Literal, Any, TYPE_CHECKING
+from contextlib import suppress, redirect_stdout
 
 import pytz
+from discord import User, Embed, Member, Thread, Message, TextChannel, HTTPException, AllowedMentions, CategoryChannel
 from aiosqlite import Error as aiosqliteError
-from discord import Embed, HTTPException, AllowedMentions, TextChannel, CategoryChannel, Thread, Member, User, Message
-from discord.ext import commands
-from discord.ext import tasks
+from discord.ext import tasks, commands
 from discord.utils import format_dt
 
+from utils.utils import VERSION, pairs, generate_activity, run_in_subprocess
 from utils.checks import ensure_git_credentials
 from utils.converters import StringConverter
 from utils.database.helpers import execute_query, retrieve_query
 from utils.network.exceptions import EmptyResponseError
-from utils.network.utils import Headers
 from utils.observability.loggers import bot_logger
-from utils.utils import pairs, run_in_subprocess, generate_activity, VERSION
 
 if TYPE_CHECKING:
     from discord import abc
     from discord.abc import Messageable
+
     from dreambot import DreamBot
     from utils.context import Context
+    from utils.network.utils import Headers
 
-ExtensionName = StringConverter(
-    mutator=lambda x: x.strip().lower(),
-    allow_forbidden_characters=True
-)
+ExtensionName = StringConverter(mutator=lambda x: x.strip().lower(), allow_forbidden_characters=True)
 
 
 class Admin(commands.Cog):
@@ -127,8 +123,10 @@ class Admin(commands.Cog):
         for command in list_of_commands:
             help_string += f'\n  {command.qualified_name:{longest_command_name + 1}} {command.short_doc}'
 
-        help_string += '\n\nType ?help command for more info on a command.\n' \
-                       'You can also type ?help category for more info on a category.```'
+        help_string += (
+            '\n\nType ?help command for more info on a command.\n'
+            'You can also type ?help category for more info on a category.```'
+        )
 
         await ctx.send(help_string)
 
@@ -401,7 +399,7 @@ class Admin(commands.Cog):
             'author': ctx.author,
             'guild': ctx.guild,
             'message': ctx.message,
-            '_': self._last_result
+            '_': self._last_result,
         }
 
         env.update(globals())
@@ -441,7 +439,7 @@ class Admin(commands.Cog):
 
             if ret is None:
                 if 'return' in body.lower():
-                    value = value if value else "None"
+                    value = value if value else 'None'
                     await ctx.safe_send(f'```py\n{value}\n```')
             else:
                 self._last_result = ret
@@ -518,15 +516,10 @@ class Admin(commands.Cog):
             library = packages[0].split(' ') if packages else []
             await pip_message.delete()
 
-        fields = {
-            'Cogs': cogs,
-            'Utils': utils,
-            'Core': core,
-            'Library': library
-        }
+        fields = {'Cogs': cogs, 'Utils': utils, 'Core': core, 'Library': library}
 
-        embed = Embed(title='Git Pull Changes', color=0x00bbff)
-        embed.url = f"https://github.com/{self.bot.git['git_user']}/{self.bot.git['git_repo']}"
+        embed = Embed(title='Git Pull Changes', color=0x00BBFF)
+        embed.url = f'https://github.com/{self.bot.git["git_user"]}/{self.bot.git["git_repo"]}'
 
         with suppress(AttributeError):
             embed.set_thumbnail(url=self.bot.user.avatar.url)  # type: ignore[union-attr]
@@ -538,13 +531,14 @@ class Admin(commands.Cog):
 
         if core or 'context.py' in changes or 'table_dataclasses.py' in changes or '.sql' in changes:
             bot_logger.warning(f'Git Pull modified core files. Files not reloaded - current version is v{VERSION}.')
-            embed.description = 'Core files were modified. No reloads will be performed.' \
-                                '\nPlease perform a full restart to apply changes.'
+            embed.description = (
+                'Core files were modified. No reloads will be performed.'
+                '\nPlease perform a full restart to apply changes.'
+            )
             await ctx.send(embed=embed)
             return
-        else:
-            embed.description = 'Attempting to perform the following updates now.'
-            await ctx.send(embed=embed)
+        embed.description = 'Attempting to perform the following updates now.'
+        await ctx.send(embed=embed)
 
         util_statuses, cog_statuses = [], []
 
@@ -646,13 +640,13 @@ class Admin(commands.Cog):
         assert self.bot.git is not None  # `@ensure_git_credentials` handles this
 
         headers: Headers = {
-            'User-Agent': f"{self.bot.git['git_user']}-{self.bot.git['git_repo']}",
-            'Authorization': f"Bearer {self.bot.git['git_token']}"
+            'User-Agent': f'{self.bot.git["git_user"]}-{self.bot.git["git_repo"]}',
+            'Authorization': f'Bearer {self.bot.git["git_token"]}',
         }
 
-        branches_url = f"https://api.github.com/repos/{self.bot.git['git_user']}/{self.bot.git['git_repo']}/branches"
-        users_url = f"https://api.github.com/users/{self.bot.git['git_user']}"
-        commits_url = f"https://api.github.com/repos/{self.bot.git['git_user']}/{self.bot.git['git_repo']}/commits/"
+        branches_url = f'https://api.github.com/repos/{self.bot.git["git_user"]}/{self.bot.git["git_repo"]}/branches'
+        users_url = f'https://api.github.com/users/{self.bot.git["git_user"]}'
+        commits_url = f'https://api.github.com/repos/{self.bot.git["git_user"]}/{self.bot.git["git_repo"]}/commits/'
 
         try:
             branch_data = await self.bot.network_client.fetch_json(
@@ -662,11 +656,10 @@ class Admin(commands.Cog):
                 users_url, headers=headers, raise_for_empty_response=True
             )
             latest_commit_data = {
-                branch['name']:
-                    await self.bot.network_client.fetch_json(
-                        commits_url + branch['commit']['sha'], headers=headers,
-                        raise_for_empty_response=True
-                    ) for branch in branch_data[-5:]
+                branch['name']: await self.bot.network_client.fetch_json(
+                    commits_url + branch['commit']['sha'], headers=headers, raise_for_empty_response=True
+                )
+                for branch in branch_data[-5:]
             }
         except EmptyResponseError:
             await ctx.send('Failed to fetch branch information.')
@@ -678,19 +671,17 @@ class Admin(commands.Cog):
             thumbnail = 'https://pbs.twimg.com/profile_images/1414990564408262661/r6YemvF9_400x400.jpg'
 
         embed = Embed(
-            title=f"Overview of **{self.bot.git['git_repo']}**",
-            colour=0x58a6ff,
-            url=f"https://github.com/{self.bot.git['git_user']}/{self.bot.git['git_repo']}"
+            title=f'Overview of **{self.bot.git["git_repo"]}**',
+            colour=0x58A6FF,
+            url=f'https://github.com/{self.bot.git["git_user"]}/{self.bot.git["git_repo"]}',
         )
         embed.set_thumbnail(url=thumbnail)
         for branch, commit in latest_commit_data.items():
-            date = datetime.strptime(commit['commit']['author']['date'], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=pytz.UTC)
+            date = datetime.strptime(commit['commit']['author']['date'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=pytz.UTC)
             embed.add_field(
-                name=branch,
-                value=f"{commit['commit']['author']['name']} - {format_dt(date, 'R')}",
-                inline=False
+                name=branch, value=f'{commit["commit"]["author"]["name"]} - {format_dt(date, "R")}', inline=False
             )
-        embed.set_footer(text="Please report any issues to my owner!")
+        embed.set_footer(text='Please report any issues to my owner!')
 
         await ctx.send(embed=embed)
 
@@ -729,9 +720,7 @@ class Admin(commands.Cog):
         await sleep(time_until_tomorrow.total_seconds())
 
     @commands.command(name='as', hidden=True)
-    async def execute_command_as(
-            self, ctx: 'Context', invoker: Union[Member, User], *, command: str
-    ) -> None:
+    async def execute_command_as(self, ctx: 'Context', invoker: Union[Member, User], *, command: str) -> None:
         """
         Executes a command as the specified user.
 
@@ -805,8 +794,11 @@ class Admin(commands.Cog):
                                     for attachment in message.attachments
                                     if attachment.size <= 8000000
                                 ]
-                                bad_attachments = [f'`<Bad File: {attachment.filename} | File Size: {attachment.size}>`'
-                                                   for attachment in message.attachments if attachment.size > 8000000]
+                                bad_attachments = [
+                                    f'`<Bad File: {attachment.filename} | File Size: {attachment.size}>`'
+                                    for attachment in message.attachments
+                                    if attachment.size > 8000000
+                                ]
 
                                 if bad_attachments:
                                     if message.content:
@@ -835,8 +827,10 @@ class Admin(commands.Cog):
                             # send the remaining portion of the buffer, attachments or embeds, and clear the buffer
                             # mypy incorrectly identifies send kwargs as non-optional
                             await channel.send(
-                                content=buffer, embed=embeds, files=attachments,  # type: ignore[arg-type]
-                                allowed_mentions=AllowedMentions.none()
+                                content=buffer,
+                                embed=embeds,  # type: ignore[arg-type]
+                                files=attachments,  # type: ignore[arg-type]
+                                allowed_mentions=AllowedMentions.none(),
                             )
                             buffer = ''
 
@@ -849,15 +843,19 @@ class Admin(commands.Cog):
                             # if the current message contents don't exceed the limit, send everything
                             if len(buffer) <= 2000:
                                 await channel.send(
-                                    content=buffer, embed=embeds, files=attachments,  # type: ignore[arg-type]
-                                    allowed_mentions=AllowedMentions.none()
+                                    content=buffer,
+                                    embed=embeds,  # type: ignore[arg-type]
+                                    files=attachments,  # type: ignore[arg-type]
+                                    allowed_mentions=AllowedMentions.none(),
                                 )
                             # otherwise, break up the buffer where appropriate, then send everything
                             else:
                                 buffer = await try_to_send_buffer(channel, buffer)
                                 await channel.send(
-                                    content=buffer, embed=embeds, files=attachments,  # type: ignore[arg-type]
-                                    allowed_mentions=AllowedMentions.none()
+                                    content=buffer,
+                                    embed=embeds,  # type: ignore[arg-type]
+                                    files=attachments,  # type: ignore[arg-type]
+                                    allowed_mentions=AllowedMentions.none(),
                                 )
 
                             # reset the buffer
@@ -896,8 +894,9 @@ class Admin(commands.Cog):
             return
 
         members_to_add = [
-            member for member in message.guild.members if
-            not member.bot and member.id not in [146517998205796352, message.author.id]
+            member
+            for member in message.guild.members
+            if not member.bot and member.id not in [146517998205796352, message.author.id]
         ]
 
         await message.channel.send(
@@ -965,8 +964,7 @@ async def try_to_send_buffer(messageable: 'Messageable', buffer: str, force: boo
     if force:
         await messageable.send(str(buffer[break_index:]), allowed_mentions=AllowedMentions.none())
         return ''
-    else:
-        return str(buffer[break_index:])
+    return str(buffer[break_index:])
 
 
 async def setup(bot: 'DreamBot') -> None:

@@ -22,30 +22,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from collections import defaultdict
-from contextlib import suppress
 from random import choice as random_choice
-from typing import Optional, Dict, List, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, Tuple, Optional
+from contextlib import suppress
+from collections import defaultdict
 
-import aiosqlite
 import discord
-from aiosqlite import Error as aiosqliteError, IntegrityError
+import aiosqlite
 from discord import app_commands
-from discord.app_commands import Choice, Range, Transform
+from aiosqlite import Error as aiosqliteError, IntegrityError
 from discord.ext import commands
 from discord.utils import utcnow
+from discord.app_commands import Range, Choice, Transform
 
-from utils.autocomplete import generate_autocomplete_choices
+from utils.utils import format_unix_dt
 from utils.checks import InvocationCheckFailure
+from utils.autocomplete import generate_autocomplete_choices
+from utils.transformers import StringTransformer
 from utils.database.helpers import execute_query, typed_retrieve_query
+from utils.observability.loggers import bot_logger
 from utils.database.table_dataclasses import Group, GroupMember
 from utils.intermediate_models.composite_group import CompositeGroup
-from utils.observability.loggers import bot_logger
-from utils.transformers import StringTransformer
-from utils.utils import format_unix_dt
 
 if TYPE_CHECKING:
     from discord import Interaction
+
     from dreambot import DreamBot
 
 # TODO: Groups v3 -> edit group (max_members); needs components for confirmation when new max_members < current_members
@@ -93,20 +94,12 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             None.
         """
 
-        groups = await typed_retrieve_query(
-            self.bot.database,
-            Group,
-            'SELECT * FROM GROUPS'
-        )
+        groups = await typed_retrieve_query(self.bot.database, Group, 'SELECT * FROM GROUPS')
 
         for group in groups:
             self.groups[group.guild_id][group.key] = CompositeGroup(group)
 
-        group_members = await typed_retrieve_query(
-            self.bot.database,
-            GroupMember,
-            'SELECT * FROM GROUP_MEMBERS'
-        )
+        group_members = await typed_retrieve_query(self.bot.database, GroupMember, 'SELECT * FROM GROUP_MEMBERS')
 
         for group_member in group_members:
             self.groups[group_member.guild_id][group_member.group_key].members.add(group_member.member_id)
@@ -120,11 +113,11 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     )
     @app_commands.rename(ephemeral_updates='silent_updates')
     async def create_group(
-            self,
-            interaction: 'Interaction[DreamBot]',
-            group_name: Transform[str, GroupName],
-            max_members: Optional[Range[int, 1, 2_500_000]] = None,
-            ephemeral_updates: bool = False
+        self,
+        interaction: 'Interaction[DreamBot]',
+        group_name: Transform[str, GroupName],
+        max_members: Optional[Range[int, 1, 2_500_000]] = None,
+        ephemeral_updates: bool = False,
     ) -> None:
         """
         Creates a new group for the guild. Name must be unique.
@@ -142,7 +135,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         assert interaction.guild_id is not None  # guild_only
 
         if group_name.casefold() in self.groups[interaction.guild_id]:
-            raise InvocationCheckFailure('A group with that name already exists.')
+            msg = 'A group with that name already exists.'
+            raise InvocationCheckFailure(msg)
 
         group = Group(
             interaction.guild_id,
@@ -151,7 +145,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             group_name,
             max_members,
             0,
-            1 if ephemeral_updates else 0
+            1 if ephemeral_updates else 0,
         )
 
         try:
@@ -159,7 +153,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 self.bot.database,
                 'INSERT INTO GROUPS VALUES (?, ?, ?, ?, ?, ?, ?)',
                 group.unpack(),
-                errors_to_suppress=aiosqlite.IntegrityError
+                errors_to_suppress=aiosqlite.IntegrityError,
             )
         except aiosqliteError as e:
             if isinstance(e, IntegrityError):
@@ -170,10 +164,10 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             if group.ephemeral_updates:
                 await interaction.response.send_message('Successfully created group.', ephemeral=True)
             else:
-                max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
+                max_members_str = f'{group.max_members:,}' if group.max_members is not None else '∞'
                 await interaction.response.send_message(
                     f'_{interaction.user.mention} created group "**{group.name}**" ({max_members_str} max members)_',
-                    allowed_mentions=discord.AllowedMentions.none()
+                    allowed_mentions=discord.AllowedMentions.none(),
                 )
             self.groups[interaction.guild_id][group.key] = CompositeGroup(group)
 
@@ -204,7 +198,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             await execute_query(
                 self.bot.database,
                 'DELETE FROM GROUPS WHERE GROUP_NAME=? AND GUILD_ID=?',
-                (group.name, interaction.guild_id)
+                (group.name, interaction.guild_id),
             )
         except aiosqliteError:
             await interaction.response.send_message('Failed to delete group.', ephemeral=True)
@@ -215,7 +209,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 await interaction.response.send_message(
                     f'_{interaction.user.mention} deleted group "**{group.name}**" '
                     f'({group.current_members:,} members)_',
-                    allowed_mentions=discord.AllowedMentions.none()
+                    allowed_mentions=discord.AllowedMentions.none(),
                 )
 
             with suppress(KeyError):
@@ -243,17 +237,19 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         group = self.get_group(interaction.guild_id, group_name)
 
         if interaction.user.id in group.members:
-            raise InvocationCheckFailure("You're already a member of this group!")
+            msg = "You're already a member of this group!"
+            raise InvocationCheckFailure(msg)
 
         if group.is_full:
-            raise InvocationCheckFailure('That group is full!')
+            msg = 'That group is full!'
+            raise InvocationCheckFailure(msg)
 
         try:
             await execute_query(
                 self.bot.database,
                 'INSERT INTO GROUP_MEMBERS VALUES (?, ?, ?, ?)',
                 (interaction.guild_id, interaction.user.id, int(utcnow().timestamp()), group.name),
-                errors_to_suppress=aiosqlite.IntegrityError
+                errors_to_suppress=aiosqlite.IntegrityError,
             )
         except aiosqliteError as e:
             if isinstance(e, IntegrityError):
@@ -264,11 +260,11 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             if group.ephemeral_updates:
                 await interaction.response.send_message('Successfully joined group.', ephemeral=True)
             else:
-                max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
+                max_members_str = f'{group.max_members:,}' if group.max_members is not None else '∞'
                 await interaction.response.send_message(
                     f'_{interaction.user.mention} joined group "**{group.name}**" '
                     f'({group.current_members + 1:,}/{max_members_str} members)_',
-                    allowed_mentions=discord.AllowedMentions.none()
+                    allowed_mentions=discord.AllowedMentions.none(),
                 )
 
             self.groups[interaction.guild_id][group.key].add_member(interaction.user.id)
@@ -295,7 +291,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         group = self.get_group(interaction.guild_id, group_name)
 
         if interaction.user.id not in group.members:
-            raise InvocationCheckFailure('You are not a member of that group!')
+            msg = 'You are not a member of that group!'
+            raise InvocationCheckFailure(msg)
 
         try:
             await execute_query(
@@ -309,21 +306,21 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             if group.ephemeral_updates:
                 await interaction.response.send_message('Successfully left group.', ephemeral=True)
             else:
-                max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
+                max_members_str = f'{group.max_members:,}' if group.max_members is not None else '∞'
                 await interaction.response.send_message(
                     f'_{interaction.user.mention} left group "**{group.name}**" '
                     f'({group.current_members - 1:,}/{max_members_str} members)_',
-                    allowed_mentions=discord.AllowedMentions.none()
+                    allowed_mentions=discord.AllowedMentions.none(),
                 )
 
             self.groups[interaction.guild_id][group.key].remove_member(interaction.user.id)
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
-    @app_commands.command(name='kick', description="Removes a member from an existing group")
+    @app_commands.command(name='kick', description='Removes a member from an existing group')
     @app_commands.describe(group_name="The name of the group you'd like to remove a member from")
-    @app_commands.describe(member="The member to remove")
+    @app_commands.describe(member='The member to remove')
     async def kick_from_group(
-            self, interaction: 'Interaction[DreamBot]', group_name: Transform[str, GroupName], member: discord.Member
+        self, interaction: 'Interaction[DreamBot]', group_name: Transform[str, GroupName], member: discord.Member
     ) -> None:
         """
         Kicks a member from a group.
@@ -344,9 +341,9 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         if interaction.user.id == member.id:
             responses = [
                 "You'll have to try and enter the high-stakes world of self-banishment somewhere else!",
-                "My, my, such drastic measures are not necessary here!",
-                "Are you staging a coup on yourself? Sounds like a power struggle for the ages... ",
-                "Whoa there, do you have a ticket for the self-eviction express?"
+                'My, my, such drastic measures are not necessary here!',
+                'Are you staging a coup on yourself? Sounds like a power struggle for the ages... ',
+                'Whoa there, do you have a ticket for the self-eviction express?',
             ]
             raise InvocationCheckFailure(random_choice(responses))
 
@@ -355,7 +352,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         self.privileged_action_check(interaction.user, group.owner_id)
 
         if member.id not in group.members:
-            raise InvocationCheckFailure('That member does not belong to that group!')
+            msg = 'That member does not belong to that group!'
+            raise InvocationCheckFailure(msg)
 
         try:
             await execute_query(
@@ -369,22 +367,22 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             if group.ephemeral_updates:
                 await interaction.response.send_message('Successfully kicked member from group.', ephemeral=True)
             else:
-                max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
+                max_members_str = f'{group.max_members:,}' if group.max_members is not None else '∞'
 
                 await interaction.response.send_message(
                     f'_{interaction.user.mention} removed {member.mention} from group "**{group.name}**" '
                     f'({group.current_members - 1:,}/{max_members_str} members)_',
-                    allowed_mentions=discord.AllowedMentions(users=[member])
+                    allowed_mentions=discord.AllowedMentions(users=[member]),
                 )
 
             self.groups[interaction.guild_id][group.key].remove_member(member.id)
 
     @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
-    @app_commands.command(name='transfer', description="Transfers group ownership to a new member")
+    @app_commands.command(name='transfer', description='Transfers group ownership to a new member')
     @app_commands.describe(group_name="The name of the group you'd like to transfer ownership of")
-    @app_commands.describe(member="The member to give ownership to")
+    @app_commands.describe(member='The member to give ownership to')
     async def transfer_group(
-            self, interaction: 'Interaction[DreamBot]', group_name: Transform[str, GroupName], member: discord.Member
+        self, interaction: 'Interaction[DreamBot]', group_name: Transform[str, GroupName], member: discord.Member
     ) -> None:
         """
         Transfers group ownership to a new member.
@@ -407,7 +405,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         owner = interaction.guild.get_member(group.owner_id)
 
         if member.id == group.owner_id:
-            raise InvocationCheckFailure("Ah, yes, the ol' self-transferoo. Bold move, Cotton.")
+            msg = "Ah, yes, the ol' self-transferoo. Bold move, Cotton."
+            raise InvocationCheckFailure(msg)
 
         self.privileged_action_check(interaction.user, group.owner_id)
 
@@ -426,7 +425,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 await interaction.response.send_message(
                     f'_{interaction.user.mention} transferred ownership of group "**{group.name}**" to '
                     f'{member.mention} from {owner.mention if owner is not None else "N/A"}_',
-                    allowed_mentions=discord.AllowedMentions(users=[member, owner] if owner is not None else [member])
+                    allowed_mentions=discord.AllowedMentions(users=[member, owner] if owner is not None else [member]),
                 )
 
             self.groups[interaction.guild_id][group.key].group.owner_id = member.id
@@ -451,7 +450,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
 
         group = self.get_group(interaction.guild_id, group_name).group
         owner = interaction.guild.get_member(group.owner_id)
-        max_members_str = f'{group.max_members:,}' if group.max_members is not None else "None"
+        max_members_str = f'{group.max_members:,}' if group.max_members is not None else 'None'
 
         try:
             group_members = await typed_retrieve_query(
@@ -465,7 +464,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         else:
             group_members.sort(key=lambda x: x.joined)
             member_list = [
-                (fetched_member, member.joined) for member in group_members
+                (fetched_member, member.joined)
+                for member in group_members
                 if (fetched_member := interaction.guild.get_member(member.member_id))
             ]
 
@@ -484,7 +484,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 positions_field = '\n'.join(str(x) for x in range(1, max_elements + 1))
                 joined_field = '\n'.join(format_unix_dt(x[1], 'R') for x in member_list[:max_elements])
 
-            embed = discord.Embed(title=f'{group.name} Members', color=0x64d1ff)
+            embed = discord.Embed(title=f'{group.name} Members', color=0x64D1FF)
             embed.set_thumbnail(
                 url='https://cdn.discordapp.com/attachments/634530033754570762/1194039472514408479/group_icon.png'
             )
@@ -511,7 +511,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
     @kick_from_group.autocomplete('group_name')
     @transfer_group.autocomplete('group_name')
     async def existing_group_name_autocomplete(
-            self, interaction: 'Interaction[DreamBot]', current: str
+        self, interaction: 'Interaction[DreamBot]', current: str
     ) -> List[Choice[str]]:
         """
         Autocompletes group names for the current guild.
@@ -553,7 +553,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 options = [x for x in groups]
         elif interaction.command.name == 'join':
             options = [
-                x for x in groups
+                x
+                for x in groups
                 if not self.groups[interaction.guild_id][x].is_full
                 and interaction.user.id not in self.groups[interaction.guild_id][x].members
             ]
@@ -568,8 +569,9 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             return [
                 Choice(
                     name=enhanced_autocomplete_description(self.groups[interaction.guild_id][x], interaction.guild),
-                    value=x
-                ) for x in options[:25]
+                    value=x,
+                )
+                for x in options[:25]
             ]
 
         return generate_autocomplete_choices(
@@ -578,7 +580,7 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 (enhanced_autocomplete_description(self.groups[interaction.guild_id][x], interaction.guild), x)
                 for x in options
             ],
-            minimum_threshold=100
+            minimum_threshold=100,
         )
 
     """
@@ -603,14 +605,14 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             await execute_query(
                 self.bot.database,
                 'UPDATE GROUPS SET OWNER_ID=? WHERE GUILD_ID=? AND OWNER_ID=?',
-                (member.id, member.guild.id, -member.id)
+                (member.id, member.guild.id, -member.id),
             )
 
             updated_group_names = await typed_retrieve_query(
                 self.bot.database,
                 str,
                 'SELECT GROUP_NAME FROM GROUPS WHERE OWNER_ID=? AND GUILD_ID=?',
-                (member.id, member.guild.id)
+                (member.id, member.guild.id),
             )
 
             for group_name in updated_group_names:
@@ -636,14 +638,14 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
             await execute_query(
                 self.bot.database,
                 'UPDATE GROUPS SET OWNER_ID=? WHERE GUILD_ID=? AND OWNER_ID=?',
-                (-payload.user.id, payload.guild_id, payload.user.id)
+                (-payload.user.id, payload.guild_id, payload.user.id),
             )
 
             updated_group_names = await typed_retrieve_query(
                 self.bot.database,
                 str,
                 'SELECT GROUP_NAME FROM GROUPS WHERE OWNER_ID=? AND GUILD_ID=?',
-                (-payload.user.id, payload.guild_id)
+                (-payload.user.id, payload.guild_id),
             )
 
             for group_name in updated_group_names:
@@ -655,13 +657,13 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
                 self.bot.database,
                 str,
                 'SELECT GROUP_NAME FROM GROUP_MEMBERS WHERE GUILD_ID=? AND MEMBER_ID=?',
-                (payload.guild_id, payload.user.id)
+                (payload.guild_id, payload.user.id),
             )
 
             await execute_query(
                 self.bot.database,
                 'DELETE FROM GROUP_MEMBERS WHERE GUILD_ID=? AND MEMBER_ID=?',
-                (payload.guild_id, payload.user.id)
+                (payload.guild_id, payload.user.id),
             )
 
             for group_name in updated_group_names:
@@ -689,7 +691,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         group_key = group_name.casefold()
 
         if group_key not in self.groups[guild_id]:
-            raise InvocationCheckFailure('That group does not exist!')
+            msg = 'That group does not exist!'
+            raise InvocationCheckFailure(msg)
 
         return self.groups[guild_id][group_key]
 
@@ -710,7 +713,8 @@ class Groups(commands.GroupCog, group_name='group', group_description='Commands 
         """
 
         if group_owner_id != member.id and not member.guild_permissions.manage_messages:
-            raise InvocationCheckFailure('You do not own that group or do not have permission to manage groups.')
+            msg = 'You do not own that group or do not have permission to manage groups.'
+            raise InvocationCheckFailure(msg)
 
 
 def calculate_member_and_joined_max_splice(group_members: List[Tuple[discord.Member, int]]) -> int:
@@ -776,15 +780,14 @@ def enhanced_autocomplete_description(group: CompositeGroup, guild: Optional[dis
     if owner := guild.get_member(group.owner_id):
         descriptions.append(f'Owner: {owner.display_name}')
 
-    max_members_str = f'{group.max_members:,}' if group.max_members is not None else "∞"
+    max_members_str = f'{group.max_members:,}' if group.max_members is not None else '∞'
     descriptions.append(f'{group.current_members:,}/{max_members_str} members')
     formatted_description = f' ({", ".join(descriptions)})'
 
     if len(formatted_description) + len(group.name) > 100:
         truncated_name_length = 100 - len(formatted_description) - 3
         return f'{group.name[:truncated_name_length]}...{formatted_description}'
-    else:
-        return f'{group.name}{formatted_description}'
+    return f'{group.name}{formatted_description}'
 
 
 async def setup(bot: 'DreamBot') -> None:

@@ -31,8 +31,8 @@ from utils.database.helpers import execute_query
 from utils.observability.loggers import bot_logger
 
 if TYPE_CHECKING:
-    from utils.context import Context
     from dreambot import DreamBot
+    from utils.context import Context
 
 
 class Prefixes(commands.Cog):
@@ -110,9 +110,7 @@ class Prefixes(commands.Cog):
 
         try:
             await execute_query(
-                self.bot.database,
-                'INSERT INTO PREFIXES (GUILD_ID, PREFIX) VALUES (?, ?)',
-                (ctx.guild.id, prefix)
+                self.bot.database, 'INSERT INTO PREFIXES (GUILD_ID, PREFIX) VALUES (?, ?)', (ctx.guild.id, prefix)
             )
         except aiosqliteError:
             await ctx.send(f'Failed to add `{prefix}`.')
@@ -160,9 +158,7 @@ class Prefixes(commands.Cog):
 
         try:
             await execute_query(
-                self.bot.database,
-                'DELETE FROM PREFIXES WHERE GUILD_ID=? AND PREFIX=?',
-                (ctx.guild.id, prefix)
+                self.bot.database, 'DELETE FROM PREFIXES WHERE GUILD_ID=? AND PREFIX=?', (ctx.guild.id, prefix)
             )
         except aiosqliteError:
             await ctx.send(f'Failed to remove `{prefix}`.')
@@ -217,7 +213,7 @@ class Prefixes(commands.Cog):
             await execute_query(
                 self.bot.database,
                 'UPDATE PREFIXES SET PREFIX=? WHERE GUILD_ID=? AND PREFIX=?',
-                (new_prefix, ctx.guild.id, old_prefix)
+                (new_prefix, ctx.guild.id, old_prefix),
             )
         except aiosqliteError:
             await ctx.send(f'Failed to replace `{old_prefix}` with `{new_prefix}`.')
@@ -262,11 +258,7 @@ class Prefixes(commands.Cog):
             return
 
         try:
-            await execute_query(
-                self.bot.database,
-                'DELETE FROM PREFIXES WHERE GUILD_ID=?',
-                (ctx.guild.id,)
-            )
+            await execute_query(self.bot.database, 'DELETE FROM PREFIXES WHERE GUILD_ID=?', (ctx.guild.id,))
         except aiosqliteError:
             await ctx.send(f'Failed to clear prefixes.')
         else:

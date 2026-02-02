@@ -22,14 +22,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from re import sub, findall
+from typing import TYPE_CHECKING, Union, Literal, Optional
 from contextlib import suppress
-from re import findall, sub
-from typing import Union, Optional, Literal, TYPE_CHECKING
 
-from aiosqlite import Error as aiosqliteError
 from discord import (
-    Role, Member, TextChannel, CategoryChannel, VoiceChannel, Thread, StageChannel, HTTPException, AllowedMentions
+    Role,
+    Member,
+    Thread,
+    TextChannel,
+    StageChannel,
+    VoiceChannel,
+    HTTPException,
+    AllowedMentions,
+    CategoryChannel,
 )
+from aiosqlite import Error as aiosqliteError
 from discord.ext import commands
 
 from utils.converters import AggressiveDefaultMemberConverter
@@ -82,7 +90,7 @@ class Moderation(commands.Cog):
     @commands.bot_has_permissions(manage_messages=True, read_message_history=True, manage_channels=True)
     @commands.command(
         name='purge',
-        help='Purges n+1 messages from the current channel. Specify `all` to completely clear the channel.'
+        help='Purges n+1 messages from the current channel. Specify `all` to completely clear the channel.',
     )
     async def purge(self, ctx: 'Context', limit: Union[int, Literal['all']]) -> None:
         """
@@ -128,8 +136,12 @@ class Moderation(commands.Cog):
     @commands.bot_has_guild_permissions(manage_channels=True)
     @commands.command(name='duplicate_permissions', aliases=['dp'])
     async def duplicate_channel_permissions(
-            self, ctx: 'Context', base_channel: CHANNEL_OBJECT, base_permission_owner: PERMISSIONS_PARENT,
-            target_channel: CHANNEL_OBJECT, target_permission_owner: PERMISSIONS_PARENT
+        self,
+        ctx: 'Context',
+        base_channel: CHANNEL_OBJECT,
+        base_permission_owner: PERMISSIONS_PARENT,
+        target_channel: CHANNEL_OBJECT,
+        target_permission_owner: PERMISSIONS_PARENT,
     ) -> None:
         """
         A method to duplicate channel permissions to a different target.
@@ -156,13 +168,15 @@ class Moderation(commands.Cog):
         try:
             base_overwrites = base_channel.overwrites[base_permission_owner]
         except KeyError:
-            await ctx.send("Overwrites object was not found")
+            await ctx.send('Overwrites object was not found')
             return
 
         try:
             await target_channel.set_permissions(target_permission_owner, overwrite=base_overwrites)
-            await ctx.send(f"**{base_channel.name}**[`{base_permission_owner}`] --> "
-                           f"**{target_channel.name}**[`{target_permission_owner}`]")
+            await ctx.send(
+                f'**{base_channel.name}**[`{base_permission_owner}`] --> '
+                f'**{target_channel.name}**[`{target_permission_owner}`]'
+            )
         except Exception as e:
             bot_logger.error(f'Overwrites Duplication Error. {e}')
             await ctx.send(f'Failed to duplicate overwrites ({e})')
@@ -225,8 +239,10 @@ class Moderation(commands.Cog):
                 else:
                     failed.append(str(member))
 
-            summary = f'Successfully added {role.mention} to the following members:\n' \
-                      f'```{", ".join(success) if success else "None"}```\n'
+            summary = (
+                f'Successfully added {role.mention} to the following members:\n'
+                f'```{", ".join(success) if success else "None"}```\n'
+            )
 
             if failed:
                 summary += f'Failed to add {role.mention} to the following members:\n```{", ".join(failed)}```'
@@ -234,8 +250,11 @@ class Moderation(commands.Cog):
             await ctx.send(summary, allowed_mentions=AllowedMentions.none())
 
     @commands.has_guild_permissions(manage_roles=True)
-    @commands.command(name='getdefaultrole', aliases=['gdr'],
-                      help='Displays the role (if any) users are auto-granted on joining the guild.')
+    @commands.command(
+        name='getdefaultrole',
+        aliases=['gdr'],
+        help='Displays the role (if any) users are auto-granted on joining the guild.',
+    )
     async def get_default_role(self, ctx: 'Context') -> None:
         """
         A method for checking which role (if any) will be auto-granted to new users joining the guild.
@@ -255,11 +274,10 @@ class Moderation(commands.Cog):
 
         assert ctx.guild is not None  # guild only
 
-        if role := (await typed_retrieve_query(
-                self.bot.database,
-                int,
-                'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?',
-                (ctx.guild.id,))
+        if role := (
+            await typed_retrieve_query(
+                self.bot.database, int, 'SELECT ROLE_ID FROM DEFAULT_ROLES WHERE GUILD_ID=?', (ctx.guild.id,)
+            )
         ):
             if fetched_role := ctx.guild.get_role(role[0]):
                 await ctx.send(f'The default role for the server is **{fetched_role.name}**')
@@ -271,10 +289,13 @@ class Moderation(commands.Cog):
     @commands.cooldown(1, 10, commands.BucketType.guild)
     @commands.has_guild_permissions(manage_guild=True, manage_roles=True)
     @commands.bot_has_guild_permissions(manage_roles=True)
-    @commands.command(name='setdefaultrole', aliases=['sdr'],
-                      help='Sets the role users are auto-granted on joining.'
-                           '\nTo remove the default role, simply call this command without passing a role.'
-                           '\nNote: The role selected must be lower than the bot\'s role and lower than your role.')
+    @commands.command(
+        name='setdefaultrole',
+        aliases=['sdr'],
+        help='Sets the role users are auto-granted on joining.'
+        '\nTo remove the default role, simply call this command without passing a role.'
+        "\nNote: The role selected must be lower than the bot's role and lower than your role.",
+    )
     async def set_default_role(self, ctx: 'Context', role: Optional[Role] = None) -> None:
         """
         A method for checking which role (if any) will be auto-granted to new users joining the guild.
@@ -324,14 +345,14 @@ class Moderation(commands.Cog):
         if all((role, bot_role, invoker_role)):
             # ensure both the bot and the initializing user have the ability to set the role
             if role >= bot_role or role >= invoker_role:
-                await ctx.send('Cannot set a default role higher than or equal to the bot\'s or your highest role.')
+                await ctx.send("Cannot set a default role higher than or equal to the bot's or your highest role.")
             else:
                 try:
                     await execute_query(
                         self.bot.database,
                         'INSERT INTO DEFAULT_ROLES (GUILD_ID, ROLE_ID) VALUES (?, ?) ON CONFLICT(GUILD_ID) '
                         'DO UPDATE SET ROLE_ID=EXCLUDED.ROLE_ID',
-                        (ctx.guild.id, role.id)
+                        (ctx.guild.id, role.id),
                     )
                     self.bot.cache.default_roles[ctx.guild.id] = role.id
 
@@ -393,9 +414,9 @@ async def add_default_role(bot: 'DreamBot', member: Member, gate: bool = False) 
     """
 
     if (
-        member.guild.unavailable or
-        member.guild.id not in bot.cache.default_roles or
-        not member.guild.me.guild_permissions.manage_roles
+        member.guild.unavailable
+        or member.guild.id not in bot.cache.default_roles
+        or not member.guild.me.guild_permissions.manage_roles
     ):
         return
 
@@ -406,8 +427,7 @@ async def add_default_role(bot: 'DreamBot', member: Member, gate: bool = False) 
 
     try:
         await member.add_roles(
-            resolved_role,
-            reason=f'Default Role{" [Membership Screening] " if gate else " "}Assignment'
+            resolved_role, reason=f'Default Role{" [Membership Screening] " if gate else " "}Assignment'
         )
     except HTTPException as e:
         bot_logger.error(f'Role Addition Failure. {e.status}. {e.text}')

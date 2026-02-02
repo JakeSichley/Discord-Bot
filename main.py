@@ -31,10 +31,10 @@ import discord
 from dotenv import load_dotenv
 
 from dreambot import DreamBot, Optionals, GitOptionals
-from utils.database.migrations import Migrator
-from utils.network.client import NetworkClient
-from utils.observability.loggers import bot_logger, setup_loggers
 from utils.utils import VERSION
+from utils.network.client import NetworkClient
+from utils.database.migrations import Migrator
+from utils.observability.loggers import bot_logger, setup_loggers
 
 
 async def main() -> None:
@@ -74,9 +74,7 @@ async def main() -> None:
 
     # session headers
     if user_agent := getenv('USER_AGENT'):
-        headers = {
-            'User-Agent': user_agent
-        }
+        headers = {'User-Agent': user_agent}
     else:
         headers = None
 
@@ -84,7 +82,7 @@ async def main() -> None:
     git_options: GitOptionals = {
         'git_user': getenv('GITHUB_USER'),
         'git_repo': getenv('GITHUB_REPO'),
-        'git_token': getenv('GITHUB_TOKEN')
+        'git_token': getenv('GITHUB_TOKEN'),
     }
 
     # noinspection PyTypeChecker
@@ -93,12 +91,12 @@ async def main() -> None:
         'status_text': getenv('STATUS_TEXT'),
         'firebase_project': getenv('FIREBASE_PROJECT'),
         'disabled_cogs': disabled_cogs,
-        'git': git_options
+        'git': git_options,
     }
 
     async with (
         DreamBot(prefix, owner, environment, database, options=options) as bot,
-        aiohttp.ClientSession(headers=headers) as session
+        aiohttp.ClientSession(headers=headers) as session,
     ):
         bot.session = session
         bot.network_client = NetworkClient(session)

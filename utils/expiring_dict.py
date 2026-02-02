@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 import time
-from typing import TypeVar, Dict, Tuple, MutableMapping, Iterator, Optional, Union
+from typing import Dict, Tuple, Union, TypeVar, Iterator, Optional, MutableMapping
 
 _KT = TypeVar('_KT')
 _VT = TypeVar('_VT')
@@ -43,7 +43,7 @@ class ExpiringDict(MutableMapping[_KT, _VT]):
         __mapping (Dict[_KT, Tuple[_VT, float]]): The internal mapping object.
     """
 
-    __slots__ = ('__ttl', '__mapping')
+    __slots__ = ('__mapping', '__ttl')
 
     def __init__(self, seconds: float) -> None:
         """
@@ -54,7 +54,7 @@ class ExpiringDict(MutableMapping[_KT, _VT]):
         """
 
         self.__ttl: float = seconds
-        self.__mapping: Dict[_KT, Tuple[_VT, float]] = dict()
+        self.__mapping: Dict[_KT, Tuple[_VT, float]] = {}
 
     def __verify_cache_integrity(self) -> None:
         """
@@ -160,7 +160,7 @@ class ExpiringDict(MutableMapping[_KT, _VT]):
         return iter(self.__mapping)
 
     def get(  # type: ignore[override]
-            self, key: _KT, /, default: Optional[Union[_VT, _T]] = None
+        self, key: _KT, /, default: Optional[Union[_VT, _T]] = None
     ) -> Optional[Union[_VT, _T]]:
         """
         Safety gets a value from the mapping.

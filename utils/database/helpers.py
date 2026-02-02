@@ -23,10 +23,10 @@ SOFTWARE.
 """
 
 import struct
-from typing import List, Tuple, Any, Optional, Iterable, Type, TypeVar, Union
+from typing import Any, List, Type, Tuple, Union, TypeVar, Iterable, Optional
+from typing_extensions import TypeGuard
 
 import aiosqlite
-from typing_extensions import TypeGuard
 
 from utils.observability.loggers import bot_logger
 
@@ -34,11 +34,11 @@ T = TypeVar('T')
 
 
 async def execute_query(
-        database: str,
-        query: str,
-        values: Optional[Tuple[Any, ...]] = None,
-        *,
-        errors_to_suppress: Optional[Union[Type[aiosqlite.Error], Tuple[Type[aiosqlite.Error], ...]]] = None
+    database: str,
+    query: str,
+    values: Optional[Tuple[Any, ...]] = None,
+    *,
+    errors_to_suppress: Optional[Union[Type[aiosqlite.Error], Tuple[Type[aiosqlite.Error], ...]]] = None,
 ) -> Optional[int]:
     """
     A method that executes a sqlite3 statement.
@@ -58,10 +58,10 @@ async def execute_query(
         (Optional[int]): The number of affect rows.
     """
 
-    values = values or tuple()
+    values = values or ()
 
     if errors_to_suppress is None:
-        errors_to_suppress = tuple()
+        errors_to_suppress = ()
     elif isinstance(errors_to_suppress, aiosqlite.Error):
         errors_to_suppress = (errors_to_suppress,)
 
@@ -79,7 +79,7 @@ async def execute_query(
 
 
 async def retrieve_query(
-        database: str, query: str, values: Optional[Tuple[Any, ...]] = None
+    database: str, query: str, values: Optional[Tuple[Any, ...]] = None
 ) -> Iterable[Tuple[Any, ...]]:
     """
     A method that returns the result of a sqlite3 'SELECT' statement.
@@ -97,13 +97,13 @@ async def retrieve_query(
         (List[Tuple[Any, ...]]): A list of sqlite3 row objects. Can be empty.
     """
 
-    values = values or tuple()
+    values = values or ()
 
     try:
         async with aiosqlite.connect(database) as connection:
             async with connection.execute(query, values) as cursor:
                 rows = await cursor.fetchall()
-                assert (Sqlite3Typing.fetchall(rows))
+                assert Sqlite3Typing.fetchall(rows)
 
                 return rows
 
@@ -113,7 +113,10 @@ async def retrieve_query(
 
 
 async def typed_retrieve_query(
-        database: str, data_type: Type[T], query: str, values: Optional[Tuple[Any, ...]] = None,
+    database: str,
+    data_type: Type[T],
+    query: str,
+    values: Optional[Tuple[Any, ...]] = None,
 ) -> List[T]:
     """
     A typed SQLite 'SELECT' query. Attempts to retrieve and coerce rows to the specified data type.
@@ -182,7 +185,7 @@ async def typed_retrieve_query(
         (List[T]): A list of transformed sqlite3 row objects. Can be empty.
     """
 
-    values = values if values else tuple()
+    values = values if values else ()
 
     try:
         async with aiosqlite.connect(database) as connection:
@@ -198,19 +201,17 @@ async def typed_retrieve_query(
         try:
             transformed_entries.append(data_type(*entry))
         except (TypeError, ValueError) as e:  # data couldn't be coerced to T
-            bot_logger.error(
-                f'Bad Entry for type {data_type} - {e}.\n'
-                f'Data: {entry}\n'
-                f'Query: {query}\n'
-                f'Params: {values}'
-            )
+            bot_logger.error(f'Bad Entry for type {data_type} - {e}.\nData: {entry}\nQuery: {query}\nParams: {values}')
 
     return transformed_entries
 
 
 # TODO: this can probably be deprecated in the future.. throw on miss was an interesting choice
 async def typed_retrieve_one_query(
-        database: str, data_type: Type[T], query: str, values: Optional[Tuple[Any, ...]] = None,
+    database: str,
+    data_type: Type[T],
+    query: str,
+    values: Optional[Tuple[Any, ...]] = None,
 ) -> T:
     """
     A typed SQLite 'SELECT' query. Attempts to retrieve and coerce a single row to the specified data type.
@@ -234,11 +235,15 @@ async def typed_retrieve_one_query(
         return rows[0]
     except IndexError as e:
         bot_logger.error(f'Retrieve One Query ("{query}"). {e}.')
-        raise aiosqlite.Error(f'Failed to fetch any rows')
+        msg = f'Failed to fetch any rows'
+        raise aiosqlite.Error(msg)
 
 
 async def typed_optional_retrieve_one_query(
-        database: str, data_type: Type[T], query: str, values: Optional[Tuple[Any, ...]] = None,
+    database: str,
+    data_type: Type[T],
+    query: str,
+    values: Optional[Tuple[Any, ...]] = None,
 ) -> Optional[T]:
     """
     A typed SQLite 'SELECT' query. Attempts to retrieve and coerce a single row to the specified data type.

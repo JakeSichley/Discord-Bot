@@ -22,31 +22,29 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import asyncio
 import os
-from types import TracebackType
-from typing import Type, List
+import asyncio
+from typing import TYPE_CHECKING, List, Type
 
 import aiofiles
 import aiosqlite
 
 from utils.observability.loggers import bot_logger
 
+if TYPE_CHECKING:
+    from types import TracebackType
 
-class MigrationVersionMismatch(Exception):
+
+class MigrationVersionMismatchError(Exception):
     """
     Error raised when the next migration is not sequential relative to the current version.
     """
 
-    pass
 
-
-class DatabaseVersionMissing(Exception):
+class DatabaseVersionMissingError(Exception):
     """
     Error raised when the database's version couldn't be fetched.
     """
-
-    pass
 
 
 class Migration:
@@ -259,7 +257,7 @@ class Migrator:
                 if result and len(result) == 1:
                     self.version = result[0]
                 else:
-                    raise DatabaseVersionMissing
+                    raise DatabaseVersionMissingError
 
     async def _migrate(self, migration: Migration) -> None:
         """
@@ -279,7 +277,8 @@ class Migrator:
         """
 
         if self.version != migration.version - 1:
-            raise MigrationVersionMismatch(f'{migration} [{self.version} -> {migration.version}]')
+            msg = f'{migration} [{self.version} -> {migration.version}]'
+            raise MigrationVersionMismatchError(msg)
 
         async with aiosqlite.connect(self.database) as connection:
             await connection.executescript(migration.script)
@@ -289,7 +288,7 @@ class Migrator:
                 if result and len(result) == 1:
                     self.version = result[0]
                 else:
-                    raise DatabaseVersionMissing
+                    raise DatabaseVersionMissingError
 
     async def _prepare_migrations(self) -> None:
         """
