@@ -41,6 +41,7 @@ from discord.app_commands import Range, Choice, Transform, CheckFailure
 
 from utils.utils import plural, format_unix_dt
 from utils.autocomplete import generate_autocomplete_choices
+from utils.transformers import SentinelRange, HumanDatetimeDuration, RunescapeNumberTransformer  # noqa: TC001
 from utils.database.helpers import (
     execute_query,
     typed_retrieve_query,
@@ -66,7 +67,6 @@ if TYPE_CHECKING:
     from discord import Interaction
 
     from dreambot import DreamBot
-    from utils.transformers import SentinelRange, HumanDatetimeDuration, RunescapeNumberTransformer
 
 FIVE_MINUTES = 300
 ONE_YEAR = 31_556_926
