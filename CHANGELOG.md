@@ -9,7 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Internal
 - Issues
 
-## Unreleased
+## 2.19.1 (03 Feb 2026)
+### Internal
+- Fix unescaped character usage in BackoffRule's pattern creation
+- Fix `Admin::git_pull (dry)` not utilizing `safe_send`
+
+## 2.19.0 (01 Feb 2026)
 ### Features
 - `Runescape`
   - Enhance autocomplete descriptions for user-provided values
