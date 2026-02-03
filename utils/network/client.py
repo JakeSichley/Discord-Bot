@@ -86,6 +86,10 @@ class NetworkClient:
             (BackoffRule): The backoff rule for the url.
         """
 
+        bot_logger.debug(
+            f'{debug_identifier} Entered scope `_get_or_create_backoff_for_url`.', extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+        )
+
         try:
             existing_rule = next(x for x in self._backoff_cache if x.matches_url(url))
             bot_logger.debug(
@@ -94,7 +98,7 @@ class NetworkClient:
             )
             return existing_rule
         except StopIteration:
-            new_rule = BackoffRule(url, self._default_max_backoff_time)
+            new_rule = BackoffRule.from_url(url, self._default_max_backoff_time)
             self._backoff_cache.add(new_rule)
             bot_logger.debug(
                 f'{debug_identifier} No matches for url `{url}` against existing patterns, creating new rule.',
@@ -113,6 +117,10 @@ class NetworkClient:
         Returns:
             None.
         """
+
+        bot_logger.debug(
+            f'{debug_identifier} Entered scope `_increment_backoff_for_url`.', extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+        )
 
         if existing_rule := next((x for x in self._backoff_cache if x.matches_url(url)), None):
             self._backoff_cache.remove(existing_rule)
@@ -138,6 +146,10 @@ class NetworkClient:
             None.
         """
 
+        bot_logger.debug(
+            f'{debug_identifier} Entered scope `_reset_backoff_for_url`.', extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+        )
+
         if existing_rule := next((x for x in self._backoff_cache if x.matches_url(url)), None):
             self._backoff_cache.remove(existing_rule)
             existing_rule.backoff.reset()
@@ -146,7 +158,7 @@ class NetworkClient:
                 f'{debug_identifier} Reset backoff for url `{url}`.', extra=self.NETWORK_CLIENT_DEBUG_SCOPE
             )
         else:
-            bot_logger.warning(f'Attempted to increment reset for url `{url}` but no matching rule found.')
+            bot_logger.warning(f'Attempted to reset backoff for url `{url}` but no matching rule found.')
 
     async def _request(
         self,

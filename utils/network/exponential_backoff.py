@@ -221,6 +221,21 @@ class BackoffRule:
         self.pattern: re.Pattern[str] = re.compile(pattern)
         self.backoff: ExponentialBackoff = ExponentialBackoff(max_backoff_time)
 
+    @classmethod
+    def from_url(cls, url: str, max_backoff_time: int) -> 'BackoffRule':
+        """
+        Class method to help with the construction of BackoffRules from raw URLs.
+
+        Parameters:
+            url (str): A raw URL that will be escaped to create a backoff rule.
+            max_backoff_time (int): The maximum amount of time to backoff for, in seconds.
+
+        Returns:
+            (BackoffRule).
+        """
+
+        return cls(re.escape(url), max_backoff_time)
+
     def matches_url(self, url: str) -> bool:
         """
         Helper method to check if the given url matches the pattern.

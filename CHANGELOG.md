@@ -12,15 +12,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Security (internal)
 
 ## Unreleased (DD MMM YYYY)
-### Added
-### Removed
+### Features
 ### Internal
 - Bump Python version to `3.14.2`
 - Update CHANGELOG types
-  - 'Features' -> 'Added' / 'Removed'; Include 'Security'
 - Add `ruff` for additional linting and automatic formatting
 ### Issues
 ### Security
+
+## 2.19.1 (03 Feb 2026)
+### Internal
+- Fix unescaped character usage in BackoffRule's pattern creation
+- Fix `Admin::git_pull (dry)` not utilizing `safe_send`
 
 ## 2.19.0 (01 Feb 2026)
 ### Features

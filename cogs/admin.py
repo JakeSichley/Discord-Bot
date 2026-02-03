@@ -623,7 +623,7 @@ class Admin(commands.Cog):
             return
 
         output = '\n'.join(x.decode() for x in actual_result)
-        await ctx.send(f'**The following files would be updated:**\n```\n{output}```')
+        await ctx.safe_send(f'**The following files would be updated:**\n```\n{output}```')
 
     @git.command(name='branches', aliases=['branch', 'b'], hidden=True)  # type: ignore[untyped-decorator]
     async def git_branches(self, ctx: 'Context') -> None:
