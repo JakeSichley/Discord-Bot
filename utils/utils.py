@@ -37,7 +37,7 @@ from discord.utils import format_dt
 
 from utils.observability.loggers import bot_logger
 
-VERSION = '2.19.0'
+VERSION = '2.19.1'
 
 PluralT = TypeVar('PluralT', int, str, Union[int, str])
 
