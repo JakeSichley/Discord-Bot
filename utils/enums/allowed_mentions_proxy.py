@@ -91,5 +91,5 @@ _ALLOWED_MENTION_PROXY_MAPPING = {
     AllowedMentionsProxy.ROLES_AND_USERS: AllowedMentions(everyone=False, roles=True, users=True),
     AllowedMentionsProxy.EVERYONE_AND_ROLES: AllowedMentions(everyone=False, roles=False, users=False),
     AllowedMentionsProxy.EVERYONE_AND_USERS: AllowedMentions(everyone=False, roles=False, users=False),
-    AllowedMentionsProxy.ALL: AllowedMentions.all()
+    AllowedMentionsProxy.ALL: AllowedMentions.all(),
 }

@@ -24,14 +24,4 @@ SOFTWARE.
 
 from typing import TypedDict
 
-Headers = TypedDict(
-    'Headers',
-    {
-        'Authorization': str,
-        'Content-Type': str,
-        'User-Agent': str,
-        'From': str
-    },
-    total=False
-)
-
+Headers = TypedDict('Headers', {'Authorization': str, 'Content-Type': str, 'User-Agent': str, 'From': str}, total=False)

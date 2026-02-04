@@ -22,20 +22,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from typing import TYPE_CHECKING, List, Tuple, Union, Optional, Annotated
 from datetime import datetime, timezone
-from typing import Optional, List, Union, Tuple, Annotated, TYPE_CHECKING
 
 import discord
 from aiosqlite import Error as aiosqliteError
 from discord.ext import commands
 
+from utils.utils import cleanup, valid_content
+from utils.prompts import prompt_user_for_content
 from utils.converters import StringConverter
 from utils.database.helpers import execute_query, typed_retrieve_query
+from utils.observability.loggers import bot_logger
 from utils.database.table_dataclasses import Tag
 from utils.enums.allowed_mentions_proxy import AllowedMentionsProxy
-from utils.observability.loggers import bot_logger
-from utils.prompts import prompt_user_for_content
-from utils.utils import cleanup, valid_content
 
 if TYPE_CHECKING:
     from dreambot import DreamBot
@@ -46,13 +46,25 @@ if TYPE_CHECKING:
 # TODO: Provide interface for AllowedMentionsProxy when migrating to /commands
 
 ReservedTags = (
-    'tag', 'create', 'add', 'get', 'fetch', 'edit', 'alias', 'random',
-    'delete', 'del', 'remove', 'info', 'search', 'list',
+    'tag',
+    'create',
+    'add',
+    'get',
+    'fetch',
+    'edit',
+    'alias',
+    'random',
+    'delete',
+    'del',
+    'remove',
+    'info',
+    'search',
+    'list',
 )
 
 TagName = StringConverter(
     mutator=lambda x: x.strip().lower(),
-    constraint=lambda x: x is not None and 2 <= len(x) <= 100 and x not in ReservedTags
+    constraint=lambda x: x is not None and 2 <= len(x) <= 100 and x not in ReservedTags,
 )
 
 
@@ -77,7 +89,10 @@ class Tags(commands.Cog):
     @commands.guild_only()
     @commands.group(name='tag', aliases=['tags'], invoke_without_command=True)
     async def tag(
-            self, ctx: 'Context', *, tag_name: Annotated[str, TagName] = None  # type: ignore[assignment]
+        self,
+        ctx: 'Context',
+        *,
+        tag_name: Annotated[str, TagName] = None,  # type: ignore[assignment]
     ) -> None:
         """
         Parent command that handles tag related commands.
@@ -119,7 +134,7 @@ class Tags(commands.Cog):
             await ctx.send(f'Tag `{tag_name}` already exists.')
             return
 
-        await ctx.message.reply(f'`{tag_name}` needs some content. What\'ll it be?', mention_author=False)
+        await ctx.message.reply(f"`{tag_name}` needs some content. What'll it be?", mention_author=False)
 
         prompts, content = await prompt_user_for_content(self.bot, ctx)
         await cleanup(prompts, ctx.channel)
@@ -137,9 +152,14 @@ class Tags(commands.Cog):
                     'INSERT INTO TAGS (NAME, CONTENT, GUILD_ID, OWNER_ID, USES, CREATED, ALLOWED_MENTIONS) '
                     'VALUES (?, ?, ?, ?, ?, ?, ?)',
                     (
-                        tag_name, content, ctx.guild.id, ctx.author.id, 0,
-                        int(datetime.now(tz=timezone.utc).timestamp()), 0
-                    )
+                        tag_name,
+                        content,
+                        ctx.guild.id,
+                        ctx.author.id,
+                        0,
+                        int(datetime.now(tz=timezone.utc).timestamp()),
+                        0,
+                    ),
                 )
             except aiosqliteError:
                 await ctx.send('Failed to create tag.')
@@ -191,7 +211,7 @@ class Tags(commands.Cog):
                 await execute_query(
                     self.bot.database,
                     'UPDATE TAGS SET CONTENT=? WHERE NAME=? AND GUILD_ID=?',
-                    (content, tag.name, tag.guild_id)
+                    (content, tag.name, tag.guild_id),
                 )
             except aiosqliteError:
                 await ctx.send('Failed to edit tag.')
@@ -276,13 +296,13 @@ class Tags(commands.Cog):
         if tag:
             author = await commands.MemberConverter().convert(ctx, str(tag.owner_id))
 
-            embed = discord.Embed(title='Tag Info', color=0x95fc98)
+            embed = discord.Embed(title='Tag Info', color=0x95FC98)
             embed.add_field(name='Name', value=tag.name)
             embed.add_field(name='Author', value=f'{author.mention if author else tag.owner_id}')
             embed.add_field(name='Uses', value=str(tag.uses))
             embed.add_field(name='Created', value=f'<t:{tag.created}:F>')
             embed.add_field(name='Content', value=tag.content, inline=False)
-            embed.set_footer(text="Please report any issues to my owner!")
+            embed.set_footer(text='Please report any issues to my owner!')
 
             await ctx.send(embed=embed)
         else:
@@ -307,7 +327,7 @@ class Tags(commands.Cog):
         if tag:
             await ctx.safe_send(
                 f'**Tag `{tag.name}`**\n{tag.content}',
-                allowed_mentions=AllowedMentionsProxy.mapping(tag.allowed_mentions)
+                allowed_mentions=AllowedMentionsProxy.mapping(tag.allowed_mentions),
             )
         else:
             await ctx.send(f'No tags exist for this guild.')
@@ -338,9 +358,7 @@ class Tags(commands.Cog):
         if tag.owner_id == ctx.author.id or ctx.author.guild_permissions.manage_messages:
             try:
                 await execute_query(
-                    self.bot.database,
-                    'DELETE FROM TAGS WHERE NAME=? AND GUILD_ID=?',
-                    (tag_name, ctx.guild.id)
+                    self.bot.database, 'DELETE FROM TAGS WHERE NAME=? AND GUILD_ID=?', (tag_name, ctx.guild.id)
                 )
             except aiosqliteError:
                 await ctx.send(f'Failed to delete tag `{tag_name}`.')
@@ -394,10 +412,7 @@ async def search_tags(database: str, guild_id: int, tag_name: str) -> Optional[L
 
     try:
         result = await typed_retrieve_query(
-            database,
-            Tag,
-            'SELECT * FROM TAGS WHERE NAME LIKE ? AND GUILD_ID=? LIMIT 5',
-            (f'%{tag_name}%', guild_id)
+            database, Tag, 'SELECT * FROM TAGS WHERE NAME LIKE ? AND GUILD_ID=? LIMIT 5', (f'%{tag_name}%', guild_id)
         )
     except aiosqliteError:
         return None
@@ -419,11 +434,7 @@ async def increment_tag_count(database: str, tag_name: str, guild_id: int) -> No
     """
 
     try:
-        await execute_query(
-            database,
-            'UPDATE TAGS SET USES=USES+1 WHERE NAME=? AND GUILD_ID=?',
-            (tag_name, guild_id)
-        )
+        await execute_query(database, 'UPDATE TAGS SET USES=USES+1 WHERE NAME=? AND GUILD_ID=?', (tag_name, guild_id))
     except aiosqliteError:
         pass
 

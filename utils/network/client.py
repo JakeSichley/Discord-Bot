@@ -23,16 +23,18 @@ SOFTWARE.
 """
 
 import inspect
-from typing import Optional, Callable, Awaitable, TypeVar, Set, overload, Literal
+from typing import TYPE_CHECKING, Set, Literal, TypeVar, Callable, Optional, Awaitable, overload
 
 import aiohttp
 
-from utils.network.exponential_backoff import BackoffRule, ExponentialBackoffException
-from utils.network.return_type import JSON
-from utils.network.exceptions import EmptyResponseError
-from utils.network.utils import Headers
-from utils.observability.loggers import bot_logger, make_debug_scope
 from utils.utils import short_random_id
+from utils.network.exceptions import EmptyResponseError
+from utils.observability.loggers import bot_logger, make_debug_scope
+from utils.network.exponential_backoff import BackoffRule, ExponentialBackoffError
+
+if TYPE_CHECKING:
+    from utils.network.utils import Headers
+    from utils.network.return_type import JSON
 
 ReturnType = TypeVar('ReturnType')
 
@@ -53,9 +55,9 @@ class NetworkClient:
     NETWORK_CLIENT_DEBUG_SCOPE = make_debug_scope('network_client')
 
     def __init__(
-            self,
-            session: aiohttp.ClientSession,
-            default_max_backoff_time: int = 60 * 60 * 4  # four hours
+        self,
+        session: aiohttp.ClientSession,
+        default_max_backoff_time: int = 60 * 60 * 4,  # four hours
     ) -> None:
         """
         Initializes a NetworkClient instance.
@@ -85,15 +87,14 @@ class NetworkClient:
         """
 
         bot_logger.debug(
-            f'{debug_identifier} Entered scope `_get_or_create_backoff_for_url`.',
-            extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+            f'{debug_identifier} Entered scope `_get_or_create_backoff_for_url`.', extra=self.NETWORK_CLIENT_DEBUG_SCOPE
         )
 
         try:
             existing_rule = next(x for x in self._backoff_cache if x.matches_url(url))
             bot_logger.debug(
                 f'{debug_identifier} Matched url `{url}` against existing pattern `{existing_rule.pattern.pattern}`.',
-                extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                extra=self.NETWORK_CLIENT_DEBUG_SCOPE,
             )
             return existing_rule
         except StopIteration:
@@ -101,7 +102,7 @@ class NetworkClient:
             self._backoff_cache.add(new_rule)
             bot_logger.debug(
                 f'{debug_identifier} No matches for url `{url}` against existing patterns, creating new rule.',
-                extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                extra=self.NETWORK_CLIENT_DEBUG_SCOPE,
             )
             return new_rule
 
@@ -118,8 +119,7 @@ class NetworkClient:
         """
 
         bot_logger.debug(
-            f'{debug_identifier} Entered scope `_increment_backoff_for_url`.',
-            extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+            f'{debug_identifier} Entered scope `_increment_backoff_for_url`.', extra=self.NETWORK_CLIENT_DEBUG_SCOPE
         )
 
         if existing_rule := next((x for x in self._backoff_cache if x.matches_url(url)), None):
@@ -129,7 +129,7 @@ class NetworkClient:
             bot_logger.debug(
                 f'{debug_identifier} Incremented backoff for url `{url}`. '
                 f'New count: {existing_rule.backoff.backoff_count}',
-                extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                extra=self.NETWORK_CLIENT_DEBUG_SCOPE,
             )
         else:
             bot_logger.warning(f'Attempted to increment backoff for url `{url}` but no matching rule found.')
@@ -147,8 +147,7 @@ class NetworkClient:
         """
 
         bot_logger.debug(
-            f'{debug_identifier} Entered scope `_reset_backoff_for_url`.',
-            extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+            f'{debug_identifier} Entered scope `_reset_backoff_for_url`.', extra=self.NETWORK_CLIENT_DEBUG_SCOPE
         )
 
         if existing_rule := next((x for x in self._backoff_cache if x.matches_url(url)), None):
@@ -162,15 +161,15 @@ class NetworkClient:
             bot_logger.warning(f'Attempted to reset backoff for url `{url}` but no matching rule found.')
 
     async def _request(
-            self,
-            url: str,
-            handler: Callable[[aiohttp.ClientResponse], Awaitable[ReturnType]],
-            *,
-            headers: Optional['Headers'],
-            forward_exceptions: bool,
-            ssl: Optional[bool],
-            bypass_backoff: bool,
-            raise_for_empty_response: bool
+        self,
+        url: str,
+        handler: Callable[[aiohttp.ClientResponse], Awaitable[ReturnType]],
+        *,
+        headers: Optional['Headers'],
+        forward_exceptions: bool,
+        ssl: bool,
+        bypass_backoff: bool,
+        raise_for_empty_response: bool,
     ) -> Optional[ReturnType]:
         """
         Makes a request to a url.
@@ -180,7 +179,7 @@ class NetworkClient:
             handler (Callable[[aiohttp.ClientResponse], Awaitable[ReturnType]]): The handler for the response.
             headers (Optional[Headers]): The headers to send with the request.
             forward_exceptions (bool): Whether to forward exceptions instead of suppressing them.
-            ssl (Optional[bool]): Whether to use ssl.
+            ssl (bool): Whether to use ssl.
             bypass_backoff (bool): Whether to bypass the exponential backoff.
             raise_for_empty_response (bool): Whether to raise an `EmptyResponseError` if the response is empty.
 
@@ -196,7 +195,7 @@ class NetworkClient:
         bot_logger.debug(
             f'{debug_identifier} Starting request for url `{url}`. '
             f'Kwargs: {headers=}, {forward_exceptions=}, {ssl=}, {bypass_backoff=}, {raise_for_empty_response=}.',
-            extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+            extra=self.NETWORK_CLIENT_DEBUG_SCOPE,
         )
 
         try:
@@ -208,12 +207,15 @@ class NetworkClient:
                 bot_logger.debug(
                     f'{debug_identifier} Request for url `{url}` is currently backed off without bypass - '
                     f'raising `ExponentialBackoffException`.',
-                    extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                    extra=self.NETWORK_CLIENT_DEBUG_SCOPE,
                 )
-                raise ExponentialBackoffException(url, matched_rule)
+                raise ExponentialBackoffError(url, matched_rule)
 
             async with self._session.get(
-                    url, headers=headers, ssl=ssl, raise_for_status=True
+                url,
+                headers=headers,  # type: ignore[arg-type] # we'll always treat this as Mapping[str, str]
+                ssl=ssl,
+                raise_for_status=True,
             ) as r:
                 # anything in this context manager implicitly means the request was successful
                 # and no exceptions were raised by either the request or the handler
@@ -226,26 +228,27 @@ class NetworkClient:
                     bot_logger.debug(
                         f'{debug_identifier} Request for url `{url}` was successful. '
                         f'Response handler type: {return_type_identifier}',
-                        extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                        extra=self.NETWORK_CLIENT_DEBUG_SCOPE,
                     )
                     return transformed_response
                 # if we don't successfully transform our response, check whether the caller wants an empty exception
-                elif raise_for_empty_response:
+                if raise_for_empty_response:
                     bot_logger.debug(
                         f'{debug_identifier} Request for url `{url}` was successful, but did not yield a transformable '
                         f'response - raising for empty response per caller request.',
-                        extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                        extra=self.NETWORK_CLIENT_DEBUG_SCOPE,
                     )
-                    raise EmptyResponseError(
+                    msg = (
                         f'Request for url `{url}` was successful, but response was empty. '
                         f'Response handler type: {return_type_identifier}.'
                     )
+                    raise EmptyResponseError(msg)
                 # if we don't successfully transform our response and the caller does not want an exception, return None
                 else:
                     bot_logger.debug(
                         f'{debug_identifier} Request for url `{url}` was successful, but did not '
                         f'yield a transformable response.',
-                        extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                        extra=self.NETWORK_CLIENT_DEBUG_SCOPE,
                     )
                     return None
 
@@ -259,7 +262,7 @@ class NetworkClient:
         except aiohttp.ClientError as e:
             exception = e
             bot_logger.warning(f'Network Request Client Error. ("{url}"). {type(e)} - {e} - {e.args}.')
-        except ExponentialBackoffException as e:
+        except ExponentialBackoffError as e:
             exception = e
             bot_logger.warning(f'Network Request ExponentialBackoff Error: {e}.')
         except Exception as e:
@@ -272,11 +275,11 @@ class NetworkClient:
         if caught_exception := exception:
             # if the caller has not opted out of backoff, increment backoff
             # if we proactively raised `ExponentialBackoffException`, don't re-increment
-            if not bypass_backoff and not isinstance(caught_exception, ExponentialBackoffException):
+            if not bypass_backoff and not isinstance(caught_exception, ExponentialBackoffError):
                 bot_logger.debug(
                     f'{debug_identifier} Error was encountered during request for `{url}` '
                     f'without bypass backoff - attempting to increment backoff.',
-                    extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                    extra=self.NETWORK_CLIENT_DEBUG_SCOPE,
                 )
                 self._increment_backoff_for_url(url, debug_identifier)
 
@@ -285,7 +288,7 @@ class NetworkClient:
                 bot_logger.debug(
                     f'{debug_identifier} Error was encountered during request for `{url}` - forwarding '
                     f'exception per caller request',
-                    extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                    extra=self.NETWORK_CLIENT_DEBUG_SCOPE,
                 )
                 raise caught_exception
             # if we've caught an exception and the caller has not opted to blanket receive, check whether the
@@ -294,31 +297,32 @@ class NetworkClient:
                 bot_logger.debug(
                     f'{debug_identifier} Request for url `{url}` was unsuccessful - raising for empty '
                     f'response per caller request.',
-                    extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+                    extra=self.NETWORK_CLIENT_DEBUG_SCOPE,
                 )
-                raise EmptyResponseError(
+                msg = (
                     f'Request for url `{url}` was unsuccessful, but blanket exceptions are not forwarded. '
                     f'Response handler type: {return_type_identifier}.'
                 )
+                raise EmptyResponseError(msg)
 
         # if we've reached this point, the request was unsuccessful and the caller has opted out of any exceptions
         bot_logger.debug(
             f'{debug_identifier} Request for url `{url}` was either unsuccessful or raised an exception during '
             f'the transformation process. Errors are suppressed by the caller. {forward_exceptions=}, {exception=}',
-            extra=self.NETWORK_CLIENT_DEBUG_SCOPE
+            extra=self.NETWORK_CLIENT_DEBUG_SCOPE,
         )
         return None
 
     async def fetch_bytes(
-            self,
-            url: str,
-            /,
-            *,
-            headers: Optional['Headers'] = None,
-            forward_exceptions: bool = False,
-            ssl: Optional[bool] = None,
-            bypass_backoff: bool = False,
-            raise_for_empty_response: bool = False
+        self,
+        url: str,
+        /,
+        *,
+        headers: Optional['Headers'] = None,
+        forward_exceptions: bool = False,
+        ssl: bool = True,
+        bypass_backoff: bool = False,
+        raise_for_empty_response: bool = False,
     ) -> Optional[bytes]:
         """
         Fetches bytes from a url.
@@ -327,7 +331,7 @@ class NetworkClient:
             url (str): The url to fetch bytes from.
             headers (Optional[Headers]): The headers to send with the request.
             forward_exceptions (bool): Whether to forward exceptions instead of suppressing them.
-            ssl (Optional[bool]): Whether to use ssl.
+            ssl (bool): Whether to use ssl.
             bypass_backoff (bool): Whether to bypass the exponential backoff.
             raise_for_empty_response (bool): Whether to raise an `EmptyResponseError` if the response is empty.
 
@@ -342,21 +346,21 @@ class NetworkClient:
             forward_exceptions=forward_exceptions,
             ssl=ssl,
             bypass_backoff=bypass_backoff,
-            raise_for_empty_response=raise_for_empty_response
+            raise_for_empty_response=raise_for_empty_response,
         )
 
     @overload
     async def fetch_json(
-            self,
-            url: str,
-            /,
-            *,
-            encoding: str = 'utf-8',
-            headers: Optional['Headers'] = None,
-            forward_exceptions: bool = False,
-            ssl: Optional[bool] = None,
-            bypass_backoff: bool = False,
-            raise_for_empty_response: Literal[True]
+        self,
+        url: str,
+        /,
+        *,
+        encoding: str = 'utf-8',
+        headers: Optional['Headers'] = None,
+        forward_exceptions: bool = False,
+        ssl: bool = True,
+        bypass_backoff: bool = False,
+        raise_for_empty_response: Literal[True],
     ) -> 'JSON':
         """
         Fetches JSON from a url.
@@ -366,27 +370,26 @@ class NetworkClient:
             encoding (str): The encoding to use.
             headers (Optional[Headers]): The headers to send with the request.
             forward_exceptions (bool): Whether to forward exceptions instead of suppressing them.
-            ssl (Optional[bool]): Whether to use ssl.
+            ssl (bool): Whether to use ssl.
             bypass_backoff (bool): Whether to bypass the exponential backoff.
             raise_for_empty_response (Literal[True]): Whether to raise an `EmptyResponseError` if the response is empty.
 
         Returns:
             (JSON): The JSON from the url. Throws on an empty response.
         """
-        ...
 
     @overload
     async def fetch_json(
-            self,
-            url: str,
-            /,
-            *,
-            encoding: str = 'utf-8',
-            headers: Optional['Headers'] = None,
-            forward_exceptions: bool = False,
-            ssl: Optional[bool] = None,
-            bypass_backoff: bool = False,
-            raise_for_empty_response: Literal[False]
+        self,
+        url: str,
+        /,
+        *,
+        encoding: str = 'utf-8',
+        headers: Optional['Headers'] = None,
+        forward_exceptions: bool = False,
+        ssl: bool = True,
+        bypass_backoff: bool = False,
+        raise_for_empty_response: Literal[False],
     ) -> Optional['JSON']:
         """
         Fetches JSON from a url.
@@ -396,26 +399,25 @@ class NetworkClient:
             encoding (str): The encoding to use.
             headers (Optional[Headers]): The headers to send with the request.
             forward_exceptions (bool): Whether to forward exceptions instead of suppressing them.
-            ssl (Optional[bool]): Whether to use ssl.
+            ssl (bool): Whether to use ssl.
             bypass_backoff (bool): Whether to bypass the exponential backoff.
             raise_for_empty_response (Literal[False]): Whether to raise an `EmptyResponseError` if the response is empty.
 
         Returns:
             (Optional[JSON]): The JSON from the url, or None if the request failed.
         """
-        ...
 
     async def fetch_json(
-            self,
-            url: str,
-            /,
-            *,
-            encoding: str = 'utf-8',
-            headers: Optional['Headers'] = None,
-            forward_exceptions: bool = False,
-            ssl: Optional[bool] = None,
-            bypass_backoff: bool = False,
-            raise_for_empty_response: bool = False
+        self,
+        url: str,
+        /,
+        *,
+        encoding: str = 'utf-8',
+        headers: Optional['Headers'] = None,
+        forward_exceptions: bool = False,
+        ssl: bool = True,
+        bypass_backoff: bool = False,
+        raise_for_empty_response: bool = False,
     ) -> Optional['JSON']:
         """
         Fetches JSON from a url.
@@ -425,7 +427,7 @@ class NetworkClient:
             encoding (str): The encoding to use.
             headers (Optional[Headers]): The headers to send with the request.
             forward_exceptions (bool): Whether to forward exceptions instead of suppressing them.
-            ssl (Optional[bool]): Whether to use ssl.
+            ssl (bool): Whether to use ssl.
             bypass_backoff (bool): Whether to bypass the exponential backoff.
             raise_for_empty_response (bool): Whether to raise an `EmptyResponseError` if the response is empty.
 
@@ -440,20 +442,20 @@ class NetworkClient:
             forward_exceptions=forward_exceptions,
             ssl=ssl,
             bypass_backoff=bypass_backoff,
-            raise_for_empty_response=raise_for_empty_response
+            raise_for_empty_response=raise_for_empty_response,
         )
 
     async def fetch_text(
-            self,
-            url: str,
-            /,
-            *,
-            encoding: str = 'utf-8',
-            headers: Optional['Headers'] = None,
-            forward_exceptions: bool = False,
-            ssl: Optional[bool] = None,
-            bypass_backoff: bool = False,
-            raise_for_empty_response: bool = False
+        self,
+        url: str,
+        /,
+        *,
+        encoding: str = 'utf-8',
+        headers: Optional['Headers'] = None,
+        forward_exceptions: bool = False,
+        ssl: bool = True,
+        bypass_backoff: bool = False,
+        raise_for_empty_response: bool = False,
     ) -> Optional[str]:
         """
         Fetches text from a url.
@@ -463,7 +465,7 @@ class NetworkClient:
             encoding (str): The encoding to use.
             headers (Optional[Headers]): The headers to send with the request.
             forward_exceptions (bool): Whether to forward exceptions instead of suppressing them.
-            ssl (Optional[bool]): Whether to use ssl.
+            ssl (bool): Whether to use ssl.
             bypass_backoff (bool): Whether to bypass the exponential backoff.
             raise_for_empty_response (bool): Whether to raise an `EmptyResponseError` if the response is empty.
 
@@ -478,5 +480,5 @@ class NetworkClient:
             forward_exceptions=forward_exceptions,
             ssl=ssl,
             bypass_backoff=bypass_backoff,
-            raise_for_empty_response=raise_for_empty_response
+            raise_for_empty_response=raise_for_empty_response,
         )

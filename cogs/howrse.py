@@ -28,11 +28,11 @@ import discord
 from discord.ext import commands
 
 from utils.checks import guild_only
-from utils.context import Context
 from utils.observability.loggers import bot_logger
 
 if TYPE_CHECKING:
     from dreambot import DreamBot
+    from utils.context import Context
 
 
 class Howrse(commands.Cog):
@@ -57,7 +57,7 @@ class Howrse(commands.Cog):
 
     @guild_only(1127457916992110735)
     @commands.command(name='cc', hidden=True)
-    async def silverwood_cc_command(self, ctx: Context) -> None:
+    async def silverwood_cc_command(self, ctx: 'Context') -> None:
         """
         Custom Command.
 
@@ -75,7 +75,7 @@ class Howrse(commands.Cog):
 
     @guild_only(1127457916992110735)
     @commands.command(name='wins', hidden=True)
-    async def silverwood_wins_command(self, ctx: Context) -> None:
+    async def silverwood_wins_command(self, ctx: 'Context') -> None:
         """
         Custom Command.
 
@@ -91,7 +91,7 @@ class Howrse(commands.Cog):
 
     @guild_only(1127457916992110735)
     @commands.command(name='wp', hidden=True)
-    async def silverwood_wp_command(self, ctx: Context) -> None:
+    async def silverwood_wp_command(self, ctx: 'Context') -> None:
         """
         Custom Command.
 
@@ -109,7 +109,7 @@ class Howrse(commands.Cog):
 
     @guild_only(1165414326417502218)
     @commands.command(name='xc', hidden=True)
-    async def horsemen_xc_command(self, ctx: Context) -> None:
+    async def horsemen_xc_command(self, ctx: 'Context') -> None:
         """
         Custom Command.
 
@@ -127,7 +127,7 @@ class Howrse(commands.Cog):
 
     @guild_only(1165414326417502218)
     @commands.command(name='c', hidden=True)
-    async def horsemen_c_command(self, ctx: Context) -> None:
+    async def horsemen_c_command(self, ctx: 'Context') -> None:
         """
         Custom Command.
 
@@ -145,7 +145,7 @@ class Howrse(commands.Cog):
 
     @guild_only(1165414326417502218)
     @commands.command(name='w', hidden=True)
-    async def horsemen_w_command(self, ctx: Context) -> None:
+    async def horsemen_w_command(self, ctx: 'Context') -> None:
         """
         Custom Command.
 

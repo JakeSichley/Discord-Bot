@@ -22,12 +22,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from discord import Message
 from discord.ext import commands
 
-from utils.context import Context
+if TYPE_CHECKING:
+    from utils.context import Context
 
 
 def default_message_reply(ctx: Context) -> Optional[Message]:
@@ -51,5 +52,5 @@ def default_message_reply(ctx: Context) -> Optional[Message]:
 MessageReply = commands.parameter(
     default=default_message_reply,
     displayed_default='<The message being replied to>',
-    converter=commands.MessageConverter
+    converter=commands.MessageConverter,
 )

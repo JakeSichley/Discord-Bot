@@ -1,0 +1,62 @@
+exclude = [
+  ".git",
+  ".mypy_cache",
+  ".ruff_cache",
+  ".venv",
+  "__pypackages__",
+  "__pycache__",
+  "_build",
+  "build",
+  "dist",
+  "site-packages",
+  "venv",
+  "resources"
+]
+indent-width = 4
+line-length = 120
+output-format = "grouped"
+target-version = "py314"
+
+[format]
+indent-style = "space"
+line-ending = "auto"
+quote-style = "single"
+
+[lint]
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+fixable = [ "ALL" ]
+ignore = [ "ARG002", "B904", "D" ]
+select = [
+  "I",
+  "B",
+  "F401",
+  "FA102",
+  "E722",
+  "ARG",
+  "T203",
+  "TC004",
+  "TID251",
+  "TC003",
+  "PLC0414",
+  "N818",
+  "D100",
+  "EM102",
+  "ANN204",
+  "RUF023",
+  "PIE790",
+  "RUF059",
+  "EM101",
+  "C408",
+  "RET505",
+  # "DTZ005",
+  # "PTH118",
+  # "TRY301",
+  # "TC001",
+]
+unfixable = [ ]
+
+[lint.isort]
+combine-as-imports = true
+extra-standard-library = [ "typing_extensions" ]
+length-sort = true
+length-sort-straight = true

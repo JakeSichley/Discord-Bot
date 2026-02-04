@@ -22,16 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Callable, Union, List, Tuple, Any
+from typing import TYPE_CHECKING, Any, List, Tuple, Union, Callable
 
-from discord.app_commands.errors import CheckFailure
 from discord.ext import commands
+from discord.app_commands.errors import CheckFailure
 
-from utils.context import Context
 from utils.cooldowns import cooldown_predicate
+
+if TYPE_CHECKING:
+    from utils.context import Context
 
 
 # Checks are missing type specialization -> discord.ext.commands._types not exported
+
 
 class InvocationCheckFailure(CheckFailure):
     """

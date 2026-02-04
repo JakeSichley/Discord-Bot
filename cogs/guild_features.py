@@ -22,12 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from typing import TYPE_CHECKING, Optional
 from contextlib import suppress
-from typing import Optional, TYPE_CHECKING
 from urllib.parse import urlparse
 
+from discord import Embed, Permissions, HTTPException, AllowedMentions, app_commands
 from aiosqlite import Error as aiosqliteError
-from discord import app_commands, Permissions, Embed, AllowedMentions, HTTPException
 from discord.ext import commands
 
 from utils.database.helpers import execute_query
@@ -37,6 +37,7 @@ from utils.observability.loggers import bot_logger
 if TYPE_CHECKING:
     import discord
     from discord import Interaction
+
     from dreambot import DreamBot
 
 
@@ -52,7 +53,7 @@ class GuildFeatures(commands.Cog):
         name='guild_features',
         description='Commands for managing guild features',
         default_permissions=Permissions(manage_guild=True),
-        guild_only=True
+        guild_only=True,
     )
 
     def __init__(self, bot: 'DreamBot') -> None:
@@ -94,8 +95,7 @@ class GuildFeatures(commands.Cog):
 
         embed.add_field(name='Feature', value='\n'.join(x.display_name for x in GuildFeature))
         embed.add_field(
-            name='Status',
-            value='\n'.join('✅' if has_guild_feature(features, x) else '❌' for x in GuildFeature)
+            name='Status', value='\n'.join('✅' if has_guild_feature(features, x) else '❌' for x in GuildFeature)
         )
         embed.set_footer(text='Please report any issues to my owner!')
 
@@ -105,13 +105,13 @@ class GuildFeatures(commands.Cog):
     @app_commands.describe(
         direct_tag_invoke='Optional: Whether to send tags automatically without needing the tag command',
         alternative_twitter_embeds="Optional: Whether the bot should replace Twitter embeds with 'FixupX.com' "
-                                   "embeds instead"
+        'embeds instead',
     )
     async def modify_guild_features(
-            self,
-            interaction: 'Interaction[DreamBot]',
-            direct_tag_invoke: Optional[bool] = None,
-            alternative_twitter_embeds: Optional[bool] = None
+        self,
+        interaction: 'Interaction[DreamBot]',
+        direct_tag_invoke: Optional[bool] = None,
+        alternative_twitter_embeds: Optional[bool] = None,
     ) -> None:
         """
         Modifies feature statuses for the current guild.
@@ -148,7 +148,7 @@ class GuildFeatures(commands.Cog):
                 self.bot.database,
                 'INSERT INTO GUILD_FEATURES (GUILD_ID, FEATURES) VALUES (?, ?) '
                 'ON CONFLICT(GUILD_ID) DO UPDATE SET FEATURES=EXCLUDED.FEATURES',
-                (interaction.guild_id, features)
+                (interaction.guild_id, features),
             )
         except aiosqliteError:
             await interaction.response.send_message('Failed to modify guild features as requested.', ephemeral=True)
@@ -164,9 +164,13 @@ class GuildFeatures(commands.Cog):
             )
 
             embed_fields = [
-                (feature.display_name, has_guild_feature(existing_features, feature),
-                 has_guild_feature(features, feature))
-                for feature in GuildFeature if has_guild_feature(modifications, feature)
+                (
+                    feature.display_name,
+                    has_guild_feature(existing_features, feature),
+                    has_guild_feature(features, feature),
+                )
+                for feature in GuildFeature
+                if has_guild_feature(modifications, feature)
             ]
 
             embed.add_field(name='Feature Name', value='\n'.join((x[0]) for x in embed_fields))
@@ -210,7 +214,7 @@ class GuildFeatures(commands.Cog):
                 content=parsed_url._replace(netloc='fixupx.com', query='', fragment='').geturl(),
                 allowed_mentions=AllowedMentions.none(),
                 mention_author=False,
-                silent=True
+                silent=True,
             )
         # this is a low-priority operation, so at most we'll try to restore the original embed on any failure
         except HTTPException:

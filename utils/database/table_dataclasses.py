@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 import dataclasses
-from typing import Tuple, Optional, Union, Type, Any, get_args, get_origin, TypeVar
+from typing import Any, Type, Tuple, Union, TypeVar, Optional, get_args, get_origin
 
 from utils.enums.allowed_mentions_proxy import AllowedMentionsProxy
 
@@ -43,8 +43,7 @@ def expand_optional_types(field_type: Type[T]) -> Union[Type[T], Tuple[Type[T], 
 
     if get_origin(field_type) is Union and type(None) in get_args(field_type):
         return get_args(field_type)
-    else:
-        return field_type
+    return field_type
 
 
 @dataclasses.dataclass
@@ -53,7 +52,7 @@ class DatabaseDataclass:
     """
     A `dataclass` used to enforce type-safety for type-specified database retrievals.
 
-    This class no attributes of its own, and is meant to be subclassed.
+    This class has no attributes of its own, and is meant to be subclassed.
     """
 
     def __post_init__(self) -> None:
@@ -74,8 +73,9 @@ class DatabaseDataclass:
 
         for field in dataclasses.fields(self):
             value = getattr(self, field.name)
-            if not isinstance(value, expand_optional_types(field.type)):
-                raise ValueError(f'Expected {field.name} to be {field.type}, got {type(value)}')
+            if not isinstance(value, expand_optional_types(field.type)):  # type: ignore[arg-type]
+                msg = f'Expected {field.name} to be {field.type}, got {type(value)}'
+                raise ValueError(msg)
 
     def unpack(self) -> Tuple[Any, ...]:
         """

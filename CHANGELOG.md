@@ -5,9 +5,20 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 **Types of Changes**
-- Features
-- Internal
-- Issues
+- Added (New external facing functionality)
+- Removed (Removed external facing functionality)
+- Internal (Added or removed, generally architecture or infrastructure)
+- Issues (internal or external)
+- Security (internal)
+
+## Unreleased (DD MMM YYYY)
+### Features
+### Internal
+- Bump Python version to `3.14.2`
+- Update CHANGELOG types
+- Add `ruff` for additional linting and automatic formatting
+### Issues
+### Security
 
 ## 2.19.1 (03 Feb 2026)
 ### Internal
@@ -37,26 +48,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Fix `RunescapeHerbComparison` using grimy values for min/max comparisons instead of grimy and clean
 - Update `Admin::exec` to strip non-printable characters from `Message.content` (thanks Discord)
 
-## 2.18.5
+## 2.18.5 (26 Jul 2025)
 ### Internal
 - Refactor `Runescape::query_mapping_data` to handle mapping exceptions at the individual item level, rather than query level
 
-## 2.18.4
+## 2.18.4 (26 May 2025)
 ### Internal
 - Bump discord.py to `2.5.2` (discord.Member.MemberFlags.guest)
 ### Issues
 - Prevent `VoiceRoles::on_voice_state_update` from attempting to add voice roles to guests
 
-## 2.18.3
+## 2.18.3 (23 Mar 2025)
 ### Internal
 - Enhance `Bot::on_error` logging to include traceback information where available
 - Update `Admin` cog private event notifications to use `on_message` to avoid `Forbidden (error code: 40058)` issues with `on_thread_create`
 
-## 2.18.2
+## 2.18.2 (22 Mar 2025)
 ### Internal
 - Add private event notifications to `Admin` cog
 
-## 2.18.1
+## 2.18.1 (08 Feb 2025)
 ### Internal
 - `Admin`
   - Allow forbidden characters in `StringConverter::ExtensionName`
@@ -64,14 +75,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Suppress `ExtensionError` from production error reporting
 - Add additional context to `VoiceRoles::on_voice_state_update::Forbidden`
 
-## 2.18.0
+## 2.18.0 (19 Jun 2024)
 ### Features
 - Enhance `Group` autocomplete descriptions with owner name and member count
 ### Internal
 - Create `mypy` GitHub workflow
 - Miscellaneous spelling fixes
 
-## 2.17.0
+## 2.17.0 (11 Apr 2024)
 ### Features
 - `Group` group names are now case-insensitive
 - `Utility::UserInfo` now considers whether the user has a global name
@@ -80,238 +91,242 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Improved logging for existing `Admin` commands
 - Autocomplete fuzzy matching now uses `casefolded` strings instead of `lowered` strings
 
-## 2.16.2
+## 2.16.2 (06 Apr 2024)
 ### Issues
 - `Moderation::Purge`
   - Prevent edge case where a confirmation prompt coroutine was created and never used
   - Prevent zero or negative limit values
 
-## 2.16.1
+## 2.16.1 (03 Apr 2024)
 ### Features
-* `Runescape`
+- `Runescape`
   - Increase default herb patches for Varlamore 
   - Dramatically increase max herb patches on herb profitability calculation
 
-## 2.16.0
+## 2.16.0 (19 Feb 2024)
 ### Features
-* Add Herb Profitability Comparison to `Runescape` Cog
+- Add Herb Profitability Comparison to `Runescape` Cog
 
-## 2.15.3
+## 2.15.3 (09 Feb 2024)
 ### Internal
-* Adjust `FileLoggingFormatter` to strip unwanted information post-format
+- Adjust `FileLoggingFormatter` to strip unwanted information post-format
 
-## 2.15.2
+## 2.15.2 (07 Feb 2024)
 ### Issues
-* Restore `cog_load` for `Groups`
+- Restore `cog_load` for `Groups`
 
-## 2.15.1
+## 2.15.1 (05 Feb 2024)
 ### Internal
-* Dump context information during file logging
+- Dump context information during file logging
 ### Issues
-* Include traceback information during file logging
+- Include traceback information during file logging
 
-## 2.15.0
+## 2.15.0 (04 Feb 2024)
 ### Features
-* Remove `Audit` cog
+- Remove `Audit` cog
 ### Internal
-* `Groups`
+- `Groups`
   - Checks
     - Refactor common checks into reusable functions
     - Switch to `InvocationCheckFailure` where appropriate
   - Implement immediate group updates during listeners; remove synchronization task
-* mypy
+- mypy
   - Bump version to `1.8.0`
   - Support `--strict` type checking
-* Replace license format to avoid future updates
-* Remove tracebacks from reconnect errors from stream logging handlers
+- Replace license format to avoid future updates
+- Remove tracebacks from reconnect errors from stream logging handlers
 
-## 2.14.1
+## 2.14.1 (15 Jan 2024)
 ### Issues
-* Fix `Groups::kick` removing invoker from cache rather than kickee
+- Fix `Groups::kick` removing invoker from cache rather than kickee
 
-## 2.14.0
+## 2.14.0 (15 Jan 2024)
 ### Features
-* `Groups` Cog v2
+- `Groups` Cog v2
   - Added `ephemeral` group updates
   - Added `kick` and `transfer` commands
   - Added support for member `on_join` and `on_leave`
 ### Internal
-* Confirmation for mutating SQL statements in PROD
-* Expand list of core updates that prevent automatic reloading
+- Confirmation for mutating SQL statements in PROD
+- Expand list of core updates that prevent automatic reloading
 ### Issues
-* Handle `TimeoutError` in fetch tasks
+- Handle `TimeoutError` in fetch tasks
 
-## 2.13.0
+## 2.13.0 (08 Jan 2024)
 ### Features
-* Add `Groups` Cog
+- Add `Groups` Cog
 ### Internal
-* Internally limit autocomplete choice lists to 25
+- Internally limit autocomplete choice lists to 25
 
-## 2.12.3
+## 2.12.3 (03 Nov 2023)
 ### Internal
-* Bump Pillow to `10.1.0` (CVE-2023-44271)
+- Bump Pillow to `10.1.0` (CVE-2023-44271)
 
-## 2.12.2
+## 2.12.2 (22 Oct 2023)
 ### Features
-* Add `all` option to `Moderation::Purge`
-* Add hardcoded `Howrse::Horsemen` commands until embed support is added to `Tags`
+- Add `all` option to `Moderation::Purge`
+- Add hardcoded `Howrse::Horsemen` commands until embed support is added to `Tags`
 ### Internal
-* Add custom `guild_only` check with guild_id allowances
+- Add custom `guild_only` check with guild_id allowances
 
-## 2.12.1
+## 2.12.1 (17 Jul 2023)
 ### Features
-* Add hardcoded `Howrse::Silverwood` commands until embed support is added to `Tags`
+- Add hardcoded `Howrse::Silverwood` commands until embed support is added to `Tags`
 
-## 2.12.0
+## 2.12.0 (17 Jul 2023)
 ### Features
-* Add `GuildFeature::TAG_DIRECT_INVOKE`
-* Reduce minimum `Tag` name length to 2 characters, down from 3
-
-### Internal
-* Default existing `Tags` to `AllowedMentions::None`
-* Add internal support for more granular `AllowedMentions` for `Tags` in the future
-
-## 2.11.0
-### Features
-* Add `GuildFeatures` Cog
+- Add `GuildFeature::TAG_DIRECT_INVOKE`
+- Reduce minimum `Tag` name length to 2 characters, down from 3
 
 ### Internal
-* Bump mypy version to 1.3.0
+- Default existing `Tags` to `AllowedMentions::None`
+- Add internal support for more granular `AllowedMentions` for `Tags` in the future
 
-## 2.10.4
-### Internal
-* Bump discord.py version to 2.3.1
-
-# 2.10.3
+## 2.11.0 (15 Jul 2023)
 ### Features
-* Improve descriptors for default and current parameters for `Runescape` commands
+- Add `GuildFeatures` Cog
 
-# 2.10.2
+### Internal
+- Bump mypy version to 1.3.0
+
+## 2.10.4 (30 Jun 2023)
+### Internal
+- Bump discord.py version to 2.3.1
+
+# 2.10.3 (25 Mar 2023)
+### Features
+- Improve descriptors for default and current parameters for `Runescape` commands
+
+# 2.10.2 (20 Mar 2023)
 ### Issues
-* Fix autocomplete for duplicate parameters in `Runescape` Cog
+- Fix autocomplete for duplicate parameters in `Runescape` Cog
 
-# 2.10.1
+# 2.10.1 (20 Mar 2023)
 ### Features
-* Full autocomplete support for `Runescape` commands
+- Full autocomplete support for `Runescape` commands
 
-# 2.10.0
+# 2.10.0 (13 Mar 2023)
 ### Features
-* Add Grand Exchange Market Alerts to `Runescape` Cog
-
+- Add Grand Exchange Market Alerts to `Runescape` Cog
 ### Internal
-* Add custom implementation for Expiring Dictionary; drop untyped third-party dependency
-
+- Add custom implementation for Expiring Dictionary; drop untyped third-party dependency
 ### Issues
-* Add `VoiceRoles::on_voice_state_update` permissions check for role updates
+- Add `VoiceRoles::on_voice_state_update` permissions check for role updates
 
-# 2.9.1
+# 2.9.1 (04 Feb 2023)
 ### Issues
-* Check for `manage_roles` permission in `VoiceRoles::on_voice_state_update`
+- Check for `manage_roles` permission in `VoiceRoles::on_voice_state_update`
 
-# 2.9.0
+# 2.9.0 (04 Jan 2023)
 ### Internal
-* Cache Frequently Accessed Database Tables in Memory
-* Reduce `VoiceRoles::on_voice_state_update` role update API calls to 1 with `Member.edit`
+- Cache Frequently Accessed Database Tables in Memory
+- Reduce `VoiceRoles::on_voice_state_update` role update API calls to 1 with `Member.edit`
 
-# 2.8.2
+# 2.8.2 (30 Dec 2022)
 ### Internal
-* Add Fuzzy Autocomplete Searching
+- Add Fuzzy Autocomplete Searching
 
-# 2.8.1
+# 2.8.1 (30 Dec 2022)
 ### Internal
-* Revert Global Database Connection
+- Revert Global Database Connection
 
-# 2.8.0
+# 2.8.0 (28 Dec 2022)
 ### Internal
-* Report exceptions intercepted via `Client::on_error` to Reporting Dashboard
-* Add `Runescape` Cog
+- Report exceptions intercepted via `Client::on_error` to Reporting Dashboard
+- Add `Runescape` Cog
 
-# 2.7.0
+# 2.7.2 (08 Dec 2022)
 ### Internal
-* Add mypy type checking to the project
+* Remove logging from `v2.7.1` -> `command` is `None` when prefix is used without a valid command name
 
-# 2.6.3
+# 2.7.1 (08 Dec 2022)
+### Internal
+* Add logging to identify cases where `on_command_error->command` is `None`
+
+# 2.7.0 (05 Dec 2022)
+### Internal
+- Add mypy type checking to the project
+
+## 2.6.3 (29 Nov 2022)
 ### Issues
-* Fix prefix iteration for Raspberry Pi
+- Fix prefix iteration for Raspberry Pi
 
-## 2.6.2
+## 2.6.2 (29 Nov 2022)
 ### Internal
-* Add typing to database retrieval queries
-
+- Add typing to database retrieval queries
 ### Issues
-* Fix several `VoiceRole` prompts
+- Fix several `VoiceRole` prompts
 
-## 2.6.1
+## 2.6.1 (27 Nov 2022)
 ### Internal
-* Bump Pillow to `9.2.0` (CVE-2022-45198)
+- Bump Pillow to `9.2.0` (CVE-2022-45198)
 
-## 2.6.0
+## 2.6.0 (27 Nov 2022)
 ### Internal
-* Replace manual datetime localization with Discord-native datetime markdown
+- Replace manual datetime localization with Discord-native datetime markdown
 
-## 2.5.0
+## 2.5.0 (24 Nov 2022)
 ### Internal
-* Add Dynamic Cooldowns to commands with network requests
+- Add Dynamic Cooldowns to commands with network requests
 
-## 2.4.2
+## 2.4.2 (20 Nov 2022)
 ### Internal
-* Reduce NetworkRequest exception logging
+- Reduce NetworkRequest exception logging
 
-## 2.4.1
+## 2.4.1 (20 Nov 2022)
 ### Internal
-* Refactor Firebase Error Reporting to be accessible globally
+- Refactor Firebase Error Reporting to be accessible globally
 
-## 2.4.0
+## 2.4.0 (14 Nov 2022)
 ### Features
-* Overhaul `Yoink` commands to use a new `EmojiManager` class
-
+- Overhaul `Yoink` commands to use a new `EmojiManager` class
 ### Internal
-* Insert logging line break at the start of every day
-* Bump discord.py version to `2.1.0`
-
+- Insert logging line break at the start of every day
+- Bump discord.py version to `2.1.0`
 ### Issues
-* Fix `avatar_url` -> `avatar.url` in Utility::UserInfo
+- Fix `avatar_url` -> `avatar.url` in Utility::UserInfo
 
-## 2.3.2
+## 2.3.2 (06 Nov 2022)
 ### Issues
-* Calculate actual limits for animated and static emojis during yoink commands
+- Calculate actual limits for animated and static emojis during yoink commands
 
-## 2.3.1
+## 2.3.1 (02 Nov 2022)
 ### Internal
-* Implement Exponential Backoff for DDOAudit Network Requests
+- Implement Exponential Backoff for DDOAudit Network Requests
 
-## 2.3.0
+## 2.3.0 (31 Oct 2022)
 ### Features
-* Convert `LostArk::Split` to AppCommand
+- Convert `LostArk::Split` to AppCommand
 
-## 2.2.2
+## 2.2.2 (23 Oct 2022)
 ### Issues
-* Add NoResumeFilter to discord.py's StreamHandler during setup instead of logger after setup
+- Add NoResumeFilter to discord.py's StreamHandler during setup instead of logger after setup
 
-## 2.2.1
+## 2.2.1 (22 Oct 2022)
 ### Internal
-* Swap discord.py and DreamBot logging colors
-* Add RESUMED filter to discord.py logger
+- Swap discord.py and DreamBot logging colors
+- Add RESUMED filter to discord.py logger
 
-## 2.2.0
+## 2.2.0 (13 Oct 2022)
 ### Internal
-* Remove only 'held' roles in `on_voice_state_update` rather than all possible roles
+- Remove only 'held' roles in `on_voice_state_update` rather than all possible roles
 
-## 2.1.0
+## 2.1.0 (10 Oct 2022)
 ### Internal
-* Add file logging handlers
+- Add file logging handlers
 
-## 2.0.1
+## 2.0.1 (08 Oct 2022)
 ### Issues
-* Fix `Admin::git_pull` not utilizing `safe_send`
+- Fix `Admin::git_pull` not utilizing `safe_send`
 
-## 2.0.0
+## 2.0.0 (08 Oct 2022)
 ### Internal
-* Utilize SQL migrations for database management
-* Utilize context managers for aiohttp sessions and aiosqlite connections
-* Bump Python version to `3.9.2`
-* Separate discord.py and bot logging
-* Bump discord.py version to `2.0.1`
+- Utilize SQL migrations for database management
+- Utilize context managers for aiohttp sessions and aiosqlite connections
+- Bump Python version to `3.9.2`
+- Separate discord.py and bot logging
+- Bump discord.py version to `2.0.1`
 
-## 1.0.0
-* Base `discord.ext.commands` Bot
+## 1.0.0 (15 Jul 2022)
+### Internal
+- Base `discord.ext.commands` Bot

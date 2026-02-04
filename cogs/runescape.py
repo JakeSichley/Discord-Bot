@@ -22,41 +22,50 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, KeysView, Optional
 from asyncio import Event, TimeoutError
-from collections import defaultdict
-from contextlib import suppress
-from datetime import timedelta
 from hashlib import sha256
+from datetime import timedelta
 from itertools import chain
+from contextlib import suppress
+from collections import defaultdict
 from json.decoder import JSONDecodeError
-from typing import List, Optional, Dict, Literal, KeysView, Any, TYPE_CHECKING
 
 import aiosqlite
+from discord import Embed, HTTPException, app_commands
 from aiosqlite import Error as aiosqliteError, IntegrityError
-from discord import app_commands, Embed, HTTPException
-from discord.app_commands import Choice, Transform, Range, CheckFailure
-from discord.ext import commands, tasks
+from discord.ext import tasks, commands
 from discord.utils import utcnow
 from humanfriendly import format_timespan
+from discord.app_commands import Range, Choice, Transform, CheckFailure
 
+from utils.utils import plural, format_unix_dt
 from utils.autocomplete import generate_autocomplete_choices
+from utils.transformers import SentinelRange, HumanDatetimeDuration, RunescapeNumberTransformer  # noqa: TC001
 from utils.database.helpers import (
-    execute_query, typed_retrieve_query, typed_retrieve_one_query, typed_optional_retrieve_one_query,
-    decode_blob_to_integer_array, encode_integer_array_to_blob
+    execute_query,
+    typed_retrieve_query,
+    typed_retrieve_one_query,
+    decode_blob_to_integer_array,
+    encode_integer_array_to_blob,
+    typed_optional_retrieve_one_query,
 )
-from utils.database.table_dataclasses import RunescapeAlert
 from utils.network.exceptions import EmptyResponseError
 from utils.observability.loggers import bot_logger, make_debug_scope
-from utils.runescape.runescape_data_classes import (
-    RunescapeItem, ItemMarketData, AlertEmbedFragment, RunescapeHerbComparison
-)
 from utils.runescape.runescape_herbs import generate_herb_comparison
-from utils.transformers import RunescapeNumberTransformer, HumanDatetimeDuration, SentinelRange
-from utils.utils import format_unix_dt, plural
+from utils.database.table_dataclasses import RunescapeAlert
+from utils.runescape.runescape_data_classes import (
+    RunescapeItem,
+    ItemMarketData,
+    AlertEmbedFragment,
+    RunescapeHerbComparison,
+)
 
 if TYPE_CHECKING:
     from datetime import datetime
+
     from discord import Interaction
+
     from dreambot import DreamBot
 
 FIVE_MINUTES = 300
@@ -68,6 +77,7 @@ MARKET_DATA_REQUIRED_EXTRAS_KEY = 'market_data_required'
 
 # TODO: Use pluralization helper for things like herb(s), patch(es)
 # TODO: Add frequently accessed item_id's (global? user?) for /runescape_item
+
 
 # autocomplete namespaces result in a lot of duplicated code
 # noinspection DuplicatedCode
@@ -139,7 +149,8 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         # if there's no item data, don't process the interaction
         if not self.item_data:
-            raise CheckFailure('RuneScape Item Data is currently unavailable - please try again later.')
+            msg = 'RuneScape Item Data is currently unavailable - please try again later.'
+            raise CheckFailure(msg)
 
         # if we don't need market data, process the interaction
         if not interaction.command.extras.get(MARKET_DATA_REQUIRED_EXTRAS_KEY, False):
@@ -147,7 +158,8 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         # if we've never fetched market data or the market data is expired, don't process the interaction
         if not self.last_market_data_fetch_time or utcnow() > self.last_market_data_fetch_time + self.MARKET_DATA_TTL:
-            raise CheckFailure('RuneScape Market Data is currently unavailable - please try again later.')
+            msg = 'RuneScape Market Data is currently unavailable - please try again later.'
+            raise CheckFailure(msg)
 
         return True
 
@@ -167,14 +179,10 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                 self.bot.database,
                 str,
                 'SELECT CACHE_VALUE FROM PERSISTENT_CACHE WHERE CACHE_KEY=?',
-                ('RUNESCAPE_ITEM_IDS_HASH',)
+                ('RUNESCAPE_ITEM_IDS_HASH',),
             )
 
-        alerts = await typed_retrieve_query(
-            self.bot.database,
-            RunescapeAlert,
-            'SELECT * FROM RUNESCAPE_ALERTS'
-        )
+        alerts = await typed_retrieve_query(self.bot.database, RunescapeAlert, 'SELECT * FROM RUNESCAPE_ALERTS')
 
         for alert in alerts:
             self.alerts[alert.owner_id][alert.item_id] = alert
@@ -183,10 +191,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     MARK: - App Commands
     """
 
-    @app_commands.command(
-        name='item',
-        description='Returns basic data and market information for a given item'
-    )
+    @app_commands.command(name='item', description='Returns basic data and market information for a given item')
     @app_commands.describe(item_id='The item to retrieve data for')
     @app_commands.rename(item_id='item')
     async def runescape_item(self, interaction: 'Interaction[DreamBot]', item_id: int) -> None:
@@ -211,7 +216,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             title=item.name,
             description=item.examine,
             color=0x971212,
-            url=f'https://oldschool.runescape.wiki/w/{item.name.replace(" ", "_")}'
+            url=f'https://oldschool.runescape.wiki/w/{item.name.replace(" ", "_")}',
         )
         embed.set_thumbnail(url=f'https://static.runelite.net/cache/item/icon/{item_id}.png')
 
@@ -231,15 +236,15 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     @app_commands.command(
         name='herb_comparison',
         description='Compares profitability for herb farming',
-        extras=MARKET_DATA_REQUIRED_EXTRAS
+        extras=MARKET_DATA_REQUIRED_EXTRAS,
     )
     @app_commands.describe(patches='The number of herb patches (Default: 10)')
     @app_commands.describe(average_herbs='The average number of herbs harvested per patch (Default: 8)')
     async def runescape_herb_comparison(
-            self,
-            interaction: 'Interaction[DreamBot]',
-            patches: Range[int, 1, 100] = 10,
-            average_herbs: Range[int, 1, 50] = 8
+        self,
+        interaction: 'Interaction[DreamBot]',
+        patches: Range[int, 1, 100] = 10,
+        average_herbs: Range[int, 1, 50] = 8,
     ) -> None:
         """
         Generates an embed detailing the profitability of each herb based on current market data.
@@ -254,22 +259,20 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         """
 
         herb_comparisons: List[RunescapeHerbComparison] = generate_herb_comparison(
-            self.item_data,
-            patches,
-            average_herbs
+            self.item_data, patches, average_herbs
         )
         herb_comparisons.sort(reverse=True, key=lambda x: x.max)
 
         patches_pluralized = 'patch' if patches == 1 else 'patches'
 
         embed = Embed(
-            title="Old School RuneScape Herb Profitability Comparison",
-            description=f"**{patches} {patches_pluralized}** with an average of **{average_herbs} herbs** per patch "
-                        f"based on current market data",
-            color=0x971212
+            title='Old School RuneScape Herb Profitability Comparison',
+            description=f'**{patches} {patches_pluralized}** with an average of **{average_herbs} herbs** per patch '
+            f'based on current market data',
+            color=0x971212,
         )
-        embed.set_thumbnail(url="https://oldschool.runescape.wiki/images/Herblore_icon_%28detail%29.png")
-        embed.set_footer(text="Please report any issues to my owner!")
+        embed.set_thumbnail(url='https://oldschool.runescape.wiki/images/Herblore_icon_%28detail%29.png')
+        embed.set_footer(text='Please report any issues to my owner!')
 
         embed.add_field(name='Herb', value='\n'.join(f'{x.emoji} {x.name}' for x in herb_comparisons))
         embed.add_field(name='Profit (Clean)', value='\n'.join(x.clean_profit_display for x in herb_comparisons))
@@ -282,26 +285,24 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     """
 
     @alert_subgroup.command(
-        name='add',
-        description='Registers an item for market alerts',
-        extras=MARKET_DATA_REQUIRED_EXTRAS
+        name='add', description='Registers an item for market alerts', extras=MARKET_DATA_REQUIRED_EXTRAS
     )
     @app_commands.describe(
         item_id='The item to receive alerts for',
         low_price='Optional: Trigger an alert if the instant buy price goes below this value',
         high_price='Optional: Trigger an alert if the instant sell price goes above this value',
         alert_frequency='Optional: How frequently you should be notified that the price has exceeded a target',
-        maximum_alerts='Optional: Remove the alert after receiving this many notifications'
+        maximum_alerts='Optional: Remove the alert after receiving this many notifications',
     )
     @app_commands.rename(item_id='item')
     async def add_alert(
-            self,
-            interaction: 'Interaction[DreamBot]',
-            item_id: int,
-            low_price: Optional[Transform[int, RunescapeNumberTransformer]] = None,
-            high_price: Optional[Transform[int, RunescapeNumberTransformer]] = None,
-            alert_frequency: Optional[Transform[int, HumanDatetimeDuration(FIVE_MINUTES, ONE_YEAR)]] = None,
-            maximum_alerts: Optional[Range[int, MIN_ALERTS, MAX_ALERTS]] = None
+        self,
+        interaction: 'Interaction[DreamBot]',
+        item_id: int,
+        low_price: Optional[Transform[int, RunescapeNumberTransformer]] = None,
+        high_price: Optional[Transform[int, RunescapeNumberTransformer]] = None,
+        alert_frequency: Optional[Transform[int, HumanDatetimeDuration(FIVE_MINUTES, ONE_YEAR)]] = None,
+        maximum_alerts: Optional[Range[int, MIN_ALERTS, MAX_ALERTS]] = None,
     ) -> None:
         """
         Creates a market alert for a Runescape item.
@@ -329,7 +330,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             self.item_data[item_id].low,
             self.item_data[item_id].high,
             low_price,
-            high_price
+            high_price,
         )
 
         if item_id not in self.item_data:
@@ -347,7 +348,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                 self.bot.database,
                 'INSERT INTO RUNESCAPE_ALERTS VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 alert.unpack(),
-                errors_to_suppress=aiosqlite.IntegrityError
+                errors_to_suppress=aiosqlite.IntegrityError,
             )
         except aiosqliteError as e:
             if isinstance(e, IntegrityError):
@@ -366,19 +367,19 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         low_price='Optional: Trigger an alert if the instant buy price goes below this value',
         high_price='Optional: Trigger an alert if the instant sell price goes above this value',
         alert_frequency='Optional: How frequently you should be notified that the price has exceeded a target',
-        maximum_alerts='Optional: Remove the alert after receiving this many notifications. Resets existing count'
+        maximum_alerts='Optional: Remove the alert after receiving this many notifications. Resets existing count',
     )
     @app_commands.rename(item_id='item')
     async def edit_alert(
-            self,
-            interaction: 'Interaction[DreamBot]',
-            item_id: int,
-            low_price: Optional[Transform[int, RunescapeNumberTransformer(sentinel_value=-1)]] = None,
-            high_price: Optional[Transform[int, RunescapeNumberTransformer(sentinel_value=-1)]] = None,
-            alert_frequency: Optional[
-                Transform[int, HumanDatetimeDuration(FIVE_MINUTES, ONE_YEAR, sentinel_value='-1')]
-            ] = None,
-            maximum_alerts: Optional[Transform[int, SentinelRange(MIN_ALERTS, MAX_ALERTS, sentinel_value=-1)]] = None
+        self,
+        interaction: 'Interaction[DreamBot]',
+        item_id: int,
+        low_price: Optional[Transform[int, RunescapeNumberTransformer(sentinel_value=-1)]] = None,
+        high_price: Optional[Transform[int, RunescapeNumberTransformer(sentinel_value=-1)]] = None,
+        alert_frequency: Optional[
+            Transform[int, HumanDatetimeDuration(FIVE_MINUTES, ONE_YEAR, sentinel_value='-1')]
+        ] = None,
+        maximum_alerts: Optional[Transform[int, SentinelRange(MIN_ALERTS, MAX_ALERTS, sentinel_value=-1)]] = None,
     ) -> None:
         """
         Edits an existing market alert for a Runescape item.
@@ -430,7 +431,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                 self.bot.database,
                 RunescapeAlert,
                 'SELECT * FROM RUNESCAPE_ALERTS WHERE OWNER_ID=? AND ITEM_ID=? LIMIT 1',
-                (interaction.user.id, item_id)
+                (interaction.user.id, item_id),
             )
         except aiosqliteError:
             await interaction.response.send_message('Failed to find an alert for this item.', ephemeral=True)
@@ -445,7 +446,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             await execute_query(
                 self.bot.database,
                 'INSERT OR REPLACE INTO RUNESCAPE_ALERTS VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                alert.unpack()
+                alert.unpack(),
             )
         except aiosqliteError:
             await interaction.response.send_message('Failed to update the alert.', ephemeral=True)
@@ -479,7 +480,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             title=item.name,
             description=item.examine,
             color=0x971212,
-            url=f'https://oldschool.runescape.wiki/w/{item.name.replace(" ", "_")}'
+            url=f'https://oldschool.runescape.wiki/w/{item.name.replace(" ", "_")}',
         )
         embed.set_thumbnail(url=f'https://static.runelite.net/cache/item/icon/{item_id}.png')
 
@@ -487,12 +488,10 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         embed.add_field(name='Alert Sell Price', value=f'{alert.target_low:,} coins' if alert.target_low else '-')
         embed.add_field(name='​', value='​')
         embed.add_field(name='Initial Buy Price', value=f'{alert.initial_low:,} coins' if alert.initial_low else '-')
-        embed.add_field(
-            name='Initial Sell Price', value=f'{alert.initial_high:,} coins' if alert.initial_high else '-'
-        )
+        embed.add_field(name='Initial Sell Price', value=f'{alert.initial_high:,} coins' if alert.initial_high else '-')
         embed.add_field(name='​', value='​')
         embed.add_field(name='Alert Frequency', value=format_timespan(alert.frequency) if alert.frequency else 'None')
-        embed.add_field(name='Last Alert', value=format_unix_dt(alert.last_alert, "R") if alert.last_alert else 'Never')
+        embed.add_field(name='Last Alert', value=format_unix_dt(alert.last_alert, 'R') if alert.last_alert else 'Never')
         embed.add_field(name='​', value='​')
         embed.add_field(name='Current Alerts', value=str(alert.current_alerts) if alert.current_alerts else '0')
         embed.add_field(name='Maximum Alerts', value=str(alert.maximum_alerts) if alert.maximum_alerts else 'None')
@@ -525,7 +524,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             await execute_query(
                 self.bot.database,
                 'DELETE FROM RUNESCAPE_ALERTS WHERE OWNER_ID=? AND ITEM_ID=?',
-                (interaction.user.id, item_id)
+                (interaction.user.id, item_id),
             )
         except aiosqliteError:
             await interaction.response.send_message('Failed to delete the alert for this item.', ephemeral=True)
@@ -543,7 +542,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
     @view_alert.autocomplete('item_id')
     @delete_alert.autocomplete('item_id')
     async def existing_alert_item_autocomplete(
-            self, interaction: 'Interaction[DreamBot]', current: str
+        self, interaction: 'Interaction[DreamBot]', current: str
     ) -> List[Choice[int]]:
         """
         Autocompletes item names to item id's for alert commands from a subset of item's with existing alerts.
@@ -566,9 +565,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             return [Choice(name=self.item_data[x.item_id].name, value=x.item_id) for x in list(alerts.values())[:25]]
 
         return generate_autocomplete_choices(
-            current,
-            [(self.item_data[x.item_id].name, x.item_id) for x in alerts.values()],
-            minimum_threshold=100
+            current, [(self.item_data[x.item_id].name, x.item_id) for x in alerts.values()], minimum_threshold=100
         )
 
     # noinspection PyUnusedLocal
@@ -588,13 +585,13 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         bot_logger.debug(
             f'{interaction.id} Starting item_id autocomplete for term `{current}`',
-            extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE
+            extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE,
         )
 
         if not current:
             bot_logger.debug(
                 f'{interaction.id} Term was empty, returning first 25 items',
-                extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE
+                extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE,
             )
             return [Choice(name=item.name, value=item_id) for item_id, item in list(self.item_data.items())[:25]]
 
@@ -605,19 +602,17 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         if precomputed_choices is not None:
             bot_logger.debug(
                 f'{interaction.id} Received decoded precomputed choices, returning {len(precomputed_choices)} items',
-                extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE
+                extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE,
             )
             return precomputed_choices
 
         choices = generate_autocomplete_choices(
-            current,
-            [(item.name, item_id) for item_id, item in self.item_data.items()],
-            minimum_threshold=60.0
+            current, [(item.name, item_id) for item_id, item in self.item_data.items()], minimum_threshold=60.0
         )
 
         bot_logger.debug(
             f'{interaction.id} Generated new choices, returning {len(choices)} items',
-            extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE
+            extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE,
         )
 
         self.bot.loop.create_task(
@@ -627,7 +622,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
         return choices
 
     async def fetch_precomputed_item_autocomplete_ids(
-            self, term: str, interaction_id: int
+        self, term: str, interaction_id: int
     ) -> Optional[List[Choice[int]]]:
         """
         Fetches precomputed autocomplete item ids for a search term, if available.
@@ -651,21 +646,18 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             if blob is not None:
                 bot_logger.debug(
                     f'{interaction_id} Precomputed choices found, decoding blob to item_ids',
-                    extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE
+                    extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE,
                 )
                 return [Choice(name=self.item_data[key].name, value=key) for key in decode_blob_to_integer_array(blob)]
 
         except aiosqliteError as e:
             bot_logger.warning(f'OSRS Precomputed Fetch Error: {type(e)} - {e}')
 
-        bot_logger.debug(
-            f'{interaction_id} Precomputed choices not found',
-            extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE
-        )
+        bot_logger.debug(f'{interaction_id} Precomputed choices not found', extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE)
         return None
 
     async def record_precomputed_item_autocomplete_ids(
-            self, term: str, item_ids: List[int], interaction_id: int
+        self, term: str, item_ids: List[int], interaction_id: int
     ) -> None:
         """
         Records precomputed autocomplete item ids for a search term.
@@ -687,7 +679,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             )
             bot_logger.debug(
                 f'{interaction_id} Recording `{len(item_ids)}` precomputed autocomplete item ids for term `{term}`',
-                extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE
+                extra=self.ITEM_ID_AUTOCOMPLETE_DEBUG_SCOPE,
             )
         except aiosqliteError as e:
             bot_logger.warning(f'OSRS Precomputed Write Error: {type(e)} - {e}')
@@ -722,7 +714,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
                 self.bot.database,
                 'INSERT INTO PERSISTENT_CACHE (CACHE_KEY, CACHE_VALUE) VALUES (?, ?) '
                 'ON CONFLICT(CACHE_KEY) DO UPDATE SET CACHE_VALUE=EXCLUDED.CACHE_VALUE',
-                ('RUNESCAPE_ITEM_IDS_HASH', new_item_ids_hash)
+                ('RUNESCAPE_ITEM_IDS_HASH', new_item_ids_hash),
             )
         except aiosqliteError as e:
             bot_logger.error(f'OSRS Persistent Cache (`RUNESCAPE_ITEM_IDS_HASH`) Write Error: {type(e)} - {e}')
@@ -734,17 +726,14 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             self.item_ids_hash = new_item_ids_hash
 
             try:
-                await execute_query(
-                    self.bot.database,
-                    'DELETE FROM RUNESCAPE_ITEM_NAME_AUTOCOMPLETE'
-                )
+                await execute_query(self.bot.database, 'DELETE FROM RUNESCAPE_ITEM_NAME_AUTOCOMPLETE')
                 bot_logger.info('OSRS Item Name Autocomplete Cache Invalidated')
             except aiosqliteError as e:
                 bot_logger.error(f'OSRS Item Name Autocomplete Invalidation Error: {type(e)} - {e}')
 
     @add_alert.autocomplete('low_price')
     async def add_item_market_low_price_autocomplete(
-            self, interaction: 'Interaction[DreamBot]', current: str
+        self, interaction: 'Interaction[DreamBot]', current: str
     ) -> List[Choice[str]]:
         """
         Autocompletes item market prices for price parameters.
@@ -774,7 +763,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
     @add_alert.autocomplete('high_price')
     async def add_item_market_high_price_autocomplete(
-            self, interaction: 'Interaction[DreamBot]', current: str
+        self, interaction: 'Interaction[DreamBot]', current: str
     ) -> List[Choice[str]]:
         """
         Autocompletes item market prices for price parameters.
@@ -804,7 +793,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
     @add_alert.autocomplete('alert_frequency')
     async def add_item_alert_frequency_autocomplete(
-            self, interaction: 'Interaction[DreamBot]', current: str
+        self, interaction: 'Interaction[DreamBot]', current: str
     ) -> List[Choice[str]]:
         """
         Autocompletes parameters for the edit command, which also allows for sentinel values.
@@ -819,7 +808,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         choices = [
             Choice(name='Maximum Frequency: 5 minutes', value=f'{FIVE_MINUTES}s'),
-            Choice(name='Minimum Frequency: 1 year', value=f'{ONE_YEAR}s')
+            Choice(name='Minimum Frequency: 1 year', value=f'{ONE_YEAR}s'),
         ]
 
         if current:
@@ -829,7 +818,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
     @add_alert.autocomplete('maximum_alerts')
     async def add_item_maximum_alerts_autocomplete(
-            self, interaction: 'Interaction[DreamBot]', current: str
+        self, interaction: 'Interaction[DreamBot]', current: str
     ) -> List[Choice[str]]:
         """
         Autocompletes parameters for the edit command, which also allows for sentinel values.
@@ -844,7 +833,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         choices = [
             Choice(name=f'Minimum Alerts: {MIN_ALERTS:,} alert', value=str(MIN_ALERTS)),
-            Choice(name=f'Maximum Alerts: {MAX_ALERTS:,} alerts', value=str(MAX_ALERTS))
+            Choice(name=f'Maximum Alerts: {MAX_ALERTS:,} alerts', value=str(MAX_ALERTS)),
         ]
 
         if current:
@@ -888,7 +877,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
     @edit_alert.autocomplete('high_price')
     async def edit_item_high_price_autocomplete(
-            self, interaction: 'Interaction[DreamBot]', current: str
+        self, interaction: 'Interaction[DreamBot]', current: str
     ) -> List[Choice[str]]:
         """
         Autocompletes parameters for the edit command, which also allows for sentinel values.
@@ -924,7 +913,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
     @edit_alert.autocomplete('alert_frequency')
     async def edit_item_alert_frequency_autocomplete(
-            self, interaction: 'Interaction[DreamBot]', current: str
+        self, interaction: 'Interaction[DreamBot]', current: str
     ) -> List[Choice[str]]:
         """
         Autocompletes parameters for the edit command, which also allows for sentinel values.
@@ -942,7 +931,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         choices = [
             Choice(name='Maximum Frequency: 5 minutes', value=str(FIVE_MINUTES)),
-            Choice(name='Minimum Frequency: 1 year', value=str(ONE_YEAR))
+            Choice(name='Minimum Frequency: 1 year', value=str(ONE_YEAR)),
         ]
 
         alert = self.alerts[interaction.user.id][interaction.namespace.item]
@@ -957,7 +946,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
     @edit_alert.autocomplete('maximum_alerts')
     async def edit_item_maximum_alerts_autocomplete(
-            self, interaction: 'Interaction[DreamBot]', current: str
+        self, interaction: 'Interaction[DreamBot]', current: str
     ) -> List[Choice[str]]:
         """
         Autocompletes parameters for the edit command, which also allows for sentinel values.
@@ -975,7 +964,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         choices = [
             Choice(name=f'Minimum Alerts: {MIN_ALERTS:,} alert', value=str(MIN_ALERTS)),
-            Choice(name=f'Maximum Alerts: {MAX_ALERTS:,} alerts', value=str(MAX_ALERTS))
+            Choice(name=f'Maximum Alerts: {MAX_ALERTS:,} alerts', value=str(MAX_ALERTS)),
         ]
 
         alert = self.alerts[interaction.user.id][interaction.namespace.item]
@@ -1007,8 +996,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         try:
             mapping_response: List[Dict[str, Any]] = await self.bot.network_client.fetch_json(
-                'https://prices.runescape.wiki/api/v1/osrs/mapping',
-                raise_for_empty_response=True
+                'https://prices.runescape.wiki/api/v1/osrs/mapping', raise_for_empty_response=True
             )
 
             for raw_item in mapping_response:
@@ -1057,8 +1045,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         try:
             market_response: Dict[str, Dict[str, Any]] = await self.bot.network_client.fetch_json(
-                'https://prices.runescape.wiki/api/v1/osrs/latest',
-                raise_for_empty_response=True
+                'https://prices.runescape.wiki/api/v1/osrs/latest', raise_for_empty_response=True
             )
 
             for item_id in [item_id for item_id in market_response['data'] if int(item_id) in self.item_data]:
@@ -1163,10 +1150,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
             return True
 
-        valid_alerts = filter(
-            validate_alert,
-            chain.from_iterable(x.values() for x in self.alerts.values())
-        )
+        valid_alerts = filter(validate_alert, chain.from_iterable(x.values() for x in self.alerts.values()))
 
         embed_fragment_type = dict[int, dict[Literal['low', 'high'], List[AlertEmbedFragment]]]
         # [user_id: ['low', 'high': [AlertEmbedFragment]]]
@@ -1179,22 +1163,14 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             if alert.target_high is not None and item_low is not None and item_low >= alert.target_high:
                 embed_fragments[alert.owner_id]['high'].append(
                     AlertEmbedFragment(
-                        alert.owner_id,
-                        alert.item_id,
-                        self.item_data[alert.item_id].name,
-                        item_low,
-                        alert.target_high
+                        alert.owner_id, alert.item_id, self.item_data[alert.item_id].name, item_low, alert.target_high
                     )
                 )
 
             if alert.target_low is not None and item_high is not None and item_high <= alert.target_low:
                 embed_fragments[alert.owner_id]['low'].append(
                     AlertEmbedFragment(
-                        alert.owner_id,
-                        alert.item_id,
-                        self.item_data[alert.item_id].name,
-                        item_high,
-                        alert.target_low
+                        alert.owner_id, alert.item_id, self.item_data[alert.item_id].name, item_high, alert.target_low
                     )
                 )
 
@@ -1219,35 +1195,35 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             return
 
         embed = Embed(
-            title="Old School RuneScape Market Alerts",
-            description="The following items had their market prices exceed your alert thresholds!",
-            color=0x971212
+            title='Old School RuneScape Market Alerts',
+            description='The following items had their market prices exceed your alert thresholds!',
+            color=0x971212,
         )
         embed.set_thumbnail(
-            url="https://oldschool.runescape.wiki/images/thumb/Grand_Exchange_logo.png/150px-Grand_Exchange_logo.png"
+            url='https://oldschool.runescape.wiki/images/thumb/Grand_Exchange_logo.png/150px-Grand_Exchange_logo.png'
         )
 
         if high := alerts['high']:
-            embed.add_field(name="Price Gains", value='\n'.join(x.name for x in alerts['high']))
-            embed.add_field(name="Alert Price", value='\n'.join(f'{x.target_price:,}' for x in alerts['high']))
+            embed.add_field(name='Price Gains', value='\n'.join(x.name for x in alerts['high']))
+            embed.add_field(name='Alert Price', value='\n'.join(f'{x.target_price:,}' for x in alerts['high']))
             embed.add_field(
-                name="Market Price",
+                name='Market Price',
                 value='\n'.join(
                     f'{x.current_price:,} ({percentage_change(x.target_price, x.current_price)})' for x in high
-                )
+                ),
             )
 
         if low := alerts['low']:
-            embed.add_field(name="Price Drops", value='\n'.join(x.name for x in alerts['low']))
-            embed.add_field(name="Alert Price", value='\n'.join(f'{x.target_price:,}' for x in alerts['low']))
+            embed.add_field(name='Price Drops', value='\n'.join(x.name for x in alerts['low']))
+            embed.add_field(name='Alert Price', value='\n'.join(f'{x.target_price:,}' for x in alerts['low']))
             embed.add_field(
-                name="Market Price",
+                name='Market Price',
                 value='\n'.join(
                     f'{x.current_price:,} ({percentage_change(x.target_price, x.current_price)})' for x in low
-                )
+                ),
             )
 
-        embed.set_footer(text="Please report any issues to my owner!")
+        embed.set_footer(text='Please report any issues to my owner!')
 
         try:
             await user.send(embed=embed)
@@ -1295,7 +1271,7 @@ async def record_alert(database: str, user_id: int, item_id: int, last_alert_tim
         await execute_query(
             database,
             'UPDATE RUNESCAPE_ALERTS SET CURRENT_ALERTS=CURRENT_ALERTS+1, LAST_ALERT=? WHERE OWNER_ID=? AND ITEM_ID=?',
-            (last_alert_time, user_id, item_id)
+            (last_alert_time, user_id, item_id),
         )
     except aiosqliteError:
         pass

@@ -22,9 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional
 
-from utils.runescape.runescape_data_classes import RunescapeHerb, RunescapeHerbComparison, RunescapeItem
+from utils.runescape.runescape_data_classes import RunescapeHerb, RunescapeItem, RunescapeHerbComparison
 
 ALL_HERBS = [
     RunescapeHerb('Avantoe', '<:avantoe:1208996504107487272>', 5298, 261, 211),
@@ -48,7 +48,7 @@ ULTRACOMPOST_ID = 21483
 
 
 def generate_herb_comparison(
-        item_data: Dict[int, RunescapeItem], patches: int, average_herbs: float
+    item_data: Dict[int, RunescapeItem], patches: int, average_herbs: float
 ) -> List[RunescapeHerbComparison]:
     """
     Generates a list of RunescapeHerbComparisons.
@@ -65,29 +65,32 @@ def generate_herb_comparison(
     compost_cost = item_data[ULTRACOMPOST_ID].high or 0
 
     return [
-        profitability for herb in ALL_HERBS
-        if (profitability := calculate_profitability(
-            herb.name,
-            herb.emoji,
-            compost_cost,
-            item_data[herb.seed_id].high,
-            item_data[herb.clean_weed_id].low,
-            item_data[herb.grimy_weed_id].low,
-            patches,
-            average_herbs
-        ))
+        profitability
+        for herb in ALL_HERBS
+        if (
+            profitability := calculate_profitability(
+                herb.name,
+                herb.emoji,
+                compost_cost,
+                item_data[herb.seed_id].high,
+                item_data[herb.clean_weed_id].low,
+                item_data[herb.grimy_weed_id].low,
+                patches,
+                average_herbs,
+            )
+        )
     ]
 
 
 def calculate_profitability(
-        name: str,
-        emoji: str,
-        compost_cost: float,
-        seed_cost: Optional[float],
-        clean_cost: Optional[float],
-        grimy_cost: Optional[float],
-        patches: int,
-        average_herbs: float
+    name: str,
+    emoji: str,
+    compost_cost: float,
+    seed_cost: Optional[float],
+    clean_cost: Optional[float],
+    grimy_cost: Optional[float],
+    patches: int,
+    average_herbs: float,
 ) -> Optional[RunescapeHerbComparison]:
     """
     Returns the smallest profitable amount (between grimy and clean).

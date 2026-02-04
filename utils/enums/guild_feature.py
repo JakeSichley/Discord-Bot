@@ -31,8 +31,8 @@ class GuildFeature(IntFlag):
     An Enum class that represents variables toggleable features for a guild.
     """
 
-    TAG_DIRECT_INVOKE = 2 ** 0
-    ALTERNATIVE_TWITTER_EMBEDS = 2 ** 1
+    TAG_DIRECT_INVOKE = 2**0
+    ALTERNATIVE_TWITTER_EMBEDS = 2**1
 
     @property
     def display_name(self) -> str:
@@ -87,5 +87,4 @@ def set_guild_feature(features: int, feature: GuildFeature, value: Optional[bool
 
     if value:
         return features | (1 << feature.value - 1)
-    else:
-        return features & ~(1 << feature.value - 1)
+    return features & ~(1 << feature.value - 1)

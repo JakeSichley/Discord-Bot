@@ -22,50 +22,44 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from collections import defaultdict
-from contextlib import suppress
-from datetime import datetime
-from os import getcwd, listdir, path
+from os import path, getcwd, listdir
 from sys import stderr, exc_info
+from typing import TYPE_CHECKING, Any, Dict, List, Type, Union, Optional, TypedDict, DefaultDict
+from datetime import datetime
 from traceback import print_exception, format_exception
-from typing import Optional, List, Dict, Type, DefaultDict, TypedDict, Union, Any, TYPE_CHECKING
+from contextlib import suppress
+from collections import defaultdict
 
 from aiohttp import ClientSession
-from discord import ActivityType, Intents, Status
+from discord import Status, Intents, ActivityType
 from discord.ext import tasks
-from discord.ext.commands import ExtensionError, Bot, when_mentioned
 from google.cloud import errorreporting_v1beta1 as error_reporting
+from discord.ext.commands import Bot, ExtensionError, when_mentioned
 
+from utils.utils import generate_activity
 from utils.context import Context
 from utils.cooldowns import CooldownMapping
 from utils.database.cache import TableCache
-from utils.network.client import NetworkClient
 from utils.observability.loggers import bot_logger
-from utils.utils import generate_activity
 
 if TYPE_CHECKING:
     import discord
 
-GitOptionals = TypedDict(
-    'GitOptionals',
-    {
-        'git_user': Optional[str],
-        'git_repo': Optional[str],
-        'git_token': Optional[str]
-    }
-)
+    from utils.network.client import NetworkClient
 
-Optionals = TypedDict(
-    'Optionals',
-    {
-        'status_type': ActivityType,
-        'status_text': Optional[str],
-        'disabled_cogs': List[str],
-        'firebase_project': Optional[str],
-        'git': Optional[GitOptionals]
-    },
-    total=False
-)
+
+class GitOptionals(TypedDict):
+    git_user: Optional[str]
+    git_repo: Optional[str]
+    git_token: Optional[str]
+
+
+class Optionals(TypedDict, total=False):
+    status_type: ActivityType
+    status_text: Optional[str]
+    disabled_cogs: List[str]
+    firebase_project: Optional[str]
+    git: Optional[GitOptionals]
 
 
 class DreamBot(Bot):
@@ -107,8 +101,14 @@ class DreamBot(Bot):
         """
 
         intents = Intents(
-            message_content=True, guilds=True, members=True, bans=True, emojis=True, voice_states=True, messages=True,
-            reactions=True
+            message_content=True,
+            guilds=True,
+            members=True,
+            bans=True,
+            emojis=True,
+            voice_states=True,
+            messages=True,
+            reactions=True,
         )
 
         super().__init__(
@@ -127,11 +127,11 @@ class DreamBot(Bot):
         self.dynamic_cooldowns: Dict[str, DefaultDict[int, CooldownMapping]] = {
             'raw_yoink': defaultdict(CooldownMapping),
             'yoink': defaultdict(CooldownMapping),
-            'invert': defaultdict(CooldownMapping)
+            'invert': defaultdict(CooldownMapping),
         }
 
         # optionals
-        options = options or dict()
+        options = options or {}
         # noinspection PyTypeChecker
         self._status_type = options.pop('status_type', ActivityType(0))
         self._status_text = options.pop('status_text', None)
@@ -232,9 +232,7 @@ class DreamBot(Bot):
             return
 
         # .get chaining is acceptable since we're only removing entries
-        self.dynamic_cooldowns.get(
-            ctx.command.qualified_name, {}
-        ).pop(ctx.author.id, None)  # type: ignore[call-overload]
+        self.dynamic_cooldowns.get(ctx.command.qualified_name, {}).pop(ctx.author.id, None)  # type: ignore[call-overload]
 
     @tasks.loop(minutes=30)
     async def refresh_presence(self) -> None:
@@ -276,7 +274,7 @@ class DreamBot(Bot):
         await self.wait_until_ready()
 
     async def get_context(  # type: ignore[override]
-            self, origin: Union['discord.Message', 'discord.Interaction[DreamBot]'], /, *, cls: Type[Context] = Context
+        self, origin: Union['discord.Message', 'discord.Interaction[DreamBot]'], /, *, cls: Type[Context] = Context
     ) -> Context:
         """
         Creates a Context instance for the current command invocation.
@@ -343,7 +341,4 @@ def generate_error_event(exception: Exception, project_name: str) -> error_repor
     event.message = ''.join(format_exception(type(exception), exception, exception.__traceback__))
 
     # noinspection PyTypeChecker
-    return error_reporting.ReportErrorEventRequest(
-        project_name=project_name,
-        event=event
-    )
+    return error_reporting.ReportErrorEventRequest(project_name=project_name, event=event)

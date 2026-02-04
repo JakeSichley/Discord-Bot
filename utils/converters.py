@@ -23,16 +23,16 @@ SOFTWARE.
 """
 
 import re
-from typing import Optional, Union, Callable
+from typing import TYPE_CHECKING, Union, Callable, Optional
 
 import discord
-import parsedatetime  # type: ignore[import-untyped]
 from discord.ext import commands
 
-from dreambot import DreamBot
-from utils.context import Context
+if TYPE_CHECKING:
+    from dreambot import DreamBot
+    from utils.context import Context
 
-ForbiddenCharacterSet = set('_~#/\`><@*')
+ForbiddenCharacterSet = set(r'_~#/\`><@*')
 
 
 class ForbiddenCharacters(commands.BadArgument):
@@ -161,8 +161,7 @@ class AggressiveDefaultMemberConverter(commands.IDConverter[Union[discord.Member
 
             if m.nick:
                 return m.nick.lower() == name.lower() or m.name.lower() == name.lower()
-            else:
-                return m.name.lower() == name.lower()
+            return m.name.lower() == name.lower()
 
         return discord.utils.find(pred, members)
 
@@ -184,9 +183,8 @@ class AggressiveDefaultMemberConverter(commands.IDConverter[Union[discord.Member
             username, _, discriminator = argument.rpartition('#')
             members = await guild.query_members(username, limit=100, cache=cache)
             return discord.utils.get(members, name=username, discriminator=discriminator)
-        else:
-            members = await guild.query_members(argument, limit=100, cache=cache)
-            return discord.utils.find(lambda m: m.name == argument or m.nick == argument, members)
+        members = await guild.query_members(argument, limit=100, cache=cache)
+        return discord.utils.find(lambda m: m.name == argument or m.nick == argument, members)
 
     @staticmethod
     async def _query_member_by_id(bot: DreamBot, guild: discord.Guild, user_id: int) -> Optional[discord.Member]:
@@ -283,11 +281,11 @@ class StringConverter(commands.Converter[str]):
     """
 
     def __init__(
-            self,
-            *,
-            mutator: Optional[Callable[[str], str]] = None,
-            constraint: Optional[Callable[[str], bool]] = None,
-            allow_forbidden_characters: bool = False
+        self,
+        *,
+        mutator: Optional[Callable[[str], str]] = None,
+        constraint: Optional[Callable[[str], bool]] = None,
+        allow_forbidden_characters: bool = False,
     ) -> None:
         """
         The constructor for the StringConverter class.
@@ -323,8 +321,9 @@ class StringConverter(commands.Converter[str]):
 
             if not self.constraint or (self.constraint is not None and self.constraint(result)):
                 return result
-            else:
-                raise commands.BadArgument(f'{result} failed constraint.')
+            msg = f'{result} failed constraint.'
+            raise commands.BadArgument(msg)
 
         except AttributeError:
-            raise commands.BadArgument(f'Could not coerce {argument} to string.')
+            msg = f'Could not coerce {argument} to string.'
+            raise commands.BadArgument(msg)

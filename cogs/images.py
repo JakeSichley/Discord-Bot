@@ -22,9 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
-from discord import HTTPException, File, Message
+from discord import File, Message, HTTPException
 from discord.ext import commands
 
 from utils import image_utils
@@ -89,7 +89,7 @@ class Images(commands.Cog):
                 return
 
             try:
-                await ctx.send(file=File(inverted, filename="inverted.png"))
+                await ctx.send(file=File(inverted, filename='inverted.png'))
             except HTTPException as e:
                 self.bot.report_command_failure(ctx)
                 bot_logger.error(f'File Send Failure. {e.status}. {e.text}')
@@ -124,7 +124,7 @@ class Images(commands.Cog):
             buffer = await image_utils.title_card_generator(title)
 
             try:
-                await ctx.send(file=File(buffer, filename="iasip.png"))
+                await ctx.send(file=File(buffer, filename='iasip.png'))
             except HTTPException as e:
                 bot_logger.error(f'File Send Failure. {e.status}. {e.text}')
                 await ctx.send(f'Could not send image. Details: [Status {e.status} | {e.text}]')

@@ -22,18 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from typing import TYPE_CHECKING, List, Tuple, Optional
 from asyncio import TimeoutError
-from typing import List, Tuple, Optional
 
 import discord
 from discord.ext import commands
 
-from dreambot import DreamBot
-from utils.context import Context
+if TYPE_CHECKING:
+    from dreambot import DreamBot
+    from utils.context import Context
 
 
 async def prompt_user_for_voice_channel(
-        bot: DreamBot, ctx: Context, initial_prompt: Optional[str] = None
+    bot: DreamBot, ctx: Context, initial_prompt: Optional[str] = None
 ) -> Tuple[List[discord.Message], Optional[discord.VoiceChannel]]:
     """
     A method to fetch a discord.VoiceChannel from a user.
@@ -74,8 +75,7 @@ async def prompt_user_for_voice_channel(
 
 
 async def prompt_user_for_role(
-        bot: DreamBot, ctx: Context, bot_role: discord.Role, author_role: discord.Role,
-        initial_prompt: Optional[str] = None
+    bot: DreamBot, ctx: Context, bot_role: discord.Role, author_role: discord.Role, initial_prompt: Optional[str] = None
 ) -> Tuple[List[discord.Message], Optional[discord.Role]]:
     """
     A method to fetch a discord.Role from a user.
@@ -117,8 +117,10 @@ async def prompt_user_for_role(
                 )
             except commands.UserInputError:
                 sent_messages.append(
-                    await ctx.send("You cannot specify a role higher than or equal to mine or your top role! "
-                                   "Please specify another role!")
+                    await ctx.send(
+                        'You cannot specify a role higher than or equal to mine or your top role! '
+                        'Please specify another role!'
+                    )
                 )
             except commands.CommandError:
                 sent_messages.append(
@@ -130,7 +132,7 @@ async def prompt_user_for_role(
 
 
 async def prompt_user_for_discord_message(
-        bot: DreamBot, ctx: Context, initial_prompt: Optional[str] = None
+    bot: DreamBot, ctx: Context, initial_prompt: Optional[str] = None
 ) -> Tuple[List[discord.Message], Optional[discord.Message]]:
     """
     A method to fetch a discord.Message from a user.
@@ -171,7 +173,7 @@ async def prompt_user_for_discord_message(
 
 
 async def prompt_user_for_content(
-        bot: DreamBot, ctx: Context, initial_prompt: Optional[str] = None
+    bot: DreamBot, ctx: Context, initial_prompt: Optional[str] = None
 ) -> Tuple[List[discord.Message], Optional[str]]:
     """
     A method to fetch message content from a user.
@@ -202,8 +204,7 @@ async def prompt_user_for_content(
             try:
                 if response.content:
                     return sent_messages, response.content
-                else:
-                    raise commands.BadArgument
+                raise commands.BadArgument
             except (commands.CommandError, commands.BadArgument):
                 sent_messages.append(
                     await ctx.send("I wasn't able to extract message content from your response. Please try again!")

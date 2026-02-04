@@ -22,22 +22,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from asyncio import sleep, wait_for, TimeoutError
-from functools import reduce
-from json.decoder import JSONDecodeError
-from random import seed, shuffle, randrange
 from re import search, findall
 from time import time
-from typing import List, no_type_check, TYPE_CHECKING
+from random import seed, shuffle, randrange
+from typing import TYPE_CHECKING, List, no_type_check
+from asyncio import TimeoutError, sleep, wait_for
+from functools import reduce
+from json.decoder import JSONDecodeError
 
-from aiohttp import ClientError
 from bs4 import BeautifulSoup
+from aiohttp import ClientError
 from discord import Embed
-from discord.ext import commands, tasks
+from discord.ext import tasks, commands
 
 from utils.network.exceptions import EmptyResponseError
-from utils.network.exponential_backoff import ExponentialBackoff
 from utils.observability.loggers import bot_logger
+from utils.network.exponential_backoff import ExponentialBackoff
 
 if TYPE_CHECKING:
     from dreambot import DreamBot
@@ -184,8 +184,9 @@ class DDO(commands.Cog):
     # needs cleanup
     @no_type_check
     @commands.is_owner()
-    @commands.command(name='ddoitem', help='Pulls basic information about an item in Dungeons & Dragons Online '
-                                           'from the wiki')
+    @commands.command(
+        name='ddoitem', help='Pulls basic information about an item in Dungeons & Dragons Online from the wiki'
+    )
     async def ddo_item(self, ctx: 'Context', *, item: str) -> None:
         """
         A method that outputs an embed detailing the properties of an item on the DDOWiki.
@@ -205,15 +206,12 @@ class DDO(commands.Cog):
         url = 'https://ddowiki.com/page/Item:' + item.replace(' ', '_')
 
         try:
-            data = await self.bot.network_client.fetch_text(
-                url,
-                raise_for_empty_response=True
-            )
+            data = await self.bot.network_client.fetch_text(url, raise_for_empty_response=True)
         except EmptyResponseError:
             await ctx.send('Failed to retrieve data for the specified item')
             return
 
-        soup = BeautifulSoup(data, features="html5lib")
+        soup = BeautifulSoup(data, features='html5lib')
         # Pull the main table
         table = soup.find_all('tr')
 
@@ -259,7 +257,7 @@ class DDO(commands.Cog):
                 if element.find('has_tooltip') == -1 and element.find('</a>') == -1:
                     if element != '</li>':
                         # Clean up element from whitespace and tags
-                        result = (element.replace('</li>', '').replace('\n', '').replace('<ul>', ''))
+                        result = element.replace('</li>', '').replace('\n', '').replace('<ul>', '')
                         # Weird case where an augment slips through
                         if result != '' and result.find('Elemental damage') == -1:
                             enchantments.append(result)
@@ -272,7 +270,7 @@ class DDO(commands.Cog):
                     #   look for 0 or more of these and add them to our match
                     # Finally, Positive Lookbehind to match the closing '>' character preceding our description
                     # Note: This description was written 'backwards', (positive lookbehind occurs first, etc.)
-                    result = search("(?<=>)( )*(\+\d+ )*(\w|\d)(.+?)(?=</a>)", element)
+                    result = search('(?<=>)( )*(\+\d+ )*(\w|\d)(.+?)(?=</a>)', element)
                     # If our result is not a Mythic Bonus (these are on nearly every single item), add it
                     if result and str(result.group(0)).find('Mythic') == -1:
                         enchantments.append(result.group(0).strip())
@@ -283,11 +281,11 @@ class DDO(commands.Cog):
 
         # If we have a minimum level string, extract the minimum level using regex
         if minimum_level_string is not None:
-            minimum_level = int(search("\d+?(?=(\n</td>))", minimum_level_string).group(0))
+            minimum_level = int(search('\d+?(?=(\n</td>))', minimum_level_string).group(0))
 
         # If we have an item type string, extract the item type using regex
         if item_type_string is not None:
-            item_type = search("(?<=>).+?(?=(\n</td>))", item_type_string).group(0)
+            item_type = search('(?<=>).+?(?=(\n</td>))', item_type_string).group(0)
             # Sometimes (in the case of weapons) the parent type is bolded - strip these tags
             item_type = item_type.replace('<b>', '').replace('</b>', '')
 
@@ -295,23 +293,26 @@ class DDO(commands.Cog):
         for index in range(len(enchantments)):
             if enchantments[index].find('Attuned to Heroism') != -1:
                 # If Attuned to Heroism is an enchantment, remove all sub-enchantments from the final list
-                enchantments = enchantments[0:index + 1]
+                enchantments = enchantments[0 : index + 1]
                 break
 
         # Create and send our embedded object
-        embed = Embed(title=f'**{item}**', url=url, color=0x6879f2)
+        embed = Embed(title=f'**{item}**', url=url, color=0x6879F2)
         embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar.url)
         embed.set_thumbnail(url='https://i.imgur.com/QV6uUZf.png')
         embed.add_field(name='Minimum Level', value=str(minimum_level))
         embed.add_field(name='Item Type', value=item_type)
         embed.add_field(name='Enchantments', value='\n'.join(enchantments))
-        embed.set_footer(text="Please report any formatting issues to my owner!")
+        embed.set_footer(text='Please report any formatting issues to my owner!')
         await ctx.send(embed=embed)
 
-    @commands.command(name='lfms', help=f'Returns a list of active LFMs for the specified server.\nValid servers'
-                                        f' include Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis,'
-                                        f' and Wayfinder\nInformation is populated from \'DDO Audit\' every '
-                                        f'{QUERY_INTERVAL} seconds.')
+    @commands.command(
+        name='lfms',
+        help=f'Returns a list of active LFMs for the specified server.\nValid servers'
+        f' include Argonnessen, Cannith, Ghallanda, Khyber, Orien, Sarlona, Thelanis,'
+        f" and Wayfinder\nInformation is populated from 'DDO Audit' every "
+        f'{QUERY_INTERVAL} seconds.',
+    )
     async def ddo_lfms(self, ctx: 'Context', server: str = 'Khyber') -> None:
         """
         A method that outputs a list of all active groups on a server.
@@ -338,7 +339,7 @@ class DDO(commands.Cog):
                 raise ValueError
 
         except KeyError:
-            await ctx.send(f'No Active LFM\'s on {server}!')
+            await ctx.send(f"No Active LFM's on {server}!")
             return
         except ValueError:
             await ctx.send('Failed to query DDO Audit API.')
@@ -346,10 +347,12 @@ class DDO(commands.Cog):
 
         # Divide the groups into three lists: Raids, Quests, and Groups (No Listed Quest)
         else:
-            raids = [q['Quest']['Name'] for q in server_data['Groups'] if
-                     q['Quest'] and q['Quest']['GroupSize'] == 'Raid']
-            quests = [q['Quest']['Name'] for q in server_data['Groups'] if
-                      q['Quest'] and q['Quest']['GroupSize'] != 'Raid']
+            raids = [
+                q['Quest']['Name'] for q in server_data['Groups'] if q['Quest'] and q['Quest']['GroupSize'] == 'Raid'
+            ]
+            quests = [
+                q['Quest']['Name'] for q in server_data['Groups'] if q['Quest'] and q['Quest']['GroupSize'] != 'Raid'
+            ]
             groups = [q['Comment'] for q in server_data['Groups'] if not q['Quest'] and q['Comment']]
 
             # Should a list be empty, append 'None'
@@ -357,16 +360,21 @@ class DDO(commands.Cog):
                 if not li:
                     li.append('None')
 
-            await ctx.send(f'**Current Raids on {server}:** {", ".join(raids)}\n'
-                           f'**Current Quests on {server}:** {", ".join(quests)}\n'
-                           f'**Current Groups on {server}:** {", ".join(groups)}\n')
+            await ctx.send(
+                f'**Current Raids on {server}:** {", ".join(raids)}\n'
+                f'**Current Quests on {server}:** {", ".join(quests)}\n'
+                f'**Current Groups on {server}:** {", ".join(groups)}\n'
+            )
 
-    @commands.command(name='flfms', help=f'Returns a filtered list of active LFMs for the specified server.\n'
-                                         f'Optional filters include: LFM Type: (Solo, Quest, Raid), Difficulty: '
-                                         f'(Casual, Normal, Hard, Elite, Reaper), and Level: (1-32).\nYou MUST supply a'
-                                         f' server.\nValid servers include Argonnessen, Cannith, Ghallanda, Khyber,'
-                                         f' Orien, Sarlona, Thelanis, Wayfinder, and Hardcore.\nInformation is '
-                                         f'populated from \'DDO Audit\' every {QUERY_INTERVAL} seconds.')
+    @commands.command(
+        name='flfms',
+        help=f'Returns a filtered list of active LFMs for the specified server.\n'
+        f'Optional filters include: LFM Type: (Solo, Quest, Raid), Difficulty: '
+        f'(Casual, Normal, Hard, Elite, Reaper), and Level: (1-32).\nYou MUST supply a'
+        f' server.\nValid servers include Argonnessen, Cannith, Ghallanda, Khyber,'
+        f' Orien, Sarlona, Thelanis, Wayfinder, and Hardcore.\nInformation is '
+        f"populated from 'DDO Audit' every {QUERY_INTERVAL} seconds.",
+    )
     async def ddo_filter_lfms(self, ctx: 'Context', *args: str) -> None:
         """
         A method that outputs a list of all active groups on a server that match the specified filters.
@@ -414,7 +422,7 @@ class DDO(commands.Cog):
                 raise ValueError
 
         except KeyError:
-            await ctx.send(f'No Active LFM\'s on {server}!')
+            await ctx.send(f"No Active LFM's on {server}!")
             return
         except ValueError:
             await ctx.send('Failed to query DDO Audit API.')
@@ -424,14 +432,26 @@ class DDO(commands.Cog):
         # sets are tuples of (LeaderName, QuestName, Difficulty, AdventureType), with LeaderName
         #   included to allow for different hashes of otherwise identical groups
 
-        all_quests = {(q['Leader']['Name'], q['Quest']['Name'], q['Difficulty'], q['Quest']['GroupSize'])
-                      for q in server_data['Groups'] if q['Quest']}
-        atypes = {(q['Leader']['Name'], q['Quest']['Name'], q['Difficulty'], q['Quest']['GroupSize'])
-                  for q in server_data['Groups'] if q['Quest'] and atype and q['Quest']['GroupSize'] == atype}
-        diffs = {(q['Leader']['Name'], q['Quest']['Name'], q['Difficulty'], q['Quest']['GroupSize'])
-                 for q in server_data['Groups'] if q['Quest'] and diff and q['Difficulty'] == diff}
-        levels = {(q['Leader']['Name'], q['Quest']['Name'], q['Difficulty'], q['Quest']['GroupSize']) for q
-                  in server_data['Groups'] if q['Quest'] and level and q['MinimumLevel'] <= level <= q['MaximumLevel']}
+        all_quests = {
+            (q['Leader']['Name'], q['Quest']['Name'], q['Difficulty'], q['Quest']['GroupSize'])
+            for q in server_data['Groups']
+            if q['Quest']
+        }
+        atypes = {
+            (q['Leader']['Name'], q['Quest']['Name'], q['Difficulty'], q['Quest']['GroupSize'])
+            for q in server_data['Groups']
+            if q['Quest'] and atype and q['Quest']['GroupSize'] == atype
+        }
+        diffs = {
+            (q['Leader']['Name'], q['Quest']['Name'], q['Difficulty'], q['Quest']['GroupSize'])
+            for q in server_data['Groups']
+            if q['Quest'] and diff and q['Difficulty'] == diff
+        }
+        levels = {
+            (q['Leader']['Name'], q['Quest']['Name'], q['Difficulty'], q['Quest']['GroupSize'])
+            for q in server_data['Groups']
+            if q['Quest'] and level and q['MinimumLevel'] <= level <= q['MaximumLevel']
+        }
 
         # if our value is not None, start performing intersection calculations on the full set
         for filtered_set, value in [(atypes, atype), (diffs, diff), (levels, level)]:
@@ -493,7 +513,7 @@ class DDO(commands.Cog):
                 f'https://api.ddoaudit.com/groups/{server.lower()}',
                 ssl=False,
                 bypass_backoff=True,
-                raise_for_empty_response=True
+                raise_for_empty_response=True,
             )
             self.backoff.reset()
 
@@ -525,7 +545,7 @@ class DDO(commands.Cog):
         """
 
         self.query_ddo_audit.cancel()
-        self.api_data = dict()
+        self.api_data = {}
 
         bot_logger.info('Completed Unload for Cog: DDO')
 

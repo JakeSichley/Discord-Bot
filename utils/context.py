@@ -22,25 +22,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from __future__ import annotations
-
 import io
+from uuid import uuid4
+from typing import TYPE_CHECKING, Any, Union, Optional
 from asyncio import TimeoutError
 from contextlib import suppress
-from typing import Any, Union, Optional, TYPE_CHECKING
-from uuid import uuid4
 
-from discord import HTTPException, File, Member
+from discord import File, Member, HTTPException
 from discord.ext import commands
 
 if TYPE_CHECKING:
-    import dreambot
-    from discord import Emoji, Reaction, PartialEmoji, RawReactionActionEvent, Message
+    from discord import Emoji, Message, Reaction, PartialEmoji, RawReactionActionEvent
+
+    from dreambot import DreamBot  # noqa: F401
 
 from utils.observability.loggers import bot_logger
 
 
-class Context(commands.Context['dreambot.DreamBot']):
+class Context(commands.Context['DreamBot']):
     """
     A Custom commands.Context class.
 
@@ -48,7 +47,7 @@ class Context(commands.Context['dreambot.DreamBot']):
         id (UUID): The UUID of the context instance. Used for logging purposes.
     """
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         """
         The constructor for the Context class.
 
@@ -84,10 +83,7 @@ class Context(commands.Context['dreambot.DreamBot']):
         return f'<{name} command={command_repr} message={self.message!r}>'
 
     async def react(
-            self,
-            emoji: Union['Emoji', 'Reaction', 'PartialEmoji', str],
-            *,
-            raise_exceptions: bool = False
+        self, emoji: Union['Emoji', 'Reaction', 'PartialEmoji', str], *, raise_exceptions: bool = False
     ) -> None:
         """
         Attempts to add the specified emoji to the message.
@@ -122,16 +118,12 @@ class Context(commands.Context['dreambot.DreamBot']):
             None.
         """
 
-        reactions = {
-            True: '✅',
-            False: '❌',
-            None: '✖'
-        }
+        reactions = {True: '✅', False: '❌', None: '✖'}
 
         await self.react(reactions[status], raise_exceptions=raise_exceptions)
 
     async def confirmation_prompt(
-            self, message: str, *, timeout: float = 30.0, ephemeral: bool = True
+        self, message: str, *, timeout: float = 30.0, ephemeral: bool = True
     ) -> Optional[bool]:
         """
         Prompts the user to confirm an action.
@@ -169,10 +161,12 @@ class Context(commands.Context['dreambot.DreamBot']):
                 (bool): Whether the payload meets our check criteria.
             """
 
-            return pl.message_id == prompt.id and \
-                pl.member == self.author and \
-                pl.event_type == 'REACTION_ADD' and \
-                str(pl.emoji) in confirmation_emojis
+            return (
+                pl.message_id == prompt.id
+                and pl.member == self.author
+                and pl.event_type == 'REACTION_ADD'
+                and str(pl.emoji) in confirmation_emojis
+            )
 
         result = None
 
@@ -186,7 +180,8 @@ class Context(commands.Context['dreambot.DreamBot']):
             if ephemeral:
                 with suppress(HTTPException):
                     await prompt.delete()
-            return result
+
+        return result
 
     async def safe_send(self, content: Optional[str] = None, **kwargs: Any) -> 'Message':
         """
@@ -203,8 +198,7 @@ class Context(commands.Context['dreambot.DreamBot']):
             fp = io.BytesIO(content.encode())
             kwargs.pop('file', None)
             return await self.send(file=File(fp, filename='content.txt'), **kwargs)
-        else:
-            return await self.send(content)
+        return await self.send(content)
 
     def dump(self) -> str:
         """
@@ -262,6 +256,12 @@ class Context(commands.Context['dreambot.DreamBot']):
                 kwargs_context += f'{indent * 2}{key}: {value}\n'
 
         return (
-                title + guild_context + category_context + channel_context + message_context + author_context
-                + args_context + kwargs_context
+            title
+            + guild_context
+            + category_context
+            + channel_context
+            + message_context
+            + author_context
+            + args_context
+            + kwargs_context
         )

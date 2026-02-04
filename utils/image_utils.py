@@ -25,17 +25,16 @@ SOFTWARE.
 from io import BytesIO
 from os import path
 from re import search
+from typing import TYPE_CHECKING, List, Tuple, Union
 from textwrap import wrap
-from typing import List, Tuple, Union, TYPE_CHECKING
 
-import PIL.ImageOps
 import discord
+import PIL.ImageOps
 from PIL import Image, ImageDraw, ImageFont
-from discord.ext.commands import MissingRequiredArgument, BadArgument
-from discord.ext.commands import Parameter
+from discord.ext.commands import Parameter, BadArgument, MissingRequiredArgument
 
-from utils.network.exceptions import EmptyResponseError
 from utils.utils import run_in_executor
+from utils.network.exceptions import EmptyResponseError
 
 if TYPE_CHECKING:
     from utils.network.client import NetworkClient
@@ -66,7 +65,8 @@ async def extract_image_as_bytes(network_client: 'NetworkClient', source: Union[
         try:
             data = await network_client.fetch_bytes(source, raise_for_empty_response=True)
             if data is None:
-                raise NoImage('source')
+                msg = 'source'
+                raise NoImage(msg)
             buffer.write(data)
             buffer.seek(0)
             if buffer.getbuffer().nbytes >= 8000000:
@@ -74,9 +74,11 @@ async def extract_image_as_bytes(network_client: 'NetworkClient', source: Union[
             else:
                 return buffer
         except EmptyResponseError:
-            raise NoImage('source')
+            msg = 'source'
+            raise NoImage(msg)
     else:
-        raise NoImage('source')
+        msg = 'source'
+        raise NoImage(msg)
 
 
 @run_in_executor
@@ -130,7 +132,7 @@ def title_card_generator(title: str) -> BytesIO:
     font_path = path.join('resources', 'fonts', 'textile.ttf')
     font = ImageFont.truetype(font_path, 250)
     # New image based on the settings defined above
-    img = Image.new("RGB", (width, height), color='black')
+    img = Image.new('RGB', (width, height), color='black')
     # Interface to draw on the image
     draw_interface = ImageDraw.Draw(img)
 
@@ -143,7 +145,7 @@ def title_card_generator(title: str) -> BytesIO:
     for i, line in enumerate(text_lines):
         # Calculate the horizontally-centered position at which to draw this line
         line_width = font.getmask(line).getbbox()[2]
-        x = ((width - line_width) // 2)
+        x = (width - line_width) // 2
 
         # Draw this line
         draw_interface.text((x, y), line, font=font, fill='white')
@@ -158,8 +160,9 @@ def title_card_generator(title: str) -> BytesIO:
     return buffer
 
 
-def get_y_and_heights(text_wrapped: List[str], dimensions: Tuple[int, int], margin: int,
-                      font: ImageFont.FreeTypeFont) -> Tuple[int, List[int]]:
+def get_y_and_heights(
+    text_wrapped: List[str], dimensions: Tuple[int, int], margin: int, font: ImageFont.FreeTypeFont
+) -> Tuple[int, List[int]]:
     """
     A method to calculate the first vertical coordinate at which to draw text and the height of each line of text.
 
@@ -174,7 +177,7 @@ def get_y_and_heights(text_wrapped: List[str], dimensions: Tuple[int, int], marg
     """
 
     # https://stackoverflow.com/a/46220683/9263761
-    ascent, descent = font.getmetrics()
+    _ascent, descent = font.getmetrics()
 
     # Calculate the height needed to draw each line of text (including its bottom margin)
     line_heights = [font.getmask(text_line).getbbox()[3] + descent + margin for text_line in text_wrapped]
@@ -196,7 +199,7 @@ class NoImage(MissingRequiredArgument):
     Error raised when no image was supplied.
     """
 
-    def __init__(self, param: str):
+    def __init__(self, param: str) -> None:
         """
         The constructor for the NoImage exception class.
 
@@ -211,5 +214,3 @@ class BufferSizeExceeded(BadArgument):
     """
     Error raised when the image supplied was too large.
     """
-
-    pass

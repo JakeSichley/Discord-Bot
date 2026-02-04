@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from dataclasses import dataclass
 from typing import Optional
+from dataclasses import dataclass
 
 
 @dataclass
@@ -231,8 +231,7 @@ class RunescapeHerbComparison:
 
         if self.clean_profit > self.grimy_profit and self.clean_profit > 0:
             return f'**{self.clean_profit:,}** coins'
-        else:
-            return f'{self.clean_profit:,} coins'
+        return f'{self.clean_profit:,} coins'
 
     @property
     def grimy_profit_display(self) -> str:
@@ -248,5 +247,4 @@ class RunescapeHerbComparison:
 
         if self.grimy_profit > self.clean_profit and self.grimy_profit > 0:
             return f'**{self.grimy_profit:,}** coins'
-        else:
-            return f'{self.grimy_profit:,} coins'
+        return f'{self.grimy_profit:,} coins'

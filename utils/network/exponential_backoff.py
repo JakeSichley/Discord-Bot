@@ -1,6 +1,30 @@
+"""
+MIT License
+
+Copyright (c) 2019-Present Jake Sichley
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
 import re
-from datetime import datetime, timedelta
 from typing import Optional
+from datetime import datetime, timedelta
 
 
 class ExponentialBackoff:
@@ -13,7 +37,7 @@ class ExponentialBackoff:
         _start_time (Optional[datetime]): The time the current backoff started.
     """
 
-    __slots__ = ('_max_backoff_time', '_count', '_start_time')
+    __slots__ = ('_count', '_max_backoff_time', '_start_time')
 
     def __init__(self, max_backoff_time: int) -> None:
         """
@@ -138,7 +162,7 @@ class ExponentialBackoff:
         times = {
             'Hours': self.total_backoff_seconds // 3600,
             'Minutes': self.total_backoff_seconds % 3600 // 60,
-            'Seconds': self.total_backoff_seconds % 60
+            'Seconds': self.total_backoff_seconds % 60,
         }
 
         return ', '.join([f'{time} {label}' for label, time in times.items() if time > 0])
@@ -163,7 +187,7 @@ class ExponentialBackoff:
         times = {
             'Hours': remaining_backoff // 3600,
             'Minutes': remaining_backoff % 3600 // 60,
-            'Seconds': remaining_backoff % 60
+            'Seconds': remaining_backoff % 60,
         }
 
         formatted = ', '.join([f'{time} {label}' for label, time in times.items() if time > 0])
@@ -180,7 +204,7 @@ class BackoffRule:
         backoff (BackoffRule): The ExponentialBackoff associated with this rule.
     """
 
-    __slots__ = ('pattern', 'backoff')
+    __slots__ = ('backoff', 'pattern')
 
     def __init__(self, pattern: str, max_backoff_time: int) -> None:
         """
@@ -226,7 +250,7 @@ class BackoffRule:
         return re.search(self.pattern, url) is not None
 
 
-class ExponentialBackoffException(Exception):
+class ExponentialBackoffError(Exception):
     """
     An exception raised when a network call is made for a url with an active exponential backoff.
 
