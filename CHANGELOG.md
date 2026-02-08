@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Issues
 ### Security
 
+## 2.20.0 (08 Feb 2026)
+### Internal
+- Bump Python version to `3.14.2`
+- Update CHANGELOG types
+- Add `ruff` for additional linting and automatic formatting
+
 ## 2.19.1 (03 Feb 2026)
 ### Internal
 - Fix unescaped character usage in BackoffRule's pattern creation
