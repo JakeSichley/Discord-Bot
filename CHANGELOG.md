@@ -14,9 +14,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased (DD MMM YYYY)
 ### Features
 ### Internal
-- Bump Python version to `3.14.2`
-- Update CHANGELOG types
-- Add `ruff` for additional linting and automatic formatting
 ### Issues
 ### Security
 

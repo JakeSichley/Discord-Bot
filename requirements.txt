@@ -1,10 +1,11 @@
 aiofiles==25.1.0
-aiohttp==3.13.3
+aiohttp==3.13.2
 aiosqlite==0.22.1
 async_timeout==5.0.1
 beautifulsoup4==4.14.3
 discord.py[speed,voice]==2.6.4
 google-cloud-error-reporting==1.14.0
+google-genai[aiohttp]==1.62.0
 grpcio==1.76.0
 html5lib==1.1
 humanfriendly==10.0
