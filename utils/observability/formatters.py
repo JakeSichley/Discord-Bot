@@ -104,7 +104,7 @@ class StreamLoggingFormatter(logging.Formatter):
             None.
         """
 
-        super().__init__(datefmt='%I:%M %p on %A, %B %d, %Y')
+        super().__init__(datefmt='%I:%M:%S %p on %A, %B %d, %Y')
 
         self.basic_format = basic_format
         self.detailed_format = detailed_format
@@ -158,7 +158,7 @@ class FileLoggingFormatter(logging.Formatter):
             None.
         """
 
-        super().__init__(datefmt='%I:%M %p on %A, %B %d, %Y')
+        super().__init__(datefmt='%I:%M:%S %p on %A, %B %d, %Y')
 
         self.basic_format = basic_format
         self.detailed_format = detailed_format
