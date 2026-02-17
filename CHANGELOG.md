@@ -14,11 +14,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased (DD MMM YYYY)
 ### Features
 ### Internal
-- Bump Python version to `3.14.2`
-- Update CHANGELOG types
-- Add `ruff` for additional linting and automatic formatting
 ### Issues
 ### Security
+
+## 2.20.1 (16 Feb 2026)
+### Internal
+- Include seconds in logging formatters and remove duplicate logs from RuneScape API query failures
 
 ## 2.20.0 (08 Feb 2026)
 ### Internal

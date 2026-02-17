@@ -1020,7 +1020,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             bot_logger.warning(f'OSRS Mapping Query Error: {type(e)} - {e}')
 
         except EmptyResponseError:
-            bot_logger.warning(f'OSRS Mapping Query Empty Response Error')
+            pass  # logged upstream via `NetworkClient`
 
         except Exception as e:
             bot_logger.error(f'OSRS Mapping Query Unhandled Exception: {type(e)} - {e}')
@@ -1059,7 +1059,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
             bot_logger.warning(f'OSRS Market Query Error: {type(e)} - {e}')
 
         except EmptyResponseError:
-            bot_logger.warning(f'OSRS Market Query Empty Response Error')
+            pass  # logged upstream via `NetworkClient`
 
         except Exception as e:
             bot_logger.error(f'OSRS Market Query Unhandled Exception: {type(e)} - {e}')
