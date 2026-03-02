@@ -47,7 +47,7 @@ EXPERIMENTAL_COOLDOWN = commands.CooldownMapping.from_cooldown(24, 60 * 60 * 24,
 @commands.guild_only()
 class Experimental(commands.Cog, command_attrs={'hidden': True}):
     """
-    A Cogs class that contains experimental features/functionality, often locked to specific test cohort.
+    A Cogs class that contains experimental features/functionality, often locked to specific test cohorts.
 
     Attributes:
         bot (DreamBot): The Discord bot.
