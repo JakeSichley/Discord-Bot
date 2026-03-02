@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Issues
 ### Security
 
+## 2.21.0 (1 Mar 2026)
+### Features
+- Add Fact Check ('Gork Checks') as an `Experimental` feature
+
 ## 2.20.1 (16 Feb 2026)
 ### Internal
 - Include seconds in logging formatters and remove duplicate logs from RuneScape API query failures
