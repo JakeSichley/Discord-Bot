@@ -46,7 +46,7 @@ from utils.checks import ensure_git_credentials
 from utils.converters import StringConverter
 from utils.database.helpers import execute_query, retrieve_query
 from utils.network.exceptions import EmptyResponseError
-from utils.observability.loggers import bot_logger
+from utils.observability.loggers import bot_logger, debug_filter
 
 if TYPE_CHECKING:
     from discord import abc
@@ -189,6 +189,33 @@ class Admin(commands.Cog):
             await ctx.send(f'Unloaded Module: `{module}`')
         except commands.ExtensionNotLoaded:
             await ctx.send(f'Could Not Unload Module: `{module}`')
+
+    @commands.command('debug', hidden=True)
+    async def update_debug_filter(self, ctx: 'Context', action: Literal['add', 'remove'], scope: str) -> None:
+        """
+        Helper function to update the debug filter.
+
+        Checks:
+            is_owner(): Whether the invoking user is the bot's owner.
+
+        Parameters:
+            ctx (Context): The invocation context.
+            action (Literal['add', 'remove']): Whether to add or remove the specified scope.
+            scope (str): The scope to add or remove.
+
+        Returns:
+            None.
+        """
+
+        if action == 'add':
+            debug_filter.enabled_scopes.add(scope)
+            await ctx.send(f'Added debug scope: `{scope}`')
+        else:
+            try:
+                debug_filter.enabled_scopes.remove(scope)
+                await ctx.send(f'Removed debug scope: `{scope}`')
+            except KeyError:
+                await ctx.send(f'Debug scope `{scope}` was not enabled')
 
     @commands.command(name='sync')
     async def sync_commands(self, ctx: 'Context', sync_type: Literal['global', 'local', 'guild', 'clear']) -> None:

@@ -30,7 +30,8 @@ from typing import List, Optional
 from google import genai
 from pydantic import ValidationError
 
-from utils.models.gemini.fact_check_models import FACT_CHECK_CONFIG, FactCheckResponse
+from utils.observability.loggers import bot_logger
+from utils.models.gemini.fact_check_models import FACT_CHECK_CONFIG, FACT_CHECK_DEBUG_SCOPE, FactCheckResponse
 
 
 class GeminiService:
@@ -54,13 +55,14 @@ class GeminiService:
 
         self.client = genai.Client(api_key=getenv('GEMINI_TOKEN'))
 
-    async def fact_check(self, message: str, additional_context: List[str]) -> FactCheckResponse:
+    async def fact_check(self, message: str, additional_context: List[str], debug_identifier: str) -> FactCheckResponse:
         """
         Performs a fact check on a given message using the Gemini API.
 
         Parameters:
             message (str): The message to fact check.
             additional_context (List[str]): A list of additional messages to provide as context.
+            debug_identifier (str): A unique identifier for debugging purposes.
 
         Returns:
             (FactCheckResponse): A FactCheckResponse object containing the results of the fact check.
@@ -72,7 +74,7 @@ class GeminiService:
             contents=_build_fact_check_prompt(message, additional_context),
         )
 
-        return _clean_and_parse_json(response.text)
+        return _clean_and_parse_json(response.text, debug_identifier)
 
     async def close(self) -> None:
         """
@@ -113,18 +115,21 @@ def _build_fact_check_prompt(statement: str, context_list: List[str]) -> str:
     """
 
 
-def _clean_and_parse_json(raw_response: Optional[str]) -> FactCheckResponse:
+def _clean_and_parse_json(raw_response: Optional[str], debug_identifier: str) -> FactCheckResponse:
     """
     Attempts to coerce a raw string (potentially containing markdown) into a FactCheckResponse.
 
     Parameters:
         raw_response (str): The raw text to parse.
+        debug_identifier (str): A unique identifier for debugging purposes.
 
     Returns:
         (FactCheckResponse): A FactCheckResponse object.
     """
 
     if raw_response is None:
+        bot_logger.debug(f'{debug_identifier} Fact check returned an empty response.', extra=FACT_CHECK_DEBUG_SCOPE)
+
         return FactCheckResponse(  # type: ignore[call-arg]  # this is actually optional
             is_actionable=False, refusal_reason='System Error: Model did not generate a response.'
         )
@@ -134,11 +139,22 @@ def _clean_and_parse_json(raw_response: Optional[str]) -> FactCheckResponse:
         text = re.sub(r'```$', '', text, flags=re.MULTILINE)
         text = text.strip()
 
-        return FactCheckResponse.model_validate_json(text)
+        parsed_model = FactCheckResponse.model_validate_json(text)
+        bot_logger.debug(
+            f'{debug_identifier} Fact check response parsed successfully. Parsed model:\n{parsed_model}',
+            extra=FACT_CHECK_DEBUG_SCOPE,
+        )
+        return parsed_model
 
     except (JSONDecodeError, ValidationError) as e:
         print(f'Failed to parse model output: {e}')
         print(f'Raw output was: {raw_response}')
+
+        bot_logger.debug(
+            f'{debug_identifier} Fact check returned a response that could not be parsed. Error: {type(e)} - {e}. '
+            f'Raw response:\n{raw_response}',
+            extra=FACT_CHECK_DEBUG_SCOPE,
+        )
 
         return FactCheckResponse(  # type: ignore[call-arg]  # this is actually optional
             is_actionable=False, refusal_reason='System Error: Model generated invalid JSON format.'

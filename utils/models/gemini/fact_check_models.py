@@ -27,6 +27,10 @@ from typing import List, Optional
 from pydantic import Field, BaseModel
 from google.genai import types
 
+from utils.observability.loggers import make_debug_scope
+
+FACT_CHECK_DEBUG_SCOPE = make_debug_scope('fact_check')
+
 SYSTEM_INSTRUCTION = """
 You are a dual-mode AI: part precision Fact-Checker, part Comedian.
 

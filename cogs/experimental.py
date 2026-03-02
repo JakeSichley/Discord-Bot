@@ -30,10 +30,12 @@ from pydantic import ValidationError
 from discord.ext import commands
 from google.genai.errors import APIError as GeminiError
 
+from utils.utils import short_random_id
 from utils.gemini import GeminiService
 from utils.defaults import MessageReply
 from utils.network.exceptions import EmptyResponseError
 from utils.observability.loggers import bot_logger
+from utils.models.gemini.fact_check_models import FACT_CHECK_DEBUG_SCOPE
 
 if TYPE_CHECKING:
     from dreambot import DreamBot
@@ -251,11 +253,26 @@ class Experimental(commands.Cog, command_attrs={'hidden': True}):
             None.
         """
 
+        assert ctx.guild is not None
+        assert ctx.command is not None
+
+        debug_identifier: str = short_random_id()
+
+        bot_logger.debug(
+            f'{debug_identifier} Fact check invoked by user `{ctx.author.id}` via `{ctx.command.qualified_name}` '
+            f'in Guild `{ctx.guild.id}` on Message `{message_context.id}`',
+            extra=FACT_CHECK_DEBUG_SCOPE,
+        )
+
         if message_context.author.bot:
-            await ctx.reply(f'I do not fact-check contents from other bots', allowed_mentions=AllowedMentions.none())
+            bot_logger.debug(f'{debug_identifier} Fact check cancelled (target is bot)', extra=FACT_CHECK_DEBUG_SCOPE)
+            await ctx.reply(f'I do not fact-check content from bots', allowed_mentions=AllowedMentions.none())
             return
 
         if message_context.content is None:
+            bot_logger.debug(
+                f'{debug_identifier} Fact check cancelled (target had no textual content)', extra=FACT_CHECK_DEBUG_SCOPE
+            )
             await ctx.reply(f'I can only fact-check text content at this time', allowed_mentions=AllowedMentions.none())
             return
 
@@ -278,12 +295,24 @@ class Experimental(commands.Cog, command_attrs={'hidden': True}):
                 for message in history
             ]
 
+            bot_logger.debug(
+                f'{debug_identifier} Fact check context built with {len(additional_context)} message(s) from '
+                f'{len(unique_ids)} user(s)',
+                extra=FACT_CHECK_DEBUG_SCOPE,
+            )
+
             try:
+                bot_logger.debug(f'{debug_identifier} Fact check request started', extra=FACT_CHECK_DEBUG_SCOPE)
                 response = await self.client.fact_check(
                     f'User {user_mapping.get(message_context.author.id, "Z")}: {message_context.clean_content.strip()}',
                     additional_context,
+                    debug_identifier,
                 )
             except (EmptyResponseError, ValidationError, GeminiError) as e:
+                bot_logger.debug(
+                    f'{debug_identifier} Fact check request failed. Reason: {type(e)} - {e}.',
+                    extra=FACT_CHECK_DEBUG_SCOPE,
+                )
                 await ctx.reply(
                     'Something went wrong while I was trying to fact-check this statement, please try again later.',
                     allowed_mentions=AllowedMentions.none(),
@@ -292,11 +321,19 @@ class Experimental(commands.Cog, command_attrs={'hidden': True}):
                 return
 
             if not response.is_actionable:
+                bot_logger.debug(
+                    f'{debug_identifier} Fact check request succeeded, but response was not actionable.',
+                    extra=FACT_CHECK_DEBUG_SCOPE,
+                )
                 await ctx.reply(
                     f'I cannot fact-check this statement (Reason: {response.formatted_refusal_reason})',
                     allowed_mentions=AllowedMentions.none(),
                 )
                 return
+
+            bot_logger.debug(
+                f'{debug_identifier} Fact check succeeded with actionable response.', extra=FACT_CHECK_DEBUG_SCOPE
+            )
             await ctx.reply(response.formatted_verdict, allowed_mentions=AllowedMentions.none())
 
 
