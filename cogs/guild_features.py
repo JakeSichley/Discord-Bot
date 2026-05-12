@@ -34,6 +34,8 @@ from utils.database.helpers import execute_query
 from utils.enums.guild_feature import GuildFeature, has_guild_feature, set_guild_feature
 from utils.observability.loggers import bot_logger
 
+from asyncio import sleep
+
 if TYPE_CHECKING:
     import discord
     from discord import Interaction
@@ -209,6 +211,7 @@ class GuildFeatures(commands.Cog):
             return
 
         try:
+            await sleep(1.0)  # allow time for embed to actually embed
             await message.edit(suppress=True)
             await message.reply(
                 content=parsed_url._replace(netloc='fixupx.com', query='', fragment='').geturl(),
