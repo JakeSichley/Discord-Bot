@@ -23,6 +23,7 @@ SOFTWARE.
 """
 
 from typing import TYPE_CHECKING, Optional
+from asyncio import sleep
 from contextlib import suppress
 from urllib.parse import urlparse
 
@@ -30,11 +31,10 @@ from discord import Embed, Permissions, HTTPException, AllowedMentions, app_comm
 from aiosqlite import Error as aiosqliteError
 from discord.ext import commands
 
+from utils.context import Context
 from utils.database.helpers import execute_query
 from utils.enums.guild_feature import GuildFeature, has_guild_feature, set_guild_feature
 from utils.observability.loggers import bot_logger
-
-from asyncio import sleep
 
 if TYPE_CHECKING:
     import discord
@@ -182,6 +182,37 @@ class GuildFeatures(commands.Cog):
 
             await interaction.response.send_message(embed=embed)
 
+    # Twitter Embeds
+
+    @commands.guild_only()
+    @commands.command(name='embed_preference', aliases=['embedpreference'], hidden=True)
+    async def modify_embed_preference(self, ctx: 'Context', delete_original: bool) -> None:
+        """
+        A command that updates a user's embed preference.
+
+        Parameters:
+            ctx (Context): The invocation context.
+            delete_original (bool): Whether the original message should be deleted, and follow-up embed attributed to
+                the user.
+
+        Returns:
+            None.
+        """
+
+        assert ctx.guild is not None  # guild only
+
+        try:
+            await execute_query(
+                self.bot.database,
+                'INSERT INTO EMBED_PREFERENCES (GUILD_ID, MEMBER_ID, DELETE_ORIGINAL) VALUES (?, ?, ?) '
+                'ON CONFLICT (GUILD_ID, MEMBER_ID) DO UPDATE SET DELETE_ORIGINAL=EXCLUDED.DELETE_ORIGINAL',
+                (ctx.guild.id, ctx.author.id, delete_original),
+            )
+            self.bot.cache.embed_preferences[(ctx.guild.id, ctx.author.id)] = delete_original
+            await ctx.tick(True)
+        except aiosqliteError:
+            await ctx.tick(False)
+
     @commands.Cog.listener()
     async def on_message(self, message: 'discord.Message') -> None:
         """
@@ -211,14 +242,26 @@ class GuildFeatures(commands.Cog):
             return
 
         try:
-            await sleep(1.0)  # allow time for embed to actually embed
-            await message.edit(suppress=True)
-            await message.reply(
-                content=parsed_url._replace(netloc='fixupx.com', query='', fragment='').geturl(),
-                allowed_mentions=AllowedMentions.none(),
-                mention_author=False,
-                silent=True,
-            )
+            replaced_url = parsed_url._replace(netloc='fixupx.com', query='', fragment='').geturl()
+
+            # this user wants their original message deleted and attributed
+            if self.bot.cache.embed_preferences[message.guild.id, message.author.id]:
+                await message.delete()
+                await message.channel.send(
+                    content=f'{replaced_url} via {message.author.mention}',
+                    allowed_mentions=AllowedMentions.none(),
+                    mention_author=False,
+                    silent=True,
+                )
+            else:
+                await sleep(1.0)  # allow time for embed to actually embed
+                await message.edit(suppress=True)
+                await message.reply(
+                    content=replaced_url,
+                    allowed_mentions=AllowedMentions.none(),
+                    mention_author=False,
+                    silent=True,
+                )
         # this is a low-priority operation, so at most we'll try to restore the original embed on any failure
         except HTTPException:
             with suppress(HTTPException):
