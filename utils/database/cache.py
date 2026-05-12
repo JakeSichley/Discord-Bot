@@ -45,6 +45,7 @@ class TableCache:
         voice_roles (DefaultDict[int, List[TableDC.VoiceRole]]): A Guild.id: VoiceRole mapping.
         default_roles (Dict[int, int]): A Guild.id: Role.id mapping.
         guild_features (Dict[int: int]): A Guild.id: Feature{IntFlag} mapping.
+        embed_preferences (DefaultDict[Tuple[int, int], bool]): A (Guild.id, Member.id): EmbedPreference mapping.
     """
 
     def __init__(self, database: str) -> None:
@@ -54,6 +55,7 @@ class TableCache:
         self.voice_roles: DefaultDict[int, List[TableDC.VoiceRole]] = defaultdict(list)
         self.default_roles: Dict[int, int] = {}
         self.guild_features: Dict[int, int] = {}
+        self.embed_preferences: DefaultDict[Tuple[int, int], bool] = defaultdict(bool)
 
     async def sync(self) -> None:
         """
@@ -71,6 +73,7 @@ class TableCache:
         await self.retrieve_voice_roles()
         await self.retrieve_default_roles()
         await self.retrieve_guild_features()
+        await self.retrieve_embed_preferences()
 
     async def retrieve_prefixes(self) -> None:
         """
@@ -221,3 +224,32 @@ class TableCache:
         features = self.guild_features.get(guild_id, 0)
 
         return has_guild_feature(features, feature)
+
+    async def retrieve_embed_preferences(self) -> None:
+        """
+        A method that creates a quick-reference dict for embed preferences.
+
+        Parameters:
+            None.
+
+        Returns:
+            None.
+        """
+
+        current_embed_preferences = deepcopy(self.embed_preferences)
+
+        try:
+            self.embed_preferences.clear()
+
+            embed_preferences = await typed_retrieve_query(
+                self.database, TableDC.EmbedPreference, 'SELECT * FROM EMBED_PREFERENCES'
+            )
+
+            for row in embed_preferences:
+                self.embed_preferences[row.composite_key] = row.delete_original
+
+        except aiosqliteError as e:
+            bot_logger.error(f'Failed Embed Preference retrieval. {e}')
+            self.embed_preferences = current_embed_preferences
+        else:
+            bot_logger.info('Completed Embed Preference retrieval.')

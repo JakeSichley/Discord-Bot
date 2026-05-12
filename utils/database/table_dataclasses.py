@@ -391,3 +391,47 @@ class GroupMember(DatabaseDataclass):
         """
 
         return self.group_name.casefold()
+
+
+@dataclasses.dataclass
+class EmbedPreference(DatabaseDataclass):
+    """
+    A DatabaseDataclass that stores information about a member's embed preference.
+
+    Attributes:
+        guild_id (int): The id of the guild.
+        member_id (int): The id of the member.
+        _delete_original (int): Whether this member prefers their original message be deleted.
+    """
+
+    guild_id: int
+    member_id: int
+    _delete_original: int
+
+    @property
+    def composite_key(self) -> Tuple[int, int]:
+        """
+        Returns a quick-reference composite key for this member preference.
+
+        Parameters:
+            None.
+
+        Returns:
+            (Tuple[int, int]).
+        """
+
+        return self.guild_id, self.member_id
+
+    @property
+    def delete_original(self) -> bool:
+        """
+        Returns whether this member prefers their original message be deleted.
+
+        Parameters:
+            None.
+
+        Returns:
+            (bool).
+        """
+
+        return self._delete_original == 1

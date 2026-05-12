@@ -103,7 +103,7 @@ class Context(commands.Context['DreamBot']):
             if raise_exceptions:
                 raise
 
-    async def tick(self, status: Optional[bool] = True, *, raise_exceptions: bool = False) -> None:
+    async def tick(self, status: Optional[bool], *, raise_exceptions: bool = False) -> None:
         """
         Attempts to a status reaction to the message.
 
