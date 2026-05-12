@@ -94,7 +94,7 @@ def setup_loggers() -> None:
 
     bot_file_handler = logging.FileHandler(os.path.join(file_path, file_time_name))
     bot_file_handler.setLevel(logging.DEBUG)
-    handler.addFilter(debug_filter)
+    bot_file_handler.addFilter(debug_filter)
     bot_file_handler.setFormatter(
         FileLoggingFormatter(
             '%(asctime)s: %(levelname)s [DreamBot] - %(message)s (%(filename)s)',
