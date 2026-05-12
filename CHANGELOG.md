@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Issues
 ### Security
 
+## 2.21.1 (12 May 2026)
+### Features
+- Add Embed Preferences (delete original with attribution) for alternative Twitter embeds
+### Issues
+- Fix missing application of `debug_filter` to `bot_file_handler`
+
 ## 2.21.0 (1 Mar 2026)
 ### Features
 - Add Fact Check ('Gork Checks') as an `Experimental` feature

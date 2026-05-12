@@ -185,7 +185,7 @@ class GuildFeatures(commands.Cog):
     # Twitter Embeds
 
     @commands.guild_only()
-    @commands.command(name='embed_preference', aliases=['embedpreference'], hidden=True)
+    @commands.command(name='embed_preference', aliases=['embedpreference'])
     async def modify_embed_preference(self, ctx: 'Context', delete_original: bool) -> None:
         """
         A command that updates a user's embed preference.
