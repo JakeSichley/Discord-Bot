@@ -91,7 +91,7 @@ class GuildFeatures(commands.Cog):
 
         embed = Embed(
             title='Guild Features',
-            description=f'Feature statuses for {interaction.guild.name}',
+            description=f'Feature Statuses for {interaction.guild.name}',
             color=0x00BD96,
         )
 
@@ -176,8 +176,8 @@ class GuildFeatures(commands.Cog):
             ]
 
             embed.add_field(name='Feature Name', value='\n'.join((x[0]) for x in embed_fields))
-            embed.add_field(name='Old', value='\n'.join('Enabled' if x[1] else 'Disabled' for x in embed_fields))
-            embed.add_field(name='New', value='\n'.join('Enabled' if x[2] else 'Disabled' for x in embed_fields))
+            embed.add_field(name='Old', value='\n'.join('✅' if x[1] else '❌' for x in embed_fields))
+            embed.add_field(name='New', value='\n'.join('✅' if x[2] else '❌' for x in embed_fields))
             embed.set_footer(text='Please report any issues to my owner!')
 
             await interaction.response.send_message(embed=embed)
