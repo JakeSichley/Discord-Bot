@@ -27,7 +27,7 @@ from asyncio import sleep
 from contextlib import suppress
 from urllib.parse import urlparse
 
-from discord import Embed, Permissions, HTTPException, AllowedMentions, app_commands
+from discord import Embed, Message, Permissions, HTTPException, AllowedMentions, app_commands
 from aiosqlite import Error as aiosqliteError
 from discord.ext import commands
 
@@ -247,12 +247,23 @@ class GuildFeatures(commands.Cog):
             # this user wants their original message deleted and attributed
             if self.bot.cache.embed_preferences[message.guild.id, message.author.id]:
                 await message.delete()
-                await message.channel.send(
-                    content=f'{replaced_url} via {message.author.mention}',
-                    allowed_mentions=AllowedMentions.none(),
-                    mention_author=False,
-                    silent=True,
-                )
+
+                try:
+                    # this user replied to a message, preserve it
+                    if message.reference is not None and isinstance(message.reference.resolved, Message):
+                        await message.reference.resolved.reply(
+                            content=f'{replaced_url} via {message.author.mention}',
+                            allowed_mentions=AllowedMentions.none(),
+                            mention_author=True,
+                            silent=True,
+                        )
+                except HTTPException:  # resolution failure, fallback to regular send
+                    await message.channel.send(
+                        content=f'{replaced_url} via {message.author.mention}',
+                        allowed_mentions=AllowedMentions.none(),
+                        mention_author=False,
+                        silent=True,
+                    )
             else:
                 await sleep(1.0)  # allow time for embed to actually embed
                 await message.edit(suppress=True)
