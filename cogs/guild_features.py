@@ -257,6 +257,13 @@ class GuildFeatures(commands.Cog):
                             mention_author=True,
                             silent=True,
                         )
+                    else:
+                        await message.channel.send(
+                            content=f'{replaced_url} via {message.author.mention}',
+                            allowed_mentions=AllowedMentions.none(),
+                            mention_author=False,
+                            silent=True,
+                        )
                 except HTTPException:  # resolution failure, fallback to regular send
                     await message.channel.send(
                         content=f'{replaced_url} via {message.author.mention}',
