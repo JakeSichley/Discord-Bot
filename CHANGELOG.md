@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Issues
 ### Security
 
+## 2.21.2 (17 May 2026)
+### Features
+- Add Reply support for Embed Preferences
+- Standardize `GuildFeature` descriptions to use emojis
+
 ## 2.21.1 (12 May 2026)
 ### Features
 - Add Embed Preferences (delete original with attribution) for alternative Twitter embeds
