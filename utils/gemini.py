@@ -39,7 +39,8 @@ class GeminiService:
     A service class for interacting with the Gemini API.
 
     Attributes:
-        client (genai.Client): The Gemini API client.
+        _model (str): The name of the Gemini API model.
+        _client (genai.Client): The Gemini API client.
     """
 
     def __init__(self) -> None:
@@ -53,7 +54,8 @@ class GeminiService:
             None.
         """
 
-        self.client = genai.Client(api_key=getenv('GEMINI_TOKEN'))
+        self._model = 'gemini-3.1-flash-lite'
+        self._client = genai.Client(api_key=getenv('GEMINI_TOKEN'))
 
     async def fact_check(self, message: str, additional_context: List[str], debug_identifier: str) -> FactCheckResponse:
         """
@@ -68,8 +70,8 @@ class GeminiService:
             (FactCheckResponse): A FactCheckResponse object containing the results of the fact check.
         """
 
-        response = await self.client.aio.models.generate_content(
-            model='gemini-2.0-flash',
+        response = await self._client.aio.models.generate_content(
+            model=self._model,
             config=FACT_CHECK_CONFIG,
             contents=_build_fact_check_prompt(message, additional_context),
         )
@@ -87,8 +89,8 @@ class GeminiService:
             None.
         """
 
-        self.client.close()
-        await self.client.aio.aclose()
+        self._client.close()
+        await self._client.aio.aclose()
 
 
 def _build_fact_check_prompt(statement: str, context_list: List[str]) -> str:

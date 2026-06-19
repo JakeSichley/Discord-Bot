@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Issues
 ### Security
 
+## 2.21.3 (19 Jun 2026)
+### Internal
+- Add support for variable Gemini API model identifiers
+
 ## 2.21.2 (17 May 2026)
 ### Features
 - Add Reply support for Embed Preferences
