@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Issues
 ### Security
 
+## 2.21.4 (08 Jul 2026)
+### Features
+- Include the bot's local nickname as part of Fact Check contexts
+
 ## 2.21.3 (19 Jun 2026)
 ### Internal
 - Add support for variable Gemini API model identifiers

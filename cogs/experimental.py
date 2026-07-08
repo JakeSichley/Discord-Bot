@@ -306,6 +306,7 @@ class Experimental(commands.Cog, command_attrs={'hidden': True}):
                 response = await self.client.fact_check(
                     f'User {user_mapping.get(message_context.author.id, "Z")}: {message_context.clean_content.strip()}',
                     additional_context,
+                    ctx.me.display_name,
                     debug_identifier,
                 )
             except (EmptyResponseError, ValidationError, GeminiError) as e:

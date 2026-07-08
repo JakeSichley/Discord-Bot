@@ -57,7 +57,9 @@ class GeminiService:
         self._model = 'gemini-3.1-flash-lite'
         self._client = genai.Client(api_key=getenv('GEMINI_TOKEN'))
 
-    async def fact_check(self, message: str, additional_context: List[str], debug_identifier: str) -> FactCheckResponse:
+    async def fact_check(
+        self, message: str, additional_context: List[str], bot_nickname: str, debug_identifier: str
+    ) -> FactCheckResponse:
         """
         Performs a fact check on a given message using the Gemini API.
 
@@ -65,6 +67,7 @@ class GeminiService:
             message (str): The message to fact check.
             additional_context (List[str]): A list of additional messages to provide as context.
             debug_identifier (str): A unique identifier for debugging purposes.
+            bot_nickname (str): The bot's nickname for this context.
 
         Returns:
             (FactCheckResponse): A FactCheckResponse object containing the results of the fact check.
@@ -73,7 +76,7 @@ class GeminiService:
         response = await self._client.aio.models.generate_content(
             model=self._model,
             config=FACT_CHECK_CONFIG,
-            contents=_build_fact_check_prompt(message, additional_context),
+            contents=_build_fact_check_prompt(message, additional_context, bot_nickname),
         )
 
         return _clean_and_parse_json(response.text, debug_identifier)
@@ -93,13 +96,14 @@ class GeminiService:
         await self._client.aio.aclose()
 
 
-def _build_fact_check_prompt(statement: str, context_list: List[str]) -> str:
+def _build_fact_check_prompt(statement: str, context_list: List[str], bot_nickname: str) -> str:
     """
     Builds a prompt for the Gemini API to perform a fact check.
 
     Parameters:
         statement (str): The statement to fact check.
         context_list (List[str]): A list of additional messages to provide as context.
+        bot_nickname (str): The bot's nickname for this context.
 
     Returns:
         (str): The prompt to send to the Gemini API.
@@ -114,6 +118,11 @@ def _build_fact_check_prompt(statement: str, context_list: List[str]) -> str:
 
     POTENTIAL CONTEXT MESSAGES:
     {formatted_context}
+    
+    REFERENCE NICKNAME:
+    <nickname>
+    {bot_nickname}
+    </nickname>
     """
 
 
