@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Issues
 ### Security
 
+## 2.21.5 (10 Jul 2026)
+### Internal
+- Migrate prompt management to Langfuse
+
 ## 2.21.4 (08 Jul 2026)
 ### Features
 - Include the bot's local nickname as part of Fact Check contexts
