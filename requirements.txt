@@ -9,6 +9,7 @@ google-genai[aiohttp]==1.62.0
 grpcio==1.76.0
 html5lib==1.1
 humanfriendly==10.0
+langfuse==4.13.2
 mypy-extensions==1.1.0
 mypy==1.19.1
 parsedatetime==2.6
