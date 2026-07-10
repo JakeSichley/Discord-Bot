@@ -25,13 +25,19 @@ SOFTWARE.
 import re
 from os import getenv
 from json import JSONDecodeError
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
+from urllib.parse import quote as url_quote
 
 from google import genai
+from langfuse import get_client as get_langfuse_client
 from pydantic import ValidationError
+from langfuse.api.core import ApiError as LangfuseAPIError
 
 from utils.observability.loggers import bot_logger
-from utils.models.gemini.fact_check_models import FACT_CHECK_CONFIG, FACT_CHECK_DEBUG_SCOPE, FactCheckResponse
+from utils.models.gemini.fact_check_models import FACT_CHECK_DEBUG_SCOPE, FactCheckResponse, build_fact_check_config
+
+if TYPE_CHECKING:
+    from langfuse import Langfuse
 
 
 class GeminiService:
@@ -41,6 +47,7 @@ class GeminiService:
     Attributes:
         _model (str): The name of the Gemini API model.
         _client (genai.Client): The Gemini API client.
+        _langfuse (langfuse.Langfuse): The bot's Langfuse client.
     """
 
     def __init__(self) -> None:
@@ -56,6 +63,7 @@ class GeminiService:
 
         self._model = 'gemini-3.1-flash-lite'
         self._client = genai.Client(api_key=getenv('GEMINI_TOKEN'))
+        self._langfuse: Langfuse = get_langfuse_client()
 
     async def fact_check(
         self, message: str, additional_context: List[str], bot_nickname: str, debug_identifier: str
@@ -73,13 +81,48 @@ class GeminiService:
             (FactCheckResponse): A FactCheckResponse object containing the results of the fact check.
         """
 
-        response = await self._client.aio.models.generate_content(
-            model=self._model,
-            config=FACT_CHECK_CONFIG,
-            contents=_build_fact_check_prompt(message, additional_context, bot_nickname),
-        )
+        if system_prompt := await self._get_system_prompt():
+            response = await self._client.aio.models.generate_content(
+                model=self._model,
+                config=build_fact_check_config(system_prompt),
+                contents=_build_fact_check_prompt(message, additional_context, bot_nickname),
+            )
+        else:
+            return FactCheckResponse(  # type: ignore[call-arg]  # this is actually optional
+                is_actionable=False, refusal_reason='This feature is currently unavailable due to an internal error.'
+            )
 
         return _clean_and_parse_json(response.text, debug_identifier)
+
+    async def _get_system_prompt(self) -> Optional[str]:
+        """
+        A helper method for asynchronously fetching the fact check system prompt.
+
+        Parameters:
+            None.
+
+        Returns:
+            (Optional[str]): The fact check system prompt.
+        """
+
+        # https://github.com/langfuse/langfuse/issues/8006#issue-3249047350
+        # Langfuse's asynchronous methods are auto-generated from an OpenAPI spec and do not automatically encode
+        # url parameters like the synchronous `get_prompt` variant does
+        prompt_identifier = url_quote('Discord-Bot/Gemini/fact-check', safe='')
+
+        try:
+            system_prompt = await self._langfuse.async_api.prompts.get(prompt_identifier)
+
+            if isinstance(system_prompt.prompt, str):
+                return system_prompt.prompt
+            bot_logger.error(
+                f'Prompt identifer `Discord-Bot/Gemini/fact-check` did not return a text-based prompt. '
+                f'Possible model mismatch: `langfuse.model.Prompt_Chat` versus `langfuse.model.Prompt_Text`'
+            )
+            return None
+        except LangfuseAPIError as e:
+            bot_logger.error(f'Failed to fetch fact check system prompt. Error: {e}')
+            return None
 
     async def close(self) -> None:
         """
