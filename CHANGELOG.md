@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Issues
 ### Security
 
+## 2.21.6 (12 Oct 2026)
+### Internal
+- Migrate `prices.runescape.wiki/api` from `v1` to `v2` endpoints
+
 ## 2.21.5 (10 Jul 2026)
 ### Internal
 - Migrate prompt management to Langfuse

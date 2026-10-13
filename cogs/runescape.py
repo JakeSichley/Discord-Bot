@@ -996,7 +996,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         try:
             mapping_response: List[Dict[str, Any]] = await self.bot.network_client.fetch_json(
-                'https://prices.runescape.wiki/api/v1/osrs/mapping', raise_for_empty_response=True
+                'https://prices.runescape.wiki/api/v2/osrs/mapping', raise_for_empty_response=True
             )
 
             for raw_item in mapping_response:
@@ -1045,7 +1045,7 @@ class Runescape(commands.GroupCog, group_name='runescape', group_description='Co
 
         try:
             market_response: Dict[str, Dict[str, Any]] = await self.bot.network_client.fetch_json(
-                'https://prices.runescape.wiki/api/v1/osrs/latest', raise_for_empty_response=True
+                'https://prices.runescape.wiki/api/v2/osrs/latest', raise_for_empty_response=True
             )
 
             for item_id in [item_id for item_id in market_response['data'] if int(item_id) in self.item_data]:
